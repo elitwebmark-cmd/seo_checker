@@ -1,46 +1,66 @@
-"""Пороги кваліфікації та налаштування. Перевизначаються через ENV."""
-import os
+# elitweb · Кваліфікатор сайтів під офер «SEO з оплатою за вихід у ТОП»
 
-# --- SemRush ---
-SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
-SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua
-SEMRUSH_BASE = "https://api.semrush.com/"
+Два інструменти на одному ядрі:
+1. **Веб-інтерфейс** — вставляєш список сайтів (до 100), отримуєш вердикт по кожному.
+2. **Telegram-бот** — надсилаєш домен, у відповідь — висновок.
 
-# --- Пороги кваліфікації (з вимог) ---
-# 1) Комерційні запити поза ТОП-10 (позиції 11..POS_MAX) — НАЙВАЖЛИВІШЕ
-POS_MIN = int(os.getenv("POS_MIN", "11"))
-POS_MAX = int(os.getenv("POS_MAX", "30"))
-COMMERCIAL_KW_MIN = int(os.getenv("COMMERCIAL_KW_MIN", "300"))
-# 2) SEO-трафік / міс
-TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "500"))
-# 4) Широка структура (проксі: к-сть органічних ключів або сторінок)
-STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
-STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))
+## Що перевіряється (критерії)
+| # | Критерій | Порог | Вага |
+|---|----------|-------|------|
+| 1 | Комерційні запити **поза ТОП-10** (позиції 11–30) | **≥ 300** | 🔴 головний |
+| 2 | SEO-трафік / міс | ≥ 500 | важливий |
+| 3 | Ознаки SEO-оптимізації (мета-теги + SEO-тексти на головній і категоріях) | є/нема | важливий |
+| 4 | Широка структура (орг. ключів) | ≥ 1000 | середній |
+| + | Кандидати в ТОП-1: комерційні з високою частотністю близько до ТОП-10 | топ-15 | бонус |
 
-# Скільки ключів тягнути з SemRush (пейджинг по 1000)
-KW_FETCH_LIMIT = int(os.getenv("KW_FETCH_LIMIT", "2000"))
+Джерела даних: запити/трафік — **SemRush Analytics API** (база `ua`); on-page — власний краулер (requests + BeautifulSoup). Комерційність визначається за **intent** SemRush (0=Commercial, 3=Transactional), брендові/навігаційні відсікаються.
 
-# Intent-коди SemRush: 0=Commercial, 1=Informational, 2=Navigational, 3=Transactional
-COMMERCIAL_INTENTS = {"0", "3"}
+## Структура
+```
+analyzer/    core: semrush.py, onpage.py, qualify.py, config.py
+web/        Flask-застосунок (app.py + templates)
+bot/        Telegram-бот (aiogram 3)
+```
 
-# Патерни комерційних запитів (fallback / підсилення)
-COMMERCIAL_PATTERNS = [
-    "купити", "купить", "ціна", "цена", "вартість", "стоимость", "замовити", "заказать",
-    "недорого", "дешево", "прайс", "продаж", "продажа", "магазин", "доставка",
-    "в наявності", "в наличии", "оптом", "розпродаж", "акція", "акции", "знижк",
-]
+## Змінні середовища
+Див. `.env.example`. Обов'язкові:
+- `SEMRUSH_API_KEY` — ключ SemRush Analytics API.
+- `TELEGRAM_BOT_TOKEN` — токен бота (лише для сервіса-бота).
+Пороги (`COMMERCIAL_KW_MIN`, `TRAFFIC_MIN`, …) можна змінювати без правок коду.
 
-# On-page
-SEO_TEXT_MIN_CHARS = int(os.getenv("SEO_TEXT_MIN_CHARS", "500"))
-HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "15"))
-USER_AGENT = os.getenv(
-    "USER_AGENT",
-    "Mozilla/5.0 (compatible; elitweb-seo-qualifier/1.0; +https://elit-web.ua)",
-)
+## Локальний запуск
+```bash
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # заповни ключі
+export $(grep -v '^#' .env | xargs)   # або використай python-dotenv
 
-# URL-и, що НЕ є комерційними (блог/новини/статті/довідка) — виключаємо
-NON_COMMERCIAL_URL_HINTS = [
-    "/blog", "blog.", "/news", "/novosti", "/novyny", "/article", "/statya", "/stat",
-    "/instruction", "/instructions", "/help", "/about", "/o-nas", "/compare",
-    "/products/compare", "/review", "/otzyv", "/faq", "/wiki",
-]
+# веб
+gunicorn web.app:app --bind 0.0.0.0:8080
+# або: python web/app.py   → http://localhost:8080
+
+# бот (окремо)
+python -m bot.bot
+```
+
+## Деплой: GitHub → Railway
+1. **GitHub:** створи репозиторій і залий цей код:
+   ```bash
+   git init && git add . && git commit -m "seo qualifier"
+   git branch -M main
+   git remote add origin https://github.com/<you>/elitweb-seo-qualifier.git
+   git push -u origin main
+   ```
+2. **Railway → New Project → Deploy from GitHub repo** → обери репозиторій.
+3. **Сервіс 1 (веб):** Railway підхопить `railway.json` (start = gunicorn). У *Variables* додай `SEMRUSH_API_KEY`, `SEMRUSH_DB=ua`. У *Settings → Networking → Generate Domain* — отримаєш URL.
+4. **Сервіс 2 (бот):** у тому ж проєкті **New → GitHub Repo → той самий репозиторій**. У *Settings → Deploy → Custom Start Command* встав:
+   ```
+   python -m bot.bot
+   ```
+   У *Variables* додай `SEMRUSH_API_KEY`, `SEMRUSH_DB=ua`, `TELEGRAM_BOT_TOKEN`.
+5. Готово: веб-сервіс має публічний URL, бот працює у режимі polling (домен не потрібен).
+
+## Примітки
+- Кожен домен = кілька запитів до SemRush API (витрачає API-units). Для списку зі 100 сайтів плануй ліміти.
+- On-page-перевірку у веб-інтерфейсі можна вимкнути (чекбокс) для швидкості на великих списках.
+- Дефолтні пороги — з ТЗ; змінюй через ENV під свою модель.
