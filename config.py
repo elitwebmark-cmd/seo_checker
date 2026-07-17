@@ -34,8 +34,8 @@ COMMERCIAL_PATTERNS = [
 
 # On-page
 SEO_TEXT_MIN_CHARS = int(os.getenv("SEO_TEXT_MIN_CHARS", "500"))
-HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "15"))
-ONPAGE_RETRIES = int(os.getenv("ONPAGE_RETRIES", "2"))
+HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "12"))
+ONPAGE_RETRIES = int(os.getenv("ONPAGE_RETRIES", "1"))
 
 # Реалістичний браузерний User-Agent (щоб менше блокувань)
 USER_AGENT = os.getenv(

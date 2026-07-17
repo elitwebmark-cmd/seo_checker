@@ -1,14 +1,20 @@
 """Веб-інтерфейс: авторизація -> список сайтів -> прогрес -> результати."""
-import os, uuid, threading, concurrent.futures, functools, time
+import os, uuid, threading, concurrent.futures, functools, time, logging
 from flask import (Flask, render_template, request, jsonify, redirect,
-                   url_for, session, abort)
+                   url_for, session)
 
 import qualify, config
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("seo-web")
 
 app = Flask(__name__, template_folder=".")
 app.secret_key = config.SECRET_KEY
 MAX_DOMAINS = int(os.getenv("MAX_DOMAINS", "100"))
 WORKERS = int(os.getenv("WORKERS", "6"))
+JOB_TIMEOUT = int(os.getenv("JOB_TIMEOUT", "240"))       # межа на весь джоб, c
+DOMAIN_TIMEOUT = int(os.getenv("DOMAIN_TIMEOUT", "90"))  # орієнтир на 1 домен, c
 
 JOBS = {}
 JOBS_LOCK = threading.Lock()
@@ -33,8 +39,7 @@ def login():
         if email == config.APP_LOGIN_EMAIL.lower() and pwd == config.APP_LOGIN_PASSWORD:
             session["auth"] = True
             session["email"] = email
-            nxt = request.args.get("next") or url_for("index")
-            return redirect(nxt)
+            return redirect(request.args.get("next") or url_for("index"))
         error = "Невірна пошта або пароль."
     return render_template("login.html", error=error, cfg=config)
 
@@ -58,40 +63,67 @@ def _parse_domains(raw: str):
     return items[:MAX_DOMAINS]
 
 
+def _err(domain, note):
+    return {"domain": domain, "verdict": "ПОМИЛКА", "color": "gray",
+            "score": -1, "error": note, "reasons": [], "metrics": {},
+            "dotisk_queries": []}
+
+
 def _safe_qualify(domain, do_onpage):
     try:
         return qualify.qualify(domain, do_onpage=do_onpage)
     except Exception as e:
-        return {"domain": domain, "verdict": "ПОМИЛКА", "color": "gray",
-                "score": -1, "error": str(e)[:200], "reasons": [], "metrics": {},
-                "dotisk_queries": []}
+        log.exception("qualify failed for %s", domain)
+        return _err(domain, str(e)[:200])
 
 
-def _process_job(job_id, domains, do_onpage):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
-        for fut in concurrent.futures.as_completed(futs):
-            res = fut.result()
-            with JOBS_LOCK:
-                j = JOBS.get(job_id)
-                if j is None:
-                    return
-                j["results"].append(res)
-                j["done"] += 1
+def _finish(job_id):
     with JOBS_LOCK:
         j = JOBS.get(job_id)
-        if j:
+        if j and j["status"] != "done":
             j["results"].sort(key=lambda r: r.get("score", 0), reverse=True)
             j["status"] = "done"
             j["finished"] = time.time()
+    log.info("job %s finished", job_id)
+
+
+def _process_job(job_id, domains, do_onpage):
+    log.info("job %s START: %d domain(s), onpage=%s", job_id, len(domains), do_onpage)
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
+            try:
+                for fut in concurrent.futures.as_completed(futs, timeout=JOB_TIMEOUT):
+                    d = futs[fut]
+                    res = fut.result()
+                    log.info("job %s: %s -> %s", job_id, d, res.get("verdict"))
+                    with JOBS_LOCK:
+                        j = JOBS.get(job_id)
+                        if j is None:
+                            return
+                        j["results"].append(res)
+                        j["done"] += 1
+            except concurrent.futures.TimeoutError:
+                # позначаємо незавершені як таймаут, щоб джоб не висів
+                for fut, d in futs.items():
+                    if not fut.done():
+                        with JOBS_LOCK:
+                            j = JOBS.get(job_id)
+                            if j:
+                                j["results"].append(_err(d, "таймаут аналізу"))
+                                j["done"] += 1
+                        log.warning("job %s: %s -> TIMEOUT", job_id, d)
+    except Exception:
+        log.exception("job %s crashed", job_id)
+    finally:
+        _finish(job_id)
 
 
 def _prune_jobs():
     now = time.time()
     with JOBS_LOCK:
-        old = [k for k, v in JOBS.items()
-               if v.get("finished") and now - v["finished"] > 3600]
-        for k in old:
+        for k in [k for k, v in JOBS.items()
+                  if v.get("finished") and now - v["finished"] > 3600]:
             JOBS.pop(k, None)
 
 
@@ -162,14 +194,14 @@ def api_analyze():
     raw = "\n".join(raw) if isinstance(raw, list) else str(raw or "")
     domains = _parse_domains(raw)
     do_onpage = bool(data.get("onpage", True))
-    results_list = []
+    out = []
     if domains:
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
             futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
             for fut in concurrent.futures.as_completed(futs):
-                results_list.append(fut.result())
-        results_list.sort(key=lambda r: r.get("score", 0), reverse=True)
-    return jsonify({"results": results_list})
+                out.append(fut.result())
+        out.sort(key=lambda r: r.get("score", 0), reverse=True)
+    return jsonify({"results": out})
 
 
 @app.route("/healthz")
