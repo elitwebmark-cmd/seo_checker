@@ -1,228 +1,237 @@
-"""Telegram-бот: аналіз домену під офер 'SEO з оплатою за вихід у ТОП'.
-Меню, вибір регіону та глибини, inline-кнопки, обмеження доступу."""
-import os, re, asyncio, html, logging
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import (Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton,
-                           InlineKeyboardMarkup, InlineKeyboardButton)
-from aiogram.filters import CommandStart, Command
+"""Веб-інтерфейс: авторизація -> список сайтів -> прогрес -> результати."""
+import os, uuid, threading, concurrent.futures, functools, time, logging
+from flask import (Flask, render_template, request, jsonify, redirect,
+                   url_for, session)
 
 import qualify, config
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("seo-bot")
+log = logging.getLogger("seo-web")
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-# Обмеження доступу: список chat_id через кому (порожньо = дозволено всім)
-ALLOWED = {int(x) for x in os.getenv("ALLOWED_CHAT_IDS", "").replace(" ", "").split(",") if x}
-dp = Dispatcher()
+app = Flask(__name__, template_folder=".")
+app.secret_key = config.SECRET_KEY
+MAX_DOMAINS = int(os.getenv("MAX_DOMAINS", "100"))
+WORKERS = int(os.getenv("WORKERS", "6"))
+JOB_TIMEOUT = int(os.getenv("JOB_TIMEOUT", "240"))       # межа на весь джоб, c
+DOMAIN_TIMEOUT = int(os.getenv("DOMAIN_TIMEOUT", "90"))  # орієнтир на 1 домен, c
 
-EMOJI = {"green": "✅", "blue": "🔵", "amber": "🟡", "red": "⛔", "gray": "⚠️"}
-REGIONS = {"ua": "🇺🇦 Україна", "pl": "🇵🇱 Польща", "de": "🇩🇪 Німеччина", "us": "🇺🇸 США"}
+JOBS = {}
+JOBS_LOCK = threading.Lock()
 
-SETTINGS = {}   # chat_id -> {"db":"ua","depth":"full"}
-LAST = {}       # chat_id -> {"domain":..., "res":...}
-
-BTN_ANALYZE = "🔍 Аналіз сайту"
-BTN_SETTINGS = "⚙️ Налаштування"
-BTN_CRIT = "ℹ️ Критерії"
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 
-def st(chat_id: int) -> dict:
-    return SETTINGS.setdefault(chat_id, {"db": config.SEMRUSH_DB, "depth": "full"})
+def _find_asset(*names):
+    for n in names:
+        if os.path.exists(os.path.join(STATIC_DIR, n)):
+            return n
+    return None
 
 
-def allowed(chat_id: int) -> bool:
-    return not ALLOWED or chat_id in ALLOWED
+@app.context_processor
+def inject_assets():
+    return {"assets": {
+        "logo": _find_asset("logo.png", "logo.svg"),
+        "ic_search": _find_asset("ic-search.png", "ic-search.svg"),
+        "ic_bot": _find_asset("ic-bot.png", "ic-bot.svg"),
+        "ic_monitor": _find_asset("ic-monitor.png", "ic-monitor.svg"),
+        "ic_trophy": _find_asset("ic-trophy.png", "ic-trophy.svg"),
+        "ic_chart": _find_asset("ic-chart.png", "ic-chart.svg"),
+        "ic_niche": _find_asset("ic-niche.png", "ic-niche.svg"),
+        "ic_key": _find_asset("ic-key.png", "ic-key.svg"),
+    }}
 
 
-def main_kb() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=BTN_ANALYZE)],
-                  [KeyboardButton(text=BTN_SETTINGS), KeyboardButton(text=BTN_CRIT)]],
-        resize_keyboard=True, input_field_placeholder="Надішли домен, напр. daydrive.ua")
+
+# ---------- авторизація ----------
+def login_required(f):
+    @functools.wraps(f)
+    def wrap(*a, **kw):
+        if not session.get("auth"):
+            return redirect(url_for("login", next=request.path))
+        return f(*a, **kw)
+    return wrap
 
 
-def settings_kb(s: dict) -> InlineKeyboardMarkup:
-    reg_row = [InlineKeyboardButton(
-        text=("• " if s["db"] == code else "") + name, callback_data=f"reg:{code}")
-        for code, name in REGIONS.items()]
-    depth_row = [
-        InlineKeyboardButton(text=("• " if s["depth"] == "full" else "") + "Повний (+on-page)",
-                             callback_data="depth:full"),
-        InlineKeyboardButton(text=("• " if s["depth"] == "fast" else "") + "Швидкий",
-                             callback_data="depth:fast"),
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=[reg_row[:2], reg_row[2:], depth_row])
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        pwd = request.form.get("password") or ""
+        if email == config.APP_LOGIN_EMAIL.lower() and pwd == config.APP_LOGIN_PASSWORD:
+            session["auth"] = True
+            session["email"] = email
+            return redirect(request.args.get("next") or url_for("index"))
+        error = "Невірна пошта або пароль."
+    return render_template("login.html", error=error, cfg=config)
 
 
-def result_kb(domain: str, has_dotisk: bool) -> InlineKeyboardMarkup:
-    rows = []
-    if has_dotisk:
-        rows.append([InlineKeyboardButton(text="🎯 Усі запити для дотиску", callback_data="allq")])
-    rows.append([InlineKeyboardButton(text="🔁 Повторити", callback_data="again")])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
-def extract_domain(text: str) -> str:
-    m = re.search(r"([a-z0-9\-]+\.)+[a-z]{2,}", (text or "").lower())
-    return m.group(0) if m else ""
+# ---------- утиліти ----------
+def _parse_domains(raw: str):
+    items = []
+    for line in (raw or "").replace(",", "\n").splitlines():
+        d = line.strip().lower()
+        if not d:
+            continue
+        d = d.replace("https://", "").replace("http://", "").strip("/ ")
+        if d and d not in items:
+            items.append(d)
+    return items[:MAX_DOMAINS]
 
 
-def fmt(res: dict) -> str:
-    if res.get("error"):
-        return f"⚠️ <b>{html.escape(res['domain'])}</b>\nПомилка: {html.escape(res['error'])}"
-    lines = []
-    cl = res.get("client") or {}
-    if cl.get("is_client"):
-        warn = ("вже клієнт Elit-Web" if cl.get("level") == "exact"
-                else "є вірогідність, що сайт вже клієнт Elit-Web")
-        m = f" (збіг: {html.escape(cl.get('matched'))})" if cl.get("matched") else ""
-        lines.append(f"⚠️ <b>УВАГА:</b> {warn}{m}")
-    lines += [f"{EMOJI.get(res['color'],'•')} <b>{html.escape(res['domain'])}</b> — {res['verdict']} (бал {res['score']})"]
-    nz = res.get("niche") or {}
-    if nz.get("subniche"):
-        lines.append(f"🧭 <b>Ніша:</b> {html.escape(nz.get('direction_name') or '?')} → "
-                     f"{html.escape(nz.get('industry_name') or '?')} → "
-                     f"{html.escape(nz.get('subniche'))} <i>({nz.get('confidence')})</i>")
-    lines.append("")
-    for name, val, ok in res.get("reasons", []):
-        mark = "✔" if ok else ("•" if ok is None else "✗")
-        lines.append(f"{mark} {html.escape(name)}: <b>{html.escape(str(val))}</b>")
-    dq = res.get("dotisk_queries", [])
-    if dq:
-        lines.append("\n🎯 <b>Кандидати в ТОП-1:</b>")
-        for q in dq[:8]:
-            lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']}")
-    cs = res.get("cases") or []
-    if cs:
-        lines.append("\n📁 <b>Схожі кейси Elit-Web:</b>")
-        for c in cs[:4]:
-            lk = c.get("links", {})
-            parts = []
-            if lk.get("kp"): parts.append(f"<a href=\"{lk['kp']}\">КП</a>")
-            if lk.get("ext"): parts.append(f"<a href=\"{lk['ext']}\">розшир.</a>")
-            if lk.get("blog"): parts.append(f"<a href=\"{lk['blog']}\">стаття</a>")
-            geo = f", {html.escape(c.get('country',''))}" if c.get("country") else ""
-            lines.append(f"• {html.escape(c['domain'])} ({html.escape(c.get('service','')) }{geo}) — " + " · ".join(parts))
-    return "\n".join(lines)
+def _err(domain, note):
+    return {"domain": domain, "verdict": "ПОМИЛКА", "color": "gray",
+            "score": -1, "error": note, "reasons": [], "metrics": {},
+            "dotisk_queries": []}
 
 
-async def run_analysis(msg: Message, domain: str):
-    s = st(msg.chat.id)
-    wait = await msg.answer(
-        f"🔎 Аналізую <b>{html.escape(domain)}</b> ({REGIONS.get(s['db'], s['db'])}, "
-        f"{'повний' if s['depth']=='full' else 'швидкий'})… (10–30 c)", parse_mode="HTML")
+def _safe_qualify(domain, do_onpage):
     try:
-        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"])
-        LAST[msg.chat.id] = {"domain": domain, "res": res}
-        await wait.edit_text(fmt(res), parse_mode="HTML", disable_web_page_preview=True,
-                             reply_markup=result_kb(domain, bool(res.get("dotisk_queries"))))
+        return qualify.qualify(domain, do_onpage=do_onpage)
+    except Exception as e:
+        log.exception("qualify failed for %s", domain)
+        return _err(domain, str(e)[:200])
+
+
+def _finish(job_id):
+    with JOBS_LOCK:
+        j = JOBS.get(job_id)
+        if j and j["status"] != "done":
+            j["results"].sort(key=lambda r: r.get("score", 0), reverse=True)
+            j["status"] = "done"
+            j["finished"] = time.time()
+    log.info("job %s finished", job_id)
+
+
+def _process_job(job_id, domains, do_onpage):
+    log.info("job %s START: %d domain(s), onpage=%s", job_id, len(domains), do_onpage)
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
+            try:
+                for fut in concurrent.futures.as_completed(futs, timeout=JOB_TIMEOUT):
+                    d = futs[fut]
+                    res = fut.result()
+                    log.info("job %s: %s -> %s", job_id, d, res.get("verdict"))
+                    with JOBS_LOCK:
+                        j = JOBS.get(job_id)
+                        if j is None:
+                            return
+                        j["results"].append(res)
+                        j["done"] += 1
+            except concurrent.futures.TimeoutError:
+                # позначаємо незавершені як таймаут, щоб джоб не висів
+                for fut, d in futs.items():
+                    if not fut.done():
+                        with JOBS_LOCK:
+                            j = JOBS.get(job_id)
+                            if j:
+                                j["results"].append(_err(d, "таймаут аналізу"))
+                                j["done"] += 1
+                        log.warning("job %s: %s -> TIMEOUT", job_id, d)
     except Exception:
-        log.exception("Analyze error for %s", domain)
-        await wait.edit_text(f"⚠️ Помилка аналізу <b>{html.escape(domain)}</b>. Спробуй пізніше.",
-                             parse_mode="HTML")
+        log.exception("job %s crashed", job_id)
+    finally:
+        _finish(job_id)
 
 
-@dp.message(CommandStart())
-async def start(msg: Message):
-    if not allowed(msg.chat.id):
-        return await msg.answer(f"⛔ Доступ обмежено. Твій chat_id: <code>{msg.chat.id}</code>", parse_mode="HTML")
-    s = st(msg.chat.id)
-    await msg.answer(
-        "👋 Аналізатор сайтів під офер <b>SEO з оплатою за вихід у ТОП</b>.\n\n"
-        "Надішли <b>домен</b> — я перевірю по SemRush та on-page і скажу, чи підходить.\n\n"
-        f"Регіон: {REGIONS.get(s['db'], s['db'])} · Глибина: "
-        f"{'повний' if s['depth']=='full' else 'швидкий'}\n"
-        "Змінити — кнопка «⚙️ Налаштування».",
-        parse_mode="HTML", reply_markup=main_kb())
+def _prune_jobs():
+    now = time.time()
+    with JOBS_LOCK:
+        for k in [k for k, v in JOBS.items()
+                  if v.get("finished") and now - v["finished"] > 3600]:
+            JOBS.pop(k, None)
 
 
-@dp.message(Command("settings"))
-@dp.message(F.text == BTN_SETTINGS)
-async def settings_msg(msg: Message):
-    if not allowed(msg.chat.id):
-        return
-    await msg.answer("⚙️ <b>Налаштування</b>\nОбери регіон бази SemRush і глибину аналізу:",
-                     parse_mode="HTML", reply_markup=settings_kb(st(msg.chat.id)))
+# ---------- сторінки ----------
+@app.route("/")
+@login_required
+def index():
+    return render_template("index.html", cfg=config,
+                           has_key=bool(config.SEMRUSH_API_KEY),
+                           bot_url=config.TELEGRAM_BOT_URL)
 
 
-@dp.message(F.text == BTN_CRIT)
-async def crit_msg(msg: Message):
-    await msg.answer(
-        "ℹ️ <b>Критерії кваліфікації</b>\n\n"
-        f"• <b>Головний:</b> {config.COMMERCIAL_KW_MIN}+ комерц. запитів на позиціях "
-        f"{config.POS_MIN}–{config.POS_MAX} — пул для вибору семантики клієнтом\n"
-        f"• SEO-трафік ≥ {config.TRAFFIC_MIN}/міс\n"
-        "• Ознаки SEO-оптимізації (якщо сайт недоступний — не враховується)\n"
-        f"• Широка структура (≥ {config.STRUCTURE_KW_MIN} орг. ключів)",
-        parse_mode="HTML")
+@app.route("/analyze", methods=["POST"])
+@login_required
+def analyze():
+    domains = _parse_domains(request.form.get("domains", ""))
+    do_onpage = request.form.get("onpage") == "on"
+    if not domains:
+        return redirect(url_for("index"))
+    _prune_jobs()
+    job_id = uuid.uuid4().hex[:12]
+    with JOBS_LOCK:
+        JOBS[job_id] = {"total": len(domains), "done": 0, "results": [],
+                        "status": "running", "do_onpage": do_onpage,
+                        "started": time.time(), "finished": None}
+    threading.Thread(target=_process_job, args=(job_id, domains, do_onpage),
+                     daemon=True).start()
+    return redirect(url_for("progress", job_id=job_id))
 
 
-@dp.message(F.text == BTN_ANALYZE)
-async def ask_domain(msg: Message):
-    if not allowed(msg.chat.id):
-        return
-    await msg.answer("Надішли домен, напр. <code>daydrive.ua</code>", parse_mode="HTML")
+@app.route("/progress/<job_id>")
+@login_required
+def progress(job_id):
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+    if not job:
+        return redirect(url_for("index"))
+    return render_template("progress.html", job_id=job_id, total=job["total"], cfg=config)
 
 
-@dp.callback_query(F.data.startswith("reg:"))
-async def cb_region(cb: CallbackQuery):
-    code = cb.data.split(":", 1)[1]
-    st(cb.message.chat.id)["db"] = code
-    await cb.message.edit_reply_markup(reply_markup=settings_kb(st(cb.message.chat.id)))
-    await cb.answer(f"Регіон: {REGIONS.get(code, code)}")
+@app.route("/status/<job_id>")
+@login_required
+def status(job_id):
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job:
+            return jsonify({"found": False})
+        return jsonify({"found": True, "total": job["total"], "done": job["done"],
+                        "status": job["status"]})
 
 
-@dp.callback_query(F.data.startswith("depth:"))
-async def cb_depth(cb: CallbackQuery):
-    st(cb.message.chat.id)["depth"] = cb.data.split(":", 1)[1]
-    await cb.message.edit_reply_markup(reply_markup=settings_kb(st(cb.message.chat.id)))
-    await cb.answer("Глибину змінено")
+@app.route("/results/<job_id>")
+@login_required
+def results(job_id):
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+    if not job:
+        return redirect(url_for("index"))
+    return render_template("results.html", results=job["results"], cfg=config,
+                           do_onpage=job["do_onpage"], bot_url=config.TELEGRAM_BOT_URL)
 
 
-@dp.callback_query(F.data == "allq")
-async def cb_allq(cb: CallbackQuery):
-    last = LAST.get(cb.message.chat.id)
-    if not last or not last["res"].get("dotisk_queries"):
-        return await cb.answer("Немає даних")
-    dq = last["res"]["dotisk_queries"]
-    lines = [f"🎯 <b>Усі кандидати в ТОП-1 — {html.escape(last['domain'])}</b>", ""]
-    for q in dq:
-        lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']}")
-    await cb.message.answer("\n".join(lines), parse_mode="HTML", disable_web_page_preview=True)
-    await cb.answer()
+@app.route("/api/analyze", methods=["POST"])
+@login_required
+def api_analyze():
+    data = request.get_json(force=True, silent=True) or {}
+    raw = data.get("domains")
+    raw = "\n".join(raw) if isinstance(raw, list) else str(raw or "")
+    domains = _parse_domains(raw)
+    do_onpage = bool(data.get("onpage", True))
+    out = []
+    if domains:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
+            for fut in concurrent.futures.as_completed(futs):
+                out.append(fut.result())
+        out.sort(key=lambda r: r.get("score", 0), reverse=True)
+    return jsonify({"results": out})
 
 
-@dp.callback_query(F.data == "again")
-async def cb_again(cb: CallbackQuery):
-    last = LAST.get(cb.message.chat.id)
-    if not last:
-        return await cb.answer("Немає що повторити")
-    await cb.answer("Повторюю…")
-    await run_analysis(cb.message, last["domain"])
-
-
-@dp.message(F.text)
-async def handle(msg: Message):
-    if not allowed(msg.chat.id):
-        return await msg.answer(f"⛔ Доступ обмежено. Твій chat_id: <code>{msg.chat.id}</code>", parse_mode="HTML")
-    domain = extract_domain(msg.text)
-    if not domain:
-        return await msg.answer("Не бачу домену. Надішли, напр., <code>example.com</code>",
-                                parse_mode="HTML", reply_markup=main_kb())
-    await run_analysis(msg, domain)
-
-
-async def main():
-    if not TOKEN:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN not set (ENV).")
-    bot = Bot(token=TOKEN)
-    me = await bot.get_me()
-    log.info("Bot started: @%s (id=%s). Polling...", me.username, me.id)
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+@app.route("/healthz")
+def healthz():
+    return {"ok": True, "has_key": bool(config.SEMRUSH_API_KEY)}
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8080")), debug=False)
