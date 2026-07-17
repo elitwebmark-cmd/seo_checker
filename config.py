@@ -14,6 +14,12 @@ SECRET_KEY = os.getenv("SECRET_KEY", "elitweb-seo-qualifier-change-me-please")
 # --- Telegram ---
 TELEGRAM_BOT_URL = os.getenv("TELEGRAM_BOT_URL", "")   # напр. https://t.me/your_bot
 
+# --- Google-таблиця з поточними клієнтами (CSV) ---
+CLIENTS_SHEET_CSV = os.getenv(
+    "CLIENTS_SHEET_CSV",
+    "https://docs.google.com/spreadsheets/d/1hm4at3Cbduf-tJcOP74O8A1aGAFIWLugTdqDhS4yZfo/gviz/tq?tqx=out:csv",
+)
+
 # --- Пороги кваліфікації (з вимог) ---
 POS_MIN = int(os.getenv("POS_MIN", "11"))
 POS_MAX = int(os.getenv("POS_MAX", "30"))

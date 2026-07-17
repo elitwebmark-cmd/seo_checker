@@ -8,7 +8,7 @@
 {% for r in results %}
 <tr>
   <td><b>{{ r.domain }}</b></td>
-  <td><span class="badge b-{{ r.color }}">{{ r.verdict }}</span>{% if r.error %}<div class="small">{{ r.error }}</div>{% endif %}</td>
+  <td><span class="badge b-{{ r.color }}">{{ r.verdict }}</span>{% if r.error %}<div class="small">{{ r.error }}</div>{% endif %}{% if r.client and r.client.is_client %}<div class="clientwarn">⚠️ {% if r.client.level == "exact" %}Вже клієнт Elit-Web{% else %}Є вірогідність, що сайт вже клієнт Elit-Web{% endif %}{% if r.client.matched %}<span class="small">&nbsp;({{ r.client.matched }})</span>{% endif %}</div>{% endif %}</td>
   <td>{{ r.score }}</td>
   <td>{{ r.metrics.commercial_kw_11_30 if r.metrics else "—" }}</td>
   <td>{{ r.metrics.organic_traffic if r.metrics else "—" }}</td>

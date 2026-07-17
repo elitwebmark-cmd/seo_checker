@@ -72,7 +72,14 @@ def extract_domain(text: str) -> str:
 def fmt(res: dict) -> str:
     if res.get("error"):
         return f"⚠️ <b>{html.escape(res['domain'])}</b>\nПомилка: {html.escape(res['error'])}"
-    lines = [f"{EMOJI.get(res['color'],'•')} <b>{html.escape(res['domain'])}</b> — {res['verdict']} (бал {res['score']})", ""]
+    lines = []
+    cl = res.get("client") or {}
+    if cl.get("is_client"):
+        warn = ("вже клієнт Elit-Web" if cl.get("level") == "exact"
+                else "є вірогідність, що сайт вже клієнт Elit-Web")
+        m = f" (збіг: {html.escape(cl.get('matched'))})" if cl.get("matched") else ""
+        lines.append(f"⚠️ <b>УВАГА:</b> {warn}{m}")
+    lines += [f"{EMOJI.get(res['color'],'•')} <b>{html.escape(res['domain'])}</b> — {res['verdict']} (бал {res['score']})", ""]
     for name, val, ok in res.get("reasons", []):
         mark = "✔" if ok else ("•" if ok is None else "✗")
         lines.append(f"{mark} {html.escape(name)}: <b>{html.escape(str(val))}</b>")

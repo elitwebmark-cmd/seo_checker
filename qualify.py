@@ -1,7 +1,7 @@
 """Логіка кваліфікації сайту під офер 'SEO з оплатою за вихід у ТОП'."""
 from __future__ import annotations
 import re
-import config, semrush, onpage
+import config, semrush, onpage, clients
 
 
 def _brand_token(domain: str) -> str:
@@ -42,6 +42,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
 
     domain = re.sub(r"^https?://", "", domain).strip("/ ").lower()
     brand = _brand_token(domain)
+    client_info = clients.check(domain)
 
     overview = semrush.domain_overview(domain, db=db)
     kws = semrush.organic_keywords(domain, config.POS_MIN, config.POS_MAX,
@@ -107,6 +108,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
             "opt_note": onp.get("status_note"),
             "reachable": onp.get("reachable"),
         },
+        "client": client_info,
         "reasons": reasons,
         "dotisk_queries": [
             {"keyword": k["keyword"], "position": k["position"],
