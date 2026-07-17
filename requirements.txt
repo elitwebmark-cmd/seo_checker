@@ -1,7 +1,5 @@
-__pycache__/
-*.pyc
-.env
-venv/
-.venv/
-*.log
-.DS_Store
+flask==3.0.3
+gunicorn==22.0.0
+requests==2.32.3
+beautifulsoup4==4.12.3
+aiogram==3.13.1

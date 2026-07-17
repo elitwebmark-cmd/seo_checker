@@ -1,72 +1,28 @@
-"""Веб-інтерфейс: список сайтів -> кваліфікація по кожному."""
-import os, sys, concurrent.futures
-from flask import Flask, render_template, request, jsonify
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from analyzer import qualify, config
-
-app = Flask(__name__)
-MAX_DOMAINS = int(os.getenv("MAX_DOMAINS", "100"))
-WORKERS = int(os.getenv("WORKERS", "6"))
-
-
-def _parse_domains(raw: str):
-    items = []
-    for line in raw.replace(",", "\n").splitlines():
-        d = line.strip().lower()
-        if not d:
-            continue
-        d = d.replace("https://", "").replace("http://", "").strip("/ ")
-        if d and d not in items:
-            items.append(d)
-    return items[:MAX_DOMAINS]
-
-
-def _run(domains, do_onpage):
-    results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
-        for fut in concurrent.futures.as_completed(futs):
-            results.append(fut.result())
-    results.sort(key=lambda r: r.get("score", 0), reverse=True)
-    return results
-
-
-def _safe_qualify(domain, do_onpage):
-    try:
-        return qualify.qualify(domain, do_onpage=do_onpage)
-    except Exception as e:
-        return {"domain": domain, "verdict": "ПОМИЛКА", "color": "gray",
-                "score": -1, "error": str(e)[:200], "reasons": [], "metrics": {},
-                "dotisk_queries": []}
-
-
-@app.route("/")
-def index():
-    return render_template("index.html", cfg=config, has_key=bool(config.SEMRUSH_API_KEY))
-
-
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    raw = request.form.get("domains", "")
-    do_onpage = request.form.get("onpage") == "on"
-    domains = _parse_domains(raw)
-    results = _run(domains, do_onpage) if domains else []
-    return render_template("results.html", results=results, cfg=config, do_onpage=do_onpage)
-
-
-@app.route("/api/analyze", methods=["POST"])
-def api_analyze():
-    data = request.get_json(force=True, silent=True) or {}
-    domains = _parse_domains("\n".join(data.get("domains", [])) if isinstance(data.get("domains"), list) else str(data.get("domains", "")))
-    do_onpage = bool(data.get("onpage", True))
-    return jsonify({"results": _run(domains, do_onpage) if domains else []})
-
-
-@app.route("/healthz")
-def healthz():
-    return {"ok": True, "has_key": bool(config.SEMRUSH_API_KEY)}
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8080")), debug=False)
+{% extends "_base.html" %}
+{% block body %}
+<h1>Результати ({{ results|length }})</h1>
+<p class="sub"><a href="/">← Новий аналіз</a>{% if not do_onpage %} · on-page не перевірявся{% endif %}</p>
+<div class="card" style="padding:0;overflow:hidden">
+<table>
+<tr><th>Домен</th><th>Вердикт</th><th>Бал</th><th>Комерц. 11–30</th><th>Трафік</th><th>Оптимізація</th><th>Деталі</th></tr>
+{% for r in results %}
+<tr>
+  <td><b>{{ r.domain }}</b></td>
+  <td><span class="badge b-{{ r.color }}">{{ r.verdict }}</span>{% if r.error %}<div class="small">{{ r.error }}</div>{% endif %}</td>
+  <td>{{ r.score }}</td>
+  <td>{{ r.metrics.commercial_kw_11_30 if r.metrics else "—" }}</td>
+  <td>{{ r.metrics.organic_traffic if r.metrics else "—" }}</td>
+  <td>{% if r.metrics and r.metrics.optimized is not none %}{% if r.metrics.optimized %}<span class="ok">так</span>{% else %}<span class="no">ні</span>{% endif %}{% else %}—{% endif %}</td>
+  <td>
+    {% if r.reasons %}<details><summary>критерії</summary>
+      {% for name,val,ok in r.reasons %}<div class="q">{% if ok %}<span class="ok">✔</span>{% elif ok is none %}<span class="small">•</span>{% else %}<span class="no">✗</span>{% endif %} {{ name }}: {{ val }}</div>{% endfor %}
+    </details>{% endif %}
+    {% if r.dotisk_queries %}<details><summary>дотиск у ТОП-1 ({{ r.dotisk_queries|length }})</summary>
+      {% for q in r.dotisk_queries %}<div class="q">{{ q.keyword }} — поз. {{ q.position }}, частотн. {{ q.volume }}</div>{% endfor %}
+    </details>{% endif %}
+  </td>
+</tr>
+{% endfor %}
+</table>
+</div>
+{% endblock %}
