@@ -19,7 +19,23 @@ DOMAIN_TIMEOUT = int(os.getenv("DOMAIN_TIMEOUT", "90"))  # орієнтир на
 JOBS = {}
 JOBS_LOCK = threading.Lock()
 
-STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+# Якщо іконки залились у корінь репо (GitHub іноді розпласкує static/) —
+# копіюємо їх у static/, щоб url_for('static', ...) працював.
+try:
+    os.makedirs(STATIC_DIR, exist_ok=True)
+    for _fn in ("logo.png", "logo.svg", "ic-search.png", "ic-bot.png",
+                "ic-monitor.png", "ic-trophy.png", "ic-chart.png",
+                "ic-niche.png", "ic-key.png"):
+        _root = os.path.join(BASE_DIR, _fn)
+        _dst = os.path.join(STATIC_DIR, _fn)
+        if os.path.exists(_root) and not os.path.exists(_dst):
+            import shutil
+            shutil.copy(_root, _dst)
+except Exception:
+    pass
 
 
 def _find_asset(*names):
