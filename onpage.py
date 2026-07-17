@@ -93,13 +93,23 @@ def check_page(sess, url: str) -> dict:
     }
 
 
+SKIP_URL = ("/f/", "?", "#", "javascript", "/search", "/filter", "/login", "/cart",
+            "/user", "/checkout", "/wishlist", "/compare", "/account", "/basket",
+            "tel:", "mailto:", "/sort")
+
+
+def _skip_url(href: str) -> bool:
+    h = (href or "").lower()
+    return any(s in h for s in SKIP_URL)
+
+
 def _find_categories(base_url: str, html: str, limit: int = 3):
     soup = BeautifulSoup(html, "html.parser")
     host = urlparse(base_url).netloc
     seen, cats = set(), []
     for a in soup.find_all("a", href=True):
         href = urljoin(base_url, a["href"]); p = urlparse(href)
-        if p.netloc != host or p.path in ("", "/"):
+        if p.netloc != host or p.path in ("", "/") or _skip_url(href):
             continue
         if any(h in href.lower() for h in CATEGORY_HINTS) and href not in seen:
             seen.add(href); cats.append(href)
@@ -108,7 +118,7 @@ def _find_categories(base_url: str, html: str, limit: int = 3):
     if len(cats) < limit:
         for a in soup.find_all("a", href=True):
             href = urljoin(base_url, a["href"]); p = urlparse(href)
-            if p.netloc == host and p.path.count("/") >= 2 and href not in seen:
+            if p.netloc == host and p.path.count("/") >= 2 and not _skip_url(href) and href not in seen:
                 seen.add(href); cats.append(href)
             if len(cats) >= limit:
                 break
@@ -149,7 +159,9 @@ def analyze_site(domain: str) -> dict:
     checked = 1 + len(cat_ok)
     meta_pages = sum(1 for c in cat_ok if c.get("meta_ok")) + (1 if home.get("meta_ok") else 0)
     seo_text_pages = sum(1 for c in cat_ok if c.get("has_seo_text")) + (1 if home.get("has_seo_text") else 0)
-    optimized = (meta_pages == checked) and (seo_text_pages >= max(1, checked // 2))
+    meta_ratio = meta_pages / checked if checked else 0
+    # оптимізований: мета на більшості сторінок (>=60%) + суттєвий SEO-текст хоча б на 1
+    optimized = (meta_ratio >= 0.6) and (seo_text_pages >= 1)
     return {
         "reachable": True, "assessable": True, "optimized": optimized,
         "status_note": "ok",

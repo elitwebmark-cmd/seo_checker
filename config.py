@@ -19,6 +19,10 @@ CLIENTS_SHEET_CSV = os.getenv(
     "CLIENTS_SHEET_CSV",
     "https://docs.google.com/spreadsheets/d/1hm4at3Cbduf-tJcOP74O8A1aGAFIWLugTdqDhS4yZfo/gviz/tq?tqx=out:csv",
 )
+CASES_SHEET_CSV = os.getenv(
+    "CASES_SHEET_CSV",
+    "https://docs.google.com/spreadsheets/d/1ZlhfxFAqtqbR0uhPlhxywbkLAIhOnNDdi61JyBV-xdg/gviz/tq?tqx=out:csv",
+)
 
 # --- Пороги кваліфікації (з вимог) ---
 POS_MIN = int(os.getenv("POS_MIN", "11"))

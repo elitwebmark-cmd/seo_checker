@@ -1,7 +1,7 @@
 """Логіка кваліфікації сайту під офер 'SEO з оплатою за вихід у ТОП'."""
 from __future__ import annotations
 import re
-import config, semrush, onpage, clients
+import config, semrush, onpage, clients, niche, cases
 
 
 def _brand_token(domain: str) -> str:
@@ -65,28 +65,45 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
 
     assessable = bool(onp.get("assessable")) if do_onpage else False
 
-    c1 = commercial_count >= config.COMMERCIAL_KW_MIN
-    c2 = overview["organic_traffic"] >= config.TRAFFIC_MIN
+    # --- визначення ніші (евристика) ---
+    _kw_text = " ".join(k.get("keyword", "") for k in kws)
+    _onp_text = ""
+    if isinstance(onp.get("home"), dict):
+        h = onp["home"]
+        _onp_text = " ".join([h.get("title", ""), h.get("description", ""), h.get("h1", "")])
+    _cat_text = " ".join(c.get("url", "") for c in (onp.get("categories") or []) if isinstance(c, dict))
+    niche_info = niche.classify(" ".join([domain, _kw_text, _onp_text, _cat_text]), onp)
+    try:
+        matched_cases = cases.match(niche_info, limit=6)
+    except Exception:
+        matched_cases = []
+
+    pos = commercial_count                       # комерційні запити на 11-30
+    traf = overview["organic_traffic"]
+    c1 = pos >= config.COMMERCIAL_KW_MIN
+    c2 = traf >= config.TRAFFIC_MIN
     # c3: True/False лише коли оцінка можлива; інакше None (не враховується)
     c3 = bool(onp.get("optimized")) if assessable else None
-    c4 = (overview["organic_keywords"] >= config.STRUCTURE_KW_MIN)
+    c4 = (overview["organic_keywords"] >= config.STRUCTURE_KW_MIN)   # лише інформаційно
 
-    if not c1 or not c2:
-        verdict, color = "НЕ ПІДХОДИТЬ", "red"
-    elif c3 is False:
-        verdict, color = "УМОВНО — потрібна дооптимізація", "amber"
+    # --- градація ---
+    if pos == 0 or traf == 0:
+        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # немає позицій або трафіку взагалі
+    elif c1 and c2:
+        if c3 is False:
+            verdict, color = "ДОБРЕ", "blue"            # все ок, крім оптимізації
+        else:
+            verdict, color = "ІДЕАЛЬНО", "green"        # усі фактори зійшлись
     else:
-        verdict, color = "ПІДХОДИТЬ", "green"
+        verdict, color = "ПОСЕРЕДНЬО", "amber"          # є, але нижче наших норм
 
-    score = 0
-    score += min(commercial_count / config.COMMERCIAL_KW_MIN, 2) * 40
-    score += min(overview["organic_traffic"] / config.TRAFFIC_MIN, 1) * 10
-    score += (10 if c3 else 0) if c3 is not None else 5   # недоступно -> нейтрально
-    score = round(min(score, 100))
+    _BASE = {"ІДЕАЛЬНО": 90, "ДОБРЕ": 70, "ПОСЕРЕДНЬО": 45, "НЕ ПІДХОДИТЬ": 10}
+    score = _BASE[verdict] + round(min(pos / config.COMMERCIAL_KW_MIN, 1) * 9)
+    score = min(score, 100)
 
     reasons = []
-    reasons.append(("Комерційні поза ТОП-10 (11–30)",
-                    f"{commercial_count} / потрібно {config.COMMERCIAL_KW_MIN}", c1))
+    reasons.append(("Комерц. запити для просування (11–30)",
+                    f"{pos} / треба {config.COMMERCIAL_KW_MIN} — пул, з якого клієнт обирає семантику", c1))
     reasons.append(("SEO-трафік/міс",
                     f"{overview['organic_traffic']} / потрібно {config.TRAFFIC_MIN}", c2))
     if do_onpage:
@@ -109,6 +126,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
             "reachable": onp.get("reachable"),
         },
         "client": client_info,
+        "niche": niche_info,
+        "cases": matched_cases,
         "reasons": reasons,
         "dotisk_queries": [
             {"keyword": k["keyword"], "position": k["position"],

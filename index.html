@@ -22,10 +22,17 @@
 <div class="card">
   <div class="metric">Критерії кваліфікації:</div>
   <ul style="margin:10px 0 0 18px;color:var(--mute2);font-weight:600;font-size:14px;line-height:1.9">
-    <li><b style="color:#fff">Головний:</b> {{ cfg.COMMERCIAL_KW_MIN }}+ комерційних запитів на позиціях {{ cfg.POS_MIN }}–{{ cfg.POS_MAX }} (поза ТОП-10 — є що виводити в ТОП-3)</li>
+    <li><b style="color:#fff">Головний:</b> {{ cfg.COMMERCIAL_KW_MIN }}+ комерційних запитів на позиціях {{ cfg.POS_MIN }}–{{ cfg.POS_MAX }} — це пул, з якого клієнт обирає свою семантику (до {{ cfg.COMMERCIAL_KW_MIN }} запитів) для виведення в ТОП</li>
     <li>SEO-трафік ≥ {{ cfg.TRAFFIC_MIN }}/міс</li>
     <li>Ознаки SEO-оптимізації (мета-теги + SEO-тексти). Якщо сайт недоступний для оцінки — фактор не враховується.</li>
     <li>Широка структура (≥ {{ cfg.STRUCTURE_KW_MIN }} орг. ключів)</li>
+  </ul>
+  <div class="metric" style="margin-top:14px">Градація оцінки:</div>
+  <ul style="margin:8px 0 0 18px;color:var(--mute2);font-weight:600;font-size:14px;line-height:1.9">
+    <li><span class="badge b-green">ІДЕАЛЬНО</span> — запити й трафік ≥ норми, оптимізація ОК</li>
+    <li><span class="badge b-blue">ДОБРЕ</span> — запити й трафік ≥ норми, але оптимізація слабка</li>
+    <li><span class="badge b-amber">ПОСЕРЕДНЬО</span> — запити/трафік є, але нижче норм</li>
+    <li><span class="badge b-red">НЕ ПІДХОДИТЬ</span> — немає трафіку або комерційних позицій</li>
   </ul>
 </div>
 {% endblock %}

@@ -17,7 +17,7 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 ALLOWED = {int(x) for x in os.getenv("ALLOWED_CHAT_IDS", "").replace(" ", "").split(",") if x}
 dp = Dispatcher()
 
-EMOJI = {"green": "✅", "amber": "🟡", "red": "⛔", "gray": "⚠️"}
+EMOJI = {"green": "✅", "blue": "🔵", "amber": "🟡", "red": "⛔", "gray": "⚠️"}
 REGIONS = {"ua": "🇺🇦 Україна", "pl": "🇵🇱 Польща", "de": "🇩🇪 Німеччина", "us": "🇺🇸 США"}
 
 SETTINGS = {}   # chat_id -> {"db":"ua","depth":"full"}
@@ -79,7 +79,13 @@ def fmt(res: dict) -> str:
                 else "є вірогідність, що сайт вже клієнт Elit-Web")
         m = f" (збіг: {html.escape(cl.get('matched'))})" if cl.get("matched") else ""
         lines.append(f"⚠️ <b>УВАГА:</b> {warn}{m}")
-    lines += [f"{EMOJI.get(res['color'],'•')} <b>{html.escape(res['domain'])}</b> — {res['verdict']} (бал {res['score']})", ""]
+    lines += [f"{EMOJI.get(res['color'],'•')} <b>{html.escape(res['domain'])}</b> — {res['verdict']} (бал {res['score']})"]
+    nz = res.get("niche") or {}
+    if nz.get("subniche"):
+        lines.append(f"🧭 <b>Ніша:</b> {html.escape(nz.get('direction_name') or '?')} → "
+                     f"{html.escape(nz.get('industry_name') or '?')} → "
+                     f"{html.escape(nz.get('subniche'))} <i>({nz.get('confidence')})</i>")
+    lines.append("")
     for name, val, ok in res.get("reasons", []):
         mark = "✔" if ok else ("•" if ok is None else "✗")
         lines.append(f"{mark} {html.escape(name)}: <b>{html.escape(str(val))}</b>")
@@ -88,6 +94,17 @@ def fmt(res: dict) -> str:
         lines.append("\n🎯 <b>Кандидати в ТОП-1:</b>")
         for q in dq[:8]:
             lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']}")
+    cs = res.get("cases") or []
+    if cs:
+        lines.append("\n📁 <b>Схожі кейси Elit-Web:</b>")
+        for c in cs[:4]:
+            lk = c.get("links", {})
+            parts = []
+            if lk.get("kp"): parts.append(f"<a href=\"{lk['kp']}\">КП</a>")
+            if lk.get("ext"): parts.append(f"<a href=\"{lk['ext']}\">розшир.</a>")
+            if lk.get("blog"): parts.append(f"<a href=\"{lk['blog']}\">стаття</a>")
+            geo = f", {html.escape(c.get('country',''))}" if c.get("country") else ""
+            lines.append(f"• {html.escape(c['domain'])} ({html.escape(c.get('service','')) }{geo}) — " + " · ".join(parts))
     return "\n".join(lines)
 
 
@@ -134,8 +151,8 @@ async def settings_msg(msg: Message):
 async def crit_msg(msg: Message):
     await msg.answer(
         "ℹ️ <b>Критерії кваліфікації</b>\n\n"
-        f"• <b>Головний:</b> {config.COMMERCIAL_KW_MIN}+ комерційних запитів на позиціях "
-        f"{config.POS_MIN}–{config.POS_MAX} (поза ТОП-10)\n"
+        f"• <b>Головний:</b> {config.COMMERCIAL_KW_MIN}+ комерц. запитів на позиціях "
+        f"{config.POS_MIN}–{config.POS_MAX} — пул для вибору семантики клієнтом\n"
         f"• SEO-трафік ≥ {config.TRAFFIC_MIN}/міс\n"
         "• Ознаки SEO-оптимізації (якщо сайт недоступний — не враховується)\n"
         f"• Широка структура (≥ {config.STRUCTURE_KW_MIN} орг. ключів)",
