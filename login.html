@@ -1,0 +1,16 @@
+{% extends "_base.html" %}
+{% block title %}Вхід · elitweb Кваліфікація сайтів{% endblock %}
+{% block body %}
+<div class="center">
+  <h1>Вхід</h1>
+  <p class="sub">Доступ лише для команди elitweb.</p>
+  {% if error %}<div class="warn">{{ error }}</div>{% endif %}
+  <form method="post" class="card">
+    <div class="lbl">Пошта</div>
+    <input class="fld" type="email" name="email" autocomplete="username" required autofocus>
+    <div class="lbl" style="margin-top:14px">Пароль</div>
+    <input class="fld" type="password" name="password" autocomplete="current-password" required>
+    <button type="submit" style="width:100%;margin-top:18px">Увійти</button>
+  </form>
+</div>
+{% endblock %}

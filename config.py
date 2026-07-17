@@ -6,24 +6,26 @@ SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
 SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua
 SEMRUSH_BASE = "https://api.semrush.com/"
 
+# --- Авторизація веб-інтерфейсу ---
+APP_LOGIN_EMAIL = os.getenv("APP_LOGIN_EMAIL", "marketing@elit-web.ua")
+APP_LOGIN_PASSWORD = os.getenv("APP_LOGIN_PASSWORD", "123456ms")
+SECRET_KEY = os.getenv("SECRET_KEY", "elitweb-seo-qualifier-change-me-please")
+
+# --- Telegram ---
+TELEGRAM_BOT_URL = os.getenv("TELEGRAM_BOT_URL", "")   # напр. https://t.me/your_bot
+
 # --- Пороги кваліфікації (з вимог) ---
-# 1) Комерційні запити поза ТОП-10 (позиції 11..POS_MAX) — НАЙВАЖЛИВІШЕ
 POS_MIN = int(os.getenv("POS_MIN", "11"))
 POS_MAX = int(os.getenv("POS_MAX", "30"))
 COMMERCIAL_KW_MIN = int(os.getenv("COMMERCIAL_KW_MIN", "300"))
-# 2) SEO-трафік / міс
 TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "500"))
-# 4) Широка структура (проксі: к-сть органічних ключів або сторінок)
 STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
 STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))
-
-# Скільки ключів тягнути з SemRush (пейджинг по 1000)
 KW_FETCH_LIMIT = int(os.getenv("KW_FETCH_LIMIT", "2000"))
 
 # Intent-коди SemRush: 0=Commercial, 1=Informational, 2=Navigational, 3=Transactional
 COMMERCIAL_INTENTS = {"0", "3"}
 
-# Патерни комерційних запитів (fallback / підсилення)
 COMMERCIAL_PATTERNS = [
     "купити", "купить", "ціна", "цена", "вартість", "стоимость", "замовити", "заказать",
     "недорого", "дешево", "прайс", "продаж", "продажа", "магазин", "доставка",
@@ -33,12 +35,16 @@ COMMERCIAL_PATTERNS = [
 # On-page
 SEO_TEXT_MIN_CHARS = int(os.getenv("SEO_TEXT_MIN_CHARS", "500"))
 HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "15"))
+ONPAGE_RETRIES = int(os.getenv("ONPAGE_RETRIES", "2"))
+
+# Реалістичний браузерний User-Agent (щоб менше блокувань)
 USER_AGENT = os.getenv(
     "USER_AGENT",
-    "Mozilla/5.0 (compatible; elitweb-seo-qualifier/1.0; +https://elit-web.ua)",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
 )
+ACCEPT_LANGUAGE = os.getenv("ACCEPT_LANGUAGE", "uk-UA,uk;q=0.9,ru;q=0.8,en;q=0.7")
 
-# URL-и, що НЕ є комерційними (блог/новини/статті/довідка) — виключаємо
 NON_COMMERCIAL_URL_HINTS = [
     "/blog", "blog.", "/news", "/novosti", "/novyny", "/article", "/statya", "/stat",
     "/instruction", "/instructions", "/help", "/about", "/o-nas", "/compare",

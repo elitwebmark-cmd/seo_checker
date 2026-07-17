@@ -12,7 +12,13 @@
   <td>{{ r.score }}</td>
   <td>{{ r.metrics.commercial_kw_11_30 if r.metrics else "—" }}</td>
   <td>{{ r.metrics.organic_traffic if r.metrics else "—" }}</td>
-  <td>{% if r.metrics and r.metrics.optimized is not none %}{% if r.metrics.optimized %}<span class="ok">так</span>{% else %}<span class="no">ні</span>{% endif %}{% else %}—{% endif %}</td>
+  <td>
+    {% if r.metrics and r.metrics.optimized is not none %}
+      {% if r.metrics.optimized %}<span class="ok">так</span>{% else %}<span class="no">ні</span>{% endif %}
+    {% elif r.metrics and r.metrics.opt_assessable is sameas false %}
+      <span class="na" title="{{ r.metrics.opt_note }}">недоступно</span>
+    {% else %}—{% endif %}
+  </td>
   <td>
     {% if r.reasons %}<details><summary>критерії</summary>
       {% for name,val,ok in r.reasons %}<div class="q">{% if ok %}<span class="ok">✔</span>{% elif ok is none %}<span class="small">•</span>{% else %}<span class="no">✗</span>{% endif %} {{ name }}: {{ val }}</div>{% endfor %}

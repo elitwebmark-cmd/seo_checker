@@ -6,20 +6,27 @@
 <title>{% block title %}elitweb · Кваліфікація сайтів під SEO-офер{% endblock %}</title>
 <style>
 :root{--bg:#0A0A0A;--card:#16161A;--card2:#1E1E24;--bord:#2C2C32;--red:#FD3A1F;--gold:#FFC85A;
---white:#fff;--mute:#9A9AA2;--mute2:#C9C9CF;--green:#3FBF6A;--amber:#F5A623;--gray:#6B6B72;}
+--white:#fff;--mute:#9A9AA2;--mute2:#C9C9CF;--green:#3FBF6A;--amber:#F5A623;--gray:#6B6B72;--tg:#2AABEE;}
 *{box-sizing:border-box;margin:0;padding:0;font-family:Mulish,Arial,sans-serif}
 body{background:var(--bg);color:#fff;font-weight:700;line-height:1.5}
 a{color:var(--gold);text-decoration:none}
-.top{display:flex;align-items:center;justify-content:space-between;padding:16px 26px;border-bottom:1px solid var(--bord);position:sticky;top:0;background:rgba(10,10,10,.9);backdrop-filter:blur(8px);z-index:5}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 26px;border-bottom:1px solid var(--bord);position:sticky;top:0;background:rgba(10,10,10,.9);backdrop-filter:blur(8px);z-index:5}
 .logo{font-size:20px;font-weight:900}.logo b{color:var(--red)}
+.topnav{display:flex;align-items:center;gap:10px}
 .wrap{max-width:1180px;margin:0 auto;padding:26px}
 h1{font-size:26px;font-weight:900;margin-bottom:8px}
 .sub{color:var(--mute2);font-weight:600;margin-bottom:20px}
 .card{background:var(--card);border:1px solid var(--bord);border-radius:14px;padding:22px;margin-bottom:18px}
 textarea{width:100%;min-height:220px;background:#0E0E12;border:1px solid var(--bord);border-radius:10px;color:#fff;padding:14px;font:600 14px/1.6 monospace;resize:vertical}
+input.fld{width:100%;background:#0E0E12;border:1px solid var(--bord);border-radius:10px;color:#fff;padding:13px 14px;font:700 15px Mulish,Arial;margin-top:6px}
 label.chk{display:inline-flex;align-items:center;gap:8px;color:var(--mute2);font-weight:700;margin:14px 0}
-button{background:var(--red);color:#fff;border:none;border-radius:10px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer}
-button:hover{background:#ff5236}
+.lbl{color:var(--mute);font-size:12px;letter-spacing:.5px;text-transform:uppercase;font-weight:800}
+button,.btn{background:var(--red);color:#fff;border:none;border-radius:10px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-block}
+button:hover,.btn:hover{background:#ff5236}
+.btn-tg{background:var(--tg);display:inline-flex;align-items:center;gap:8px}
+.btn-tg:hover{background:#1d95d4}
+.btn-ghost{background:transparent;border:1px solid var(--bord);color:var(--mute2);padding:9px 16px;font-size:13px}
+.btn-ghost:hover{background:var(--card2);color:#fff}
 .warn{background:#241312;border:1px solid var(--red);color:#ffb3a6;border-radius:10px;padding:12px 16px;font-weight:700;font-size:14px;margin-bottom:16px}
 table{width:100%;border-collapse:collapse}
 th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--bord);font-size:14px}
@@ -30,14 +37,24 @@ th{color:var(--mute);font-size:12px;letter-spacing:1px;text-transform:uppercase}
 .b-red{background:rgba(253,58,31,.15);color:var(--red)}
 .b-gray{background:rgba(107,107,114,.2);color:var(--mute2)}
 .metric{color:var(--mute2);font-weight:700;font-size:13px}
-.ok{color:var(--green)}.no{color:var(--red)}
+.ok{color:var(--green)}.no{color:var(--red)}.na{color:var(--mute)}
 details{margin-top:6px}summary{cursor:pointer;color:var(--gold);font-size:13px}
 .q{font-size:13px;color:var(--mute2);padding:3px 0}
 .small{color:var(--mute);font-size:12px;font-weight:600}
+.pbar-wrap{height:16px;background:#0E0E12;border:1px solid var(--bord);border-radius:20px;overflow:hidden;margin:18px 0 10px}
+.pbar{height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--gold));transition:width .4s ease;border-radius:20px}
+.spin{width:46px;height:46px;border:5px solid var(--bord);border-top-color:var(--red);border-radius:50%;animation:sp 1s linear infinite;margin:8px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.center{max-width:420px;margin:8vh auto 0}
 </style>
 </head>
 <body>
-<div class="top"><div class="logo">elit<b>web</b> · Кваліфікація сайтів</div>
-<div class="small">SEO з оплатою за вихід у ТОП</div></div>
+<div class="top">
+  <div class="logo">elit<b>web</b> · Кваліфікація сайтів</div>
+  <div class="topnav">
+    {% if cfg.TELEGRAM_BOT_URL %}<a class="btn btn-tg" href="{{ cfg.TELEGRAM_BOT_URL }}" target="_blank">✈️ Telegram-бот</a>{% endif %}
+    {% if session.auth %}<a class="btn btn-ghost" href="/logout">Вийти</a>{% endif %}
+  </div>
+</div>
 <div class="wrap">{% block body %}{% endblock %}</div>
 </body></html>
