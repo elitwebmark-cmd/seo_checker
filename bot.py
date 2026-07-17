@@ -1,10 +1,14 @@
 """Telegram-бот: надішли домен -> отримай висновок кваліфікації."""
-import os, re, asyncio, html
+import os, re, asyncio, html, logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 
 import qualify, config
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("seo-bot")
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 dp = Dispatcher()
@@ -35,6 +39,7 @@ def fmt(res: dict) -> str:
 
 @dp.message(CommandStart())
 async def start(msg: Message):
+    log.info("Command /start from chat %s", msg.chat.id)
     await msg.answer(
         "👋 Це аналізатор сайтів під офер <b>SEO з оплатою за вихід у ТОП</b>.\n\n"
         "Надішли домен (напр. <code>daydrive.ua</code>) — я перевірю по SemRush "
@@ -46,6 +51,7 @@ async def start(msg: Message):
 
 @dp.message(F.text)
 async def handle(msg: Message):
+    log.info("Incoming message: %r", msg.text)
     domain = extract_domain(msg.text)
     if not domain:
         await msg.answer("Не бачу домену. Надішли, напр., <code>example.com</code>", parse_mode="HTML")
@@ -55,13 +61,17 @@ async def handle(msg: Message):
         res = await asyncio.to_thread(qualify.qualify, domain, True)
         await wait.edit_text(fmt(res), parse_mode="HTML", disable_web_page_preview=True)
     except Exception as e:
+        log.exception("Analyze error for %s", domain)
         await wait.edit_text(f"⚠️ Помилка: {html.escape(str(e)[:300])}", parse_mode="HTML")
 
 
 async def main():
     if not TOKEN:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN не заданий (ENV).")
+        raise RuntimeError("TELEGRAM_BOT_TOKEN not set (ENV).")
     bot = Bot(token=TOKEN)
+    me = await bot.get_me()
+    log.info("Bot started: @%s (id=%s). Polling...", me.username, me.id)
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 
