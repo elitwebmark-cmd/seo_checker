@@ -1,158 +1,170 @@
-# -*- coding: utf-8 -*-
-"""Евристичне визначення ніші сайту за системою Elit-Web:
-Напрямок (business model) -> Галузь (industry) -> Підніша (sub-niche).
-Сигнали: домен, топ-запити SemRush, on-page (title/h1/категорії)."""
+"""On-page SEO перевірка. Якщо сайт недоступний для оцінки (блок, robots,
+JS-рендер тощо) — повертаємо assessable=False, і цей фактор не враховується."""
 from __future__ import annotations
 import re
+from urllib.parse import urljoin, urlparse
+import requests
+from bs4 import BeautifulSoup
+import config
 
-DIRECTIONS = {
-    "ECOM": "Ecommerce", "RETAIL": "Роздріб / Omnichannel", "B2B": "B2B / Опт / Виробництво",
-    "SERV": "Послуги", "SAAS": "SaaS / Цифровий продукт", "MARKET": "Маркетплейс / Агрегатор",
-    "MEDIA": "Медіа / Контент", "LOCAL": "Локальний бізнес",
-}
-INDUSTRIES = {
-    "FASH": "Одяг і мода", "HOME": "Дім, меблі, інтер'єр", "ELEC": "Електроніка і техніка",
-    "AUTO": "Авто і транспорт", "CONSTR": "Будівництво і нерухомість",
-    "BEAUTY": "Краса і здоров'я (товари)", "MED": "Медицина і фарма (послуги)",
-    "FOOD": "Їжа, ресторани, продукти", "KIDS": "Діти, тварини, хобі",
-    "INDB2B": "Промисловість і B2B", "PROF": "Проф. і фінансові послуги",
-    "IT": "IT, SaaS і цифрові продукти", "EDU": "Освіта і медіа",
-    "PERS": "Персональні і побутові послуги", "TRAVEL": "Подорожі і дозвілля",
-    "SPEC": "Спеціальні / регульовані", "OTHER": "Інше",
-}
-
-# (код, галузь, назва_UA, напрямок_за_замовч, [ключові патерни])
-SUB = [
- ("FASH-01","FASH","Одяг","ECOM",["плать","сукн","одяг","одежд","футболк","джинс","куртк","пальто","світшот","свитшот","рубашк","сорочк","штани","брюки","спідниц","юбк","блуз","кофт","светр","худі","clothing","apparel","wear"]),
- ("FASH-02","FASH","Взуття","ECOM",["взутт","обув","кросівк","кроссовк","чобот","сапог","туфл","черевик","ботинк","сандал","кеди","sneaker","footwear","shoes"]),
- ("FASH-03","FASH","Аксесуари і сумки","ECOM",["сумк","рюкзак","ремін","ремень","окуляр","очки","аксесуар","бижутер","гаман","кошел","портмоне","bag","backpack"]),
- ("FASH-04","FASH","Ювелірні вироби і годинники","ECOM",["ювелір","золот","срібл","серебр","прикрас","каблучк","кольц","годинник","часы","watch","jewelry","браслет","кулон","сереж"]),
- ("FASH-05","FASH","Білизна та інтимні товари","ECOM",["білизн","белье","бюстгальтер","труси","трусы","бра","lingerie","нижн","купальник","піжам"]),
- ("FASH-06","FASH","Текстиль і тканини","B2B",["тканин","ткани","фурнітур","фурнитур","текстиль","пряж","нитк","fabric","швейн"]),
- ("HOME-01","HOME","Меблі","ECOM",["меблі","мебель","диван","крісл","кресл","стіл","стол","шаф","шкаф","ліжк","кроват","матрац","матрас","furniture","комод","стелаж"]),
- ("HOME-02","HOME","Вулична і садова меблі","ECOM",["садов меблі","садовая мебель","ландшафт","альтанк","беседк","гойдалк","outdoor furniture","бассейн для дачі","садові меблі"]),
- ("HOME-03","HOME","Домашній текстиль і декор","ECOM",["декор","штор","гардин","постіль","постель","подушк","ковдр","одеял","плед","скатерт","home decor","інтер'єр","интерьер"]),
- ("HOME-04","HOME","Сантехніка","ECOM",["сантехнік","сантехник","ванн","унітаз","унитаз","змішувач","смеситель","душов","раковин","plumbing","sanitary","бойлер"]),
- ("HOME-05","HOME","Освітлення і електрика","ECOM",["освітлен","освещен","світильник","светильник","люстр","лампочк","led","розетк","кабел","провід","lighting","електротовар"]),
- ("HOME-06","HOME","Посуд і товари для дому","ECOM",["посуд","каструл","кастрюл","сковор","тарілк","тарелк","товари для дому","товары для дома","houseware","kitchenware","чашк"]),
- ("ELEC-01","ELEC","Електроніка і гаджети","ECOM",["електронік","электроник","гаджет","навушник","наушник","телевізор","телевизор","колонк","аудіо","камер","electronics","приставк"]),
- ("ELEC-02","ELEC","Побутова техніка","ECOM",["побутова техн","бытовая техник","холодильник","пральн","стиральн","пилосос","пылесос","мікрохвильов","микроволнов","appliance","кондиціонер","мультиварк"]),
- ("ELEC-03","ELEC","Інструменти","ECOM",["інструмент","инструмент","дриль","дрель","шуруповерт","болгарк","перфоратор","tools","генератор","компресор"]),
- ("ELEC-04","ELEC","Комп'ютери і комплектуючі","ECOM",["комп'ютер","компьютер","ноутбук","відеокарт","видеокарт","процесор","материнськ","монітор","монитор","периферія","computer","ssd","ozu"]),
- ("ELEC-05","ELEC","Телефони й аксесуари","ECOM",["телефон","смартфон","чохол","чехол","iphone","samsung","захисне скло","защитное стекло","зарядк","phone accessor"]),
- ("AUTO-01","AUTO","Автодилери","RETAIL",["автосалон","автодилер","купити авто","купить авто","авто з сша","авто з європи","продаж авто","dealership","новий автомобіль","авто з америки","пригон авто"]),
- ("AUTO-02","AUTO","Автозапчастини","ECOM",["автозапчастин","запчастин","запчасти","автозапчасти","авторозборк","auto parts","деталі для авто","масл","фільтр","гальмівн","автотовар"]),
- ("AUTO-03","AUTO","Шини і диски","ECOM",["шин","шини","диск","резин","шиномонтаж","tire","wheel","літня резина","зимова резина"]),
- ("AUTO-04","AUTO","Автосервіс і ремонт","SERV",["автосервіс","автосервис","сто","детейлінг","детейлинг","ремонт авто","розвал","car service","автомийк","автомойк","тюнінг"]),
- ("AUTO-05","AUTO","Мото і спецтехніка","ECOM",["мото","мотоцикл","скутер","квадроцикл","спецтехнік","спецтехник","велосипед","самокат","moto"]),
- ("CONSTR-01","CONSTR","Будматеріали","B2B",["будматеріал","стройматериал","будівельн матеріал","цемент","гіпсокартон","профнастил","building material","утеплювач","суміш","клей","ламінат","плитк"]),
- ("CONSTR-02","CONSTR","Нерухомість і забудовники","SERV",["нерухом","недвижим","новобуд","квартир","забудовник","застройщик","real estate","житловий комплекс","продаж квартир","оренда"]),
- ("CONSTR-03","CONSTR","Ремонт і оздоблення","SERV",["ремонт квартир","оздоблен","отделк","ремонтн роб","renovation","дизайн інтер'єр","ремонт під ключ"]),
- ("CONSTR-04","CONSTR","Вікна, двері, фасади","ECOM",["вікн","окн","двер","фасад","металопласт","ролет","жалюзі","window","door","міжкімнатн","вхідні двері"]),
- ("CONSTR-05","CONSTR","Архітектура і проєктування","SERV",["архітектур","архитектур","проєктуван","проектирован","архбюро","architecture","генплан"]),
- ("BEAUTY-01","BEAUTY","Косметика і догляд","ECOM",["косметик","догляд","уход","крем","маск","шампун","сироватк","сыворотк","cosmetics","skincare","макіяж","макияж","помад"]),
- ("BEAUTY-02","BEAUTY","Парфумерія","ECOM",["парфум","парфюм","духи","аромат","туалетна вода","perfume","одеколон"]),
- ("BEAUTY-03","BEAUTY","БАДи і спортхарчування","ECOM",["бад","вітамін","витамин","спортхарч","спортивне харч","протеїн","протеин","supplement","nutrition","колаген"]),
- ("BEAUTY-04","BEAUTY","Медтовари і оптика","ECOM",["ортопед","оптик","окуляр для зору","медтовар","медвироб","medical goods","тонометр","бандаж","лінз","линз","слухов апарат"]),
- ("BEAUTY-05","BEAUTY","Гігієна та інтимна гігієна","ECOM",["гігієн","гигиен","підгузк","подгузник","прокладк","гель для душу","hygiene","вологі серветк"]),
- ("MED-01","MED","Приватні клініки","SERV",["клінік","клиник","медичний центр","медцентр","лікар","врач","прийом лікар","clinic","діагностик","госпіталь"]),
- ("MED-02","MED","Стоматологія","SERV",["стоматолог","стоматологія","dental","зубн","імплант","имплант","брекет","відбілюванн зуб","dentist"]),
- ("MED-03","MED","Естетична медицина","SERV",["косметолог","естетична медиц","эстетическая медиц","ботокс","філер","филлер","мезотерап","aesthetic","підтяжк","лазерна епіляц"]),
- ("MED-04","MED","Аптеки і фарма","ECOM",["аптек","apteka","ліки","лекарств","препарат","pharmacy","фарма","таблетк","медикамент"]),
- ("MED-05","MED","Лабораторії і діагностика","SERV",["лаборатор","аналіз","анализ","діагностик","диагностик","laborator","мрт","узд","обстеженн"]),
- ("MED-06","MED","Ветеринарія","SERV",["ветеринар","ветклінік","ветклиник","veterinary","лікування тварин","ветлікар"]),
- ("FOOD-01","FOOD","Ресторани і кафе","LOCAL",["ресторан","кафе","бар ","піцерія","пиццерия","restaurant","cafe","меню ресторан","банкет","суші-бар"]),
- ("FOOD-02","FOOD","Доставка їжі","SERV",["доставка їж","доставка еды","доставка суш","доставка піц","food delivery","dark kitchen","замовити їжу"]),
- ("FOOD-03","FOOD","Продукти і FMCG","ECOM",["продукт","бакалі","бакалея","овоч","фрукт","м'ясо","мясо","fmcg","grocery","молочн","гастроном"]),
- ("FOOD-04","FOOD","Напої та алкоголь","ECOM",["алкогол","вино","віскі","виски","пиво","напої","напитк","кава","кофе","beverage","коньяк","горілк"]),
- ("FOOD-05","FOOD","Кондитерка і випічка","LOCAL",["кондитер","торт","випічк","выпечк","пекарн","десерт","bakery","confectionery","солодощ","цукерк"]),
- ("KIDS-01","KIDS","Дитячі товари","ECOM",["дитяч товар","детск товар","товари для дітей","коляск","дитячий одяг","kids goods","візок","автокрісл"]),
- ("KIDS-02","KIDS","Іграшки","ECOM",["іграшк","игрушк","toy","конструктор","лего","lego","настільна гра","настольная игра","лял"]),
- ("KIDS-03","KIDS","Зоотовари","ECOM",["зоотовар","зоомагазин","корм для","pet","товари для тварин","акваріум","аквариум","наповнювач для котяч"]),
- ("KIDS-04","KIDS","Спортивні товари","ECOM",["спорттовар","спортивн товар","спортивний інвентар","тренажер","гантел","sport goods","фітнес обладнан","м'яч","turnik"]),
- ("KIDS-05","KIDS","Книги і канцелярія","ECOM",["книг","книж","канцеляр","book","зошит","ручк","stationery","підручник","учебник"]),
- ("KIDS-06","KIDS","Хобі і рукоділля","ECOM",["хобі","рукоділл","рукодели","вишиванн","вышиван","в'язанн","craft","hobby","творчіст","бісер","алмазна мозаїк"]),
- ("INDB2B-01","INDB2B","B2B обладнання","B2B",["обладнанн","оборудован","промислове обладн","equipment","верстат","станок","комерційне обладн"]),
- ("INDB2B-02","INDB2B","Виробництво","B2B",["виробництв","производств","завод","фабрик","manufactur","виробник","изготовлен"]),
- ("INDB2B-03","INDB2B","Логістика і доставка","B2B",["логістик","логистик","вантажоперевез","грузопере","logistics","склад","доставка вантаж","перевезенн","фрахт"]),
- ("INDB2B-04","INDB2B","Енергетика і сонячні панелі","B2B",["сонячн панел","солнечн панел","solar","енергетик","энергетик","інвертор","акумулятор для","електростанц","зелений тариф"]),
- ("INDB2B-05","INDB2B","Агро","B2B",["агро","с/г","сільськогосп","сельхоз","насінн","семена","добрив","удобрен","agriculture","трактор","зерно","ЗЗР"]),
- ("INDB2B-06","INDB2B","Пакування і сировина","B2B",["пакуванн","упаковк","packaging","тар","гофрокартон","сировин","сырье","плівк","пленк","пакет"]),
- ("INDB2B-07","INDB2B","Опт і дистрибуція","B2B",["опт","оптом","дистриб","wholesale","дистрибуц","оптова","дрібний опт"]),
- ("PROF-01","PROF","Юридичні послуги","SERV",["юридичн","юрист","адвокат","legal","юрпослуг","правов","юридична компан"]),
- ("PROF-02","PROF","Фінансові послуги і фінтех","SERV",["фінанс","финанс","кредит","позик","займ","fintech","платіж","platezh","банк","финтех","мікропозик","обмін валют"]),
- ("PROF-03","PROF","Страхування","SERV",["страхуванн","страхован","insurance","страхов","автоцивілк","осаго","поліс"]),
- ("PROF-04","PROF","Бухгалтерія та аудит","SERV",["бухгалтер","бухучет","аудит","accounting","звітніст","отчетност"]),
- ("PROF-05","PROF","Консалтинг і агенції","SERV",["консалтинг","consulting","маркетингов агенц","агентство","seo послуг","реклам агенц","аутсорсинг персонал"]),
- ("PROF-06","PROF","HR і рекрутинг","SERV",["рекрутинг","підбір персонал","подбор персонал","hr ","кадров агенц","recruiting","вакансі","hh"]),
- ("IT-01","IT","SaaS / ПЗ","SAAS",["saas","програмне забезп","программное обесп","software","crm","erp","хмарн сервіс","облачн сервис","підписк на сервіс"]),
- ("IT-02","IT","IT-послуги й аутсорс","SERV",["it послуг","розробка сайт","разработка сайт","веб-розробк","аутсорс","outsourcing","dev студі","розробка по"]),
- ("IT-03","IT","Мобільні / веб застосунки","SAAS",["застосунок","приложение","мобільний додаток","web app","платформ","онлайн-сервіс","app"]),
- ("IT-04","IT","Телеком і хостинг","SERV",["хостинг","hosting","домен","провайдер","телеком","vps","сервер","dedicated","інтернет-провайдер"]),
- ("IT-05","IT","Стартапи / інше digital","SAAS",["стартап","startup","digital product","tech","ai сервіс","ml"]),
- ("EDU-01","EDU","Онлайн-курси і EdTech","SERV",["курс","онлайн-курс","edtech","навчальна платф","обучающ платф","вебінар","тренінг","course","онлайн навчанн"]),
- ("EDU-02","EDU","Школи і виші","SERV",["школа","university","університет","университет","гімназі","ліцей","коледж","виш","вуз"]),
- ("EDU-03","EDU","Медіа і видавництва","MEDIA","новин|видавництв|издательств|media|publishing|журнал|газет|редакц".split("|")),
- ("EDU-04","EDU","Інфобізнес і блоги","MEDIA",["інфобізнес","инфобизнес","блог","blog","інфопродукт","марафон","авторський курс"]),
- ("EDU-05","EDU","Мови і репетиторство","SERV",["мовна школа","языковая школа","англійськ","английск","репетитор","tutoring","вивчення мов","курси англійськ"]),
- ("PERS-01","PERS","Салон краси і SPA","LOCAL",["салон краси","салон красоты","барбершоп","barbershop","spa","манікюр","маникюр","перукарн","парикмахер","косметичний салон","nail"]),
- ("PERS-02","PERS","Побутові послуги і клінінг","SERV",["клінінг","клининг","прибиранн","уборк","cleaning","хімчистк","химчистк","побутов послуг"]),
- ("PERS-03","PERS","Ремонт техніки і майстерні","SERV",["ремонт техніки","ремонт телефон","ремонт ноутбук","сервісний центр","сервисный центр","майстерн","repair service","ремонт годинник"]),
- ("PERS-04","PERS","Персональні послуги","SERV",["персональн послуг","фотограф","тамада","ведучий","event послуг","організація свят","аніматор"]),
- ("PERS-05","PERS","Фітнес і велнес","LOCAL",["фітнес","фитнес","спортзал","тренаж зал","fitness","йог","велнес","wellness","басейн","pilates","кросфіт"]),
- ("TRAVEL-01","TRAVEL","Туризм і тури","SERV",["тур","турагенц","туризм","travel","путівк","путевк","екскурс","відпочинок за кордон","гарячі тури"]),
- ("TRAVEL-02","TRAVEL","Готелі і гостинність","LOCAL",["готел","отель","hotel","хостел","база відпочинк","база отдых","апартамент","бронювання номер","садиб"]),
- ("TRAVEL-03","TRAVEL","Події і квитки","SERV",["квитк","билет","ticket","концерт","подія","мероприят","афіш","event"]),
- ("TRAVEL-04","TRAVEL","Розваги і дозвілля","LOCAL",["розваг","развлеч","квест","боулінг","atraction","парк розваг","дозвілл","активний відпочинок","картинг"]),
- ("SPEC-01","SPEC","Gambling / Betting","SERV",["казино","casino","betting","ставк","gambling","букмекер","слот","покер"]),
- ("SPEC-02","SPEC","Dating","SERV",["dating","знайомств","знакомств","побачен"]),
- ("SPEC-03","SPEC","Adult","ECOM",["adult","18+","секс-шоп","sex shop","інтим товар","интим товар"]),
- ("SPEC-04","SPEC","Crypto / Web3","SAAS",["crypto","крипт","bitcoin","blockchain","web3","біржа криптовалют","nft","обмін криптовалют"]),
- ("OTHER-01","OTHER","Інше","ECOM",[]),
-]
-
-_ECOM_SIGNALS = ["кошик","корзин","купити","купить","ціна","цена","замовити","заказать",
-                 "в наявності","в наличии","додати в кошик","грн","₴","cart","add to cart", "прайс"]
-_B2B_SIGNALS = ["опт","оптом","дистриб","wholesale","b2b","прайс-лист","мінімальна партія","dropshipping","дропшип"]
+CATEGORY_HINTS = ("catalog", "category", "categories", "kategor", "/c/", "shop",
+                  "products", "collection", "catalogue", "brand")
 
 
-def _norm(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "").lower())
+def _session() -> requests.Session:
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": config.USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": config.ACCEPT_LANGUAGE,
+        "Accept-Encoding": "gzip, deflate",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    })
+    return s
 
 
-def classify(blob: str, onp: dict = None) -> dict:
-    text = _norm(blob)
-    best_code, best_score = None, 0
-    for code, ind, name, direction, kws in SUB:
-        if not kws:
+def _fetch(sess: requests.Session, url: str):
+    """Повертає (text, status, code). status: ok | blocked | error."""
+    last = None
+    for _ in range(max(1, config.ONPAGE_RETRIES)):
+        try:
+            r = sess.get(url, timeout=config.HTTP_TIMEOUT, allow_redirects=True)
+            if r.status_code in (401, 403, 429) or r.status_code == 503:
+                return None, "blocked", r.status_code
+            if r.status_code >= 400:
+                return None, "error", r.status_code
+            return r.text, "ok", r.status_code
+        except requests.RequestException as e:
+            last = str(e)[:120]
+    return None, "error", last
+
+
+def _robots_blocks_root(sess: requests.Session, base: str) -> bool:
+    """True, якщо robots.txt забороняє корінь для нашого/усіх ботів."""
+    try:
+        r = sess.get(urljoin(base, "/robots.txt"), timeout=config.HTTP_TIMEOUT)
+        if r.status_code != 200 or not r.text:
+            return False
+    except requests.RequestException:
+        return False
+    ua_applies = False
+    disallow_root = False
+    for raw in r.text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line or ":" not in line:
             continue
-        score = 0
-        for p in kws:
-            c = text.count(p)
-            if c:
-                score += 1 + min(c, 3) * 0.2   # наявність + невеликий бонус за частоту
-        if score > best_score:
-            best_code, best_score = code, score
+        key, val = [x.strip() for x in line.split(":", 1)]
+        key = key.lower()
+        if key == "user-agent":
+            ua_applies = val == "*" or "seo-qualifier" in val.lower() or val.lower() in config.USER_AGENT.lower()
+        elif key == "disallow" and ua_applies:
+            if val == "/":
+                disallow_root = True
+    return disallow_root
 
-    if not best_code or best_score < 1:
-        return {"direction": None, "direction_name": None, "industry": None,
-                "industry_name": None, "subniche": None, "subniche_code": None,
-                "confidence": "низька"}
 
-    code, ind, name, direction, _ = next(s for s in SUB if s[0] == best_code)
+def _visible_text_len(soup: BeautifulSoup) -> int:
+    for tag in soup(["script", "style", "nav", "header", "footer", "noscript", "svg"]):
+        tag.decompose()
+    text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
+    return len(text)
 
-    # уточнення напрямку за сигналами
-    ecom = sum(text.count(x) for x in _ECOM_SIGNALS)
-    b2b = sum(text.count(x) for x in _B2B_SIGNALS)
-    if b2b >= 2 and direction in ("ECOM", "RETAIL"):
-        direction = "B2B"
-    elif direction == "B2B" and ecom >= 4 and b2b == 0:
-        direction = "ECOM"
 
-    conf = "висока" if best_score >= 3 else ("середня" if best_score >= 1.6 else "низька")
+def check_page(sess, url: str) -> dict:
+    html, status, code = _fetch(sess, url)
+    if status != "ok":
+        return {"url": url, "ok": False, "status": status, "code": code}
+    soup = BeautifulSoup(html, "html.parser")
+    title = (soup.title.string.strip() if soup.title and soup.title.string else "")
+    desc_tag = soup.find("meta", attrs={"name": re.compile("^description$", re.I)})
+    description = (desc_tag.get("content", "").strip() if desc_tag else "")
+    h1s = [h.get_text(strip=True) for h in soup.find_all("h1")]
+    text_chars = _visible_text_len(BeautifulSoup(html, "html.parser"))
+    script_srcs = len(soup.find_all("script", src=True))
     return {
-        "direction": direction, "direction_name": DIRECTIONS.get(direction),
-        "industry": ind, "industry_name": INDUSTRIES.get(ind),
-        "subniche": name, "subniche_code": code,
-        "confidence": conf,
+        "url": url, "ok": True,
+        "title": title, "title_len": len(title),
+        "description": description, "desc_len": len(description),
+        "h1": h1s[0] if h1s else "", "h1_count": len(h1s),
+        "text_chars": text_chars, "script_srcs": script_srcs,
+        "has_seo_text": text_chars >= config.SEO_TEXT_MIN_CHARS,
+        "meta_ok": bool(title) and bool(description) and len(h1s) >= 1,
+    }
+
+
+SKIP_URL = ("/f/", "?", "#", "javascript", "/search", "/filter", "/login", "/cart",
+            "/user", "/checkout", "/wishlist", "/compare", "/account", "/basket",
+            "tel:", "mailto:", "/sort")
+
+
+def _skip_url(href: str) -> bool:
+    h = (href or "").lower()
+    return any(s in h for s in SKIP_URL)
+
+
+def _find_categories(base_url: str, html: str, limit: int = 3):
+    soup = BeautifulSoup(html, "html.parser")
+    host = urlparse(base_url).netloc
+    seen, cats = set(), []
+    for a in soup.find_all("a", href=True):
+        href = urljoin(base_url, a["href"]); p = urlparse(href)
+        if p.netloc != host or p.path in ("", "/") or _skip_url(href):
+            continue
+        if any(h in href.lower() for h in CATEGORY_HINTS) and href not in seen:
+            seen.add(href); cats.append(href)
+        if len(cats) >= limit:
+            break
+    if len(cats) < limit:
+        for a in soup.find_all("a", href=True):
+            href = urljoin(base_url, a["href"]); p = urlparse(href)
+            if p.netloc == host and p.path.count("/") >= 2 and not _skip_url(href) and href not in seen:
+                seen.add(href); cats.append(href)
+            if len(cats) >= limit:
+                break
+    return cats[:limit]
+
+
+def _unavailable(note: str) -> dict:
+    return {"reachable": False, "assessable": False, "optimized": None,
+            "status_note": note, "home": None, "categories": [],
+            "checked_pages": 0, "meta_pages_ok": 0, "seo_text_pages": 0}
+
+
+def analyze_site(domain: str) -> dict:
+    sess = _session()
+    base = domain if domain.startswith("http") else "https://" + domain
+
+    if _robots_blocks_root(sess, base):
+        return _unavailable("закрито в robots.txt")
+
+    home_html, status, code = _fetch(sess, base)
+    if status != "ok" and not domain.startswith("http"):
+        home_html, status, code = _fetch(sess, "http://" + domain)
+        if status == "ok":
+            base = "http://" + domain
+    if status == "blocked":
+        return _unavailable(f"сайт блокує ботів (HTTP {code})")
+    if status != "ok":
+        return _unavailable(f"сайт недоступний ({code})")
+
+    home = check_page(sess, base)
+    # евристика JS-рендеру: майже нема тексту й тегів, але купа <script>
+    if (home.get("text_chars", 0) < 150 and home.get("h1_count", 0) == 0
+            and not home.get("title") and home.get("script_srcs", 0) >= 3):
+        return _unavailable("ймовірно JS-рендер — недоступно для оцінки")
+
+    cats = [check_page(sess, u) for u in _find_categories(base, home_html, limit=3)]
+    cat_ok = [c for c in cats if c.get("ok")]
+    checked = 1 + len(cat_ok)
+    meta_pages = sum(1 for c in cat_ok if c.get("meta_ok")) + (1 if home.get("meta_ok") else 0)
+    seo_text_pages = sum(1 for c in cat_ok if c.get("has_seo_text")) + (1 if home.get("has_seo_text") else 0)
+    meta_ratio = meta_pages / checked if checked else 0
+    # оптимізований: мета на більшості сторінок (>=60%) + суттєвий SEO-текст хоча б на 1
+    optimized = (meta_ratio >= 0.6) and (seo_text_pages >= 1)
+    return {
+        "reachable": True, "assessable": True, "optimized": optimized,
+        "status_note": "ok",
+        "home": home, "categories": cats,
+        "checked_pages": checked, "meta_pages_ok": meta_pages, "seo_text_pages": seo_text_pages,
     }

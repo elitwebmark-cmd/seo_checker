@@ -1,39 +1,18 @@
 {% extends "_base.html" %}
+{% block title %}Вхід · elitweb Кваліфікація сайтів{% endblock %}
 {% block body %}
-<div class="eyebrow">Кваліфікація лідів під SEO-офер</div>
-{% if assets.ic_search %}<div style="display:flex;align-items:center;gap:14px"><img class="ic ic-hero" src="{{ url_for('static', filename=assets.ic_search) }}" alt=""><h1 style="margin:0">Аналізатор <span class="ac">списку сайтів</span></h1></div>{% else %}<h1>Аналізатор <span class="ac">списку сайтів</span></h1>{% endif %}
-<p class="sub">Вставте домени (до 100 шт.) — по одному в рядок або через кому. Отримаєте вердикт по кожному: чи підходить під офер «SEO з оплатою за вихід у ТОП».</p>
-{% if not has_key %}<div class="warn">⚠️ SEMRUSH_API_KEY не заданий. Додайте ключ у змінні середовища, інакше аналіз даватиме помилку.</div>{% endif %}
-
-{% if bot_url %}
-<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:linear-gradient(135deg,#12222c,#16161A)">
-  <div>
-    <div style="font-size:16px;font-weight:900">Перевіряти по одному домену — зручніше в Telegram</div>
-    <div class="small" style="margin-top:4px">Надішли боту домен і одразу отримай висновок, без відкривання сайту.</div>
-  </div>
-  <a class="btn btn-tg" href="{{ bot_url }}" target="_blank" style="padding:14px 22px">✈️ Відкрити Telegram-бот</a>
-</div>
-{% endif %}
-
-<form method="post" action="/analyze" class="card">
-  <textarea name="domains" placeholder="daydrive.ua&#10;makeup.com.ua&#10;example.com"></textarea>
-  <div><label class="chk"><input type="checkbox" name="onpage" checked> Перевіряти on-page SEO (повільніше для великих списків)</label></div>
-  <button type="submit">Проаналізувати</button>
-</form>
-<div class="card">
-  <div class="metric">Критерії кваліфікації:</div>
-  <ul style="margin:10px 0 0 18px;color:var(--mute2);font-weight:600;font-size:14px;line-height:1.9">
-    <li><b style="color:#fff">Головний:</b> {{ cfg.COMMERCIAL_KW_MIN }}+ комерційних запитів на позиціях {{ cfg.POS_MIN }}–{{ cfg.POS_MAX }} — це пул, з якого клієнт обирає свою семантику (до {{ cfg.COMMERCIAL_KW_MIN }} запитів) для виведення в ТОП</li>
-    <li>SEO-трафік ≥ {{ cfg.TRAFFIC_MIN }}/міс</li>
-    <li>Ознаки SEO-оптимізації (мета-теги + SEO-тексти). Якщо сайт недоступний для оцінки — фактор не враховується.</li>
-    <li>Широка структура (≥ {{ cfg.STRUCTURE_KW_MIN }} орг. ключів)</li>
-  </ul>
-  <div class="metric" style="margin-top:14px">Градація оцінки:</div>
-  <ul style="margin:8px 0 0 18px;color:var(--mute2);font-weight:600;font-size:14px;line-height:1.9">
-    <li><span class="badge b-green">ІДЕАЛЬНО</span> — запити й трафік ≥ норми, оптимізація ОК</li>
-    <li><span class="badge b-blue">ДОБРЕ</span> — запити й трафік ≥ норми, але оптимізація слабка</li>
-    <li><span class="badge b-amber">ПОСЕРЕДНЬО</span> — запити/трафік є, але нижче норм</li>
-    <li><span class="badge b-red">НЕ ПІДХОДИТЬ</span> — немає трафіку або комерційних позицій</li>
-  </ul>
+<div class="center">
+  {% if assets.ic_key %}<div style="text-align:center;margin-bottom:6px"><img class="ic ic-key" src="{{ url_for('static', filename=assets.ic_key) }}" alt=""></div>{% endif %}
+  <div class="eyebrow">elitweb · внутрішній доступ</div>
+  <h1>Вхід</h1>
+  <p class="sub">Доступ лише для команди elitweb.</p>
+  {% if error %}<div class="warn">{{ error }}</div>{% endif %}
+  <form method="post" class="card">
+    <div class="lbl">Пошта</div>
+    <input class="fld" type="email" name="email" autocomplete="username" required autofocus>
+    <div class="lbl" style="margin-top:14px">Пароль</div>
+    <input class="fld" type="password" name="password" autocomplete="current-password" required>
+    <button type="submit" style="width:100%;margin-top:18px">Увійти</button>
+  </form>
 </div>
 {% endblock %}

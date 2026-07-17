@@ -1,106 +1,72 @@
-"""Перевірка, чи домен уже є клієнтом Elit-Web.
-Тягне список із Google-таблиці (CSV), кешує в памʼяті, нормалізує й зіставляє
-за точним збігом та за 'підозріло схожим' (той самий бренд / висока схожість)."""
-from __future__ import annotations
-import os, re, time, threading, difflib
-import requests
-import config
+"""Пороги кваліфікації та налаштування. Перевизначаються через ENV."""
+import os
 
-TTL = int(os.getenv("CLIENTS_CACHE_TTL", "300"))       # кеш списку, c
-FUZZY_MIN = float(os.getenv("CLIENTS_FUZZY_MIN", "0.90"))
+# --- SemRush ---
+SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
+SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua
+SEMRUSH_BASE = "https://api.semrush.com/"
 
-_ZW = {"​", "‌", "‍", "﻿", " "}
-_DOMAIN_RE = re.compile(r"([a-z0-9\-]+\.)+[a-z]{2,}")
-# багатоскладові TLD (Україна тощо) — перевіряти першими
-_MULTI_TLD = [".com.ua", ".co.ua", ".in.ua", ".biz.ua", ".org.ua", ".net.ua",
-              ".kyiv.ua", ".pp.ua", ".km.ua", ".lviv.ua"]
+# --- Авторизація веб-інтерфейсу ---
+APP_LOGIN_EMAIL = os.getenv("APP_LOGIN_EMAIL", "marketing@elit-web.ua")
+APP_LOGIN_PASSWORD = os.getenv("APP_LOGIN_PASSWORD", "123456ms")
+SECRET_KEY = os.getenv("SECRET_KEY", "elitweb-seo-qualifier-change-me-please")
 
-_CACHE = {"ts": 0.0, "hosts": set(), "brands": {}}   # brand -> set(hosts)
-_LOCK = threading.Lock()
+# --- Telegram ---
+TELEGRAM_BOT_URL = os.getenv("TELEGRAM_BOT_URL", "")   # напр. https://t.me/your_bot
 
+# --- Google-таблиця з поточними клієнтами (CSV) ---
+CLIENTS_SHEET_CSV = os.getenv(
+    "CLIENTS_SHEET_CSV",
+    "https://docs.google.com/spreadsheets/d/1hm4at3Cbduf-tJcOP74O8A1aGAFIWLugTdqDhS4yZfo/gviz/tq?tqx=out:csv",
+)
+CASES_SHEET_CSV = os.getenv(
+    "CASES_SHEET_CSV",
+    "https://docs.google.com/spreadsheets/d/1ZlhfxFAqtqbR0uhPlhxywbkLAIhOnNDdi61JyBV-xdg/gviz/tq?tqx=out:csv",
+)
+CASES_LIMIT = int(os.getenv("CASES_LIMIT", "0"))   # 0 = усі кейси з посиланнями
 
-def _clean(s: str) -> str:
-    return "".join(ch for ch in (s or "") if ch not in _ZW).strip().lower()
+# --- Пороги кваліфікації (з вимог) ---
+POS_MIN = int(os.getenv("POS_MIN", "11"))
+POS_MAX = int(os.getenv("POS_MAX", "30"))
+COMMERCIAL_KW_MIN = int(os.getenv("COMMERCIAL_KW_MIN", "300"))
+TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "500"))
+STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
+STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))
+KW_FETCH_LIMIT = int(os.getenv("KW_FETCH_LIMIT", "2000"))
 
+# Intent-коди SemRush: 0=Commercial, 1=Informational, 2=Navigational, 3=Transactional
+COMMERCIAL_INTENTS = {"0", "3"}
 
-def normalize(host: str) -> str:
-    h = _clean(host)
-    h = re.sub(r"^https?://", "", h).split("/")[0].split("?")[0]
-    if h.startswith("www."):
-        h = h[4:]
-    return h.strip(". ")
+COMMERCIAL_PATTERNS = [
+    "купити", "купить", "ціна", "цена", "вартість", "стоимость", "замовити", "заказать",
+    "недорого", "дешево", "прайс", "продаж", "продажа", "магазин", "доставка",
+    "в наявності", "в наличии", "оптом", "розпродаж", "акція", "акции", "знижк",
+]
 
+# On-page
+SEO_TEXT_MIN_CHARS = int(os.getenv("SEO_TEXT_MIN_CHARS", "500"))
+HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "12"))
+ONPAGE_RETRIES = int(os.getenv("ONPAGE_RETRIES", "1"))
 
-def brand(host: str) -> str:
-    """Реєстрове імʼя (бренд) без TLD і піддоменів."""
-    h = normalize(host)
-    for suf in sorted(_MULTI_TLD, key=len, reverse=True):
-        if h.endswith(suf):
-            h = h[:-len(suf)]
-            break
-    else:
-        if "." in h:
-            h = h.rsplit(".", 1)[0]
-    return h.split(".")[-1] if "." in h else h   # останній label (відкидаємо піддомени)
+# Реалістичний браузерний User-Agent (щоб менше блокувань)
+USER_AGENT = os.getenv(
+    "USER_AGENT",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+)
+ACCEPT_LANGUAGE = os.getenv("ACCEPT_LANGUAGE", "uk-UA,uk;q=0.9,ru;q=0.8,en;q=0.7")
 
+NON_COMMERCIAL_URL_HINTS = [
+    "/blog", "blog.", "/news", "/novosti", "/novyny", "/article", "/statya", "/stat",
+    "/instruction", "/instructions", "/help", "/about", "/o-nas", "/compare",
+    "/products/compare", "/review", "/otzyv", "/faq", "/wiki",
+]
 
-def _parse(text: str):
-    hosts, brands = set(), {}
-    for line in text.splitlines():
-        for m in _DOMAIN_RE.finditer(_clean(line)):
-            host = normalize(m.group(0))
-            if not host or "." not in host:
-                continue
-            hosts.add(host)
-            b = brand(host)
-            if len(b) >= 3:
-                brands.setdefault(b, set()).add(host)
-    return hosts, brands
-
-
-def _refresh(force=False):
-    now = time.time()
-    with _LOCK:
-        if not force and _CACHE["hosts"] and now - _CACHE["ts"] < TTL:
-            return
-    url = config.CLIENTS_SHEET_CSV
-    if not url:
-        return
-    try:
-        r = requests.get(url, timeout=config.HTTP_TIMEOUT)
-        r.raise_for_status()
-        hosts, brands = _parse(r.text)
-    except Exception:
-        return
-    if hosts:
-        with _LOCK:
-            _CACHE.update(ts=now, hosts=hosts, brands=brands)
-
-
-def check(domain: str) -> dict:
-    """Повертає {is_client, level, matched}. level: exact|similar|suspect|None."""
-    _refresh()
-    with _LOCK:
-        hosts = set(_CACHE["hosts"])
-        brands = {k: set(v) for k, v in _CACHE["brands"].items()}
-    if not hosts:
-        return {"is_client": False, "level": None, "matched": None}
-
-    h = normalize(domain)
-    if h in hosts:
-        return {"is_client": True, "level": "exact", "matched": h}
-
-    b = brand(h)
-    # той самий бренд, але інший TLD/піддомен (напр. brand.ua vs brand.com.ua)
-    if len(b) >= 3 and b in brands:
-        return {"is_client": True, "level": "similar", "matched": sorted(brands[b])[0]}
-
-    # нечітка схожість (одруківки, дефіси тощо)
-    best, best_host = 0.0, None
-    for ch in hosts:
-        rr = difflib.SequenceMatcher(None, h, ch).ratio()
-        if rr > best:
-            best, best_host = rr, ch
-    if best >= FUZZY_MIN:
-        return {"is_client": True, "level": "suspect", "matched": best_host}
-    return {"is_client": False, "level": None, "matched": None}
+# --- CTR органічної видачі (позиція -> вірогідність кліку) ---
+CTR_BY_POS = {
+    1: 0.240, 2: 0.140, 3: 0.090, 4: 0.060, 5: 0.045, 6: 0.035, 7: 0.028,
+    8: 0.022, 9: 0.017, 10: 0.013, 11: 0.010, 12: 0.0085, 13: 0.0075,
+    14: 0.0065, 15: 0.0055, 16: 0.0048, 17: 0.0042, 18: 0.0036, 19: 0.0031, 20: 0.0027,
+}
+CTR_FLOOR = float(os.getenv("CTR_FLOOR", "0.002"))    # для позицій > 20
+BENEFIT_QUERIES = int(os.getenv("BENEFIT_QUERIES", "20"))   # скільки топ-запитів беремо

@@ -1,2 +1,32 @@
-web: gunicorn app:app --workers 1 --threads 8 --timeout 180
-worker: python -u bot.py
+{% extends "_base.html" %}
+{% block title %}Аналіз… · elitweb{% endblock %}
+{% block body %}
+<div class="center" style="text-align:center">
+  <div class="eyebrow" style="justify-content:center">Іде обробка</div>
+  <h1>Аналізуємо <span class="ac">сайти</span></h1>
+  <p class="sub" id="cnt">Готуємо запити…</p>
+  <div class="card">
+    <div class="spin"></div>
+    <div class="pbar-wrap"><div class="pbar" id="bar"></div></div>
+    <div class="small" id="pct">0%</div>
+    <div class="small" style="margin-top:10px">Перевіряємо SemRush та on-page. Не закривайте вкладку.</div>
+  </div>
+</div>
+<script>
+const JOB="{{ job_id }}", TOTAL={{ total }};
+const bar=document.getElementById('bar'), cnt=document.getElementById('cnt'), pct=document.getElementById('pct');
+async function tick(){
+  try{
+    const r=await fetch('/status/'+JOB); const j=await r.json();
+    if(!j.found){ location.href='/'; return; }
+    const done=j.done, total=j.total||TOTAL;
+    const p=total?Math.round(done/total*100):0;
+    bar.style.width=p+'%'; pct.textContent=p+'%';
+    cnt.textContent='Оброблено '+done+' з '+total;
+    if(j.status==='done'){ bar.style.width='100%'; pct.textContent='100%'; location.href='/results/'+JOB; return; }
+  }catch(e){}
+  setTimeout(tick, 900);
+}
+tick();
+</script>
+{% endblock %}
