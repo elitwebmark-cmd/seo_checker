@@ -114,7 +114,7 @@ def _refresh(force=False):
             _CACHE.update(ts=now, cases=cases)
 
 
-def match(niche_info: dict, limit: int = 6) -> list:
+def match(niche_info: dict, limit: int = 0) -> list:
     _refresh()
     with _LOCK:
         cases = list(_CACHE["cases"])
@@ -125,6 +125,7 @@ def match(niche_info: dict, limit: int = 6) -> list:
     pwords = set(re.findall(r"[a-zа-яіїєґ]{4,}",
                  ((niche_info.get("subniche") or "") + " " +
                   (niche_info.get("industry_name") or "")).lower()))
+    prefer_ua = (config.SEMRUSH_DB or "").lower() == "ua"
     scored = []
     for c in cases:
         s = 0
@@ -133,8 +134,22 @@ def match(niche_info: dict, limit: int = 6) -> list:
         if pind and c["industry"] == pind:
             s += 40
         s += len(pwords & c["_words"]) * 6
-        if s > 0:
-            scored.append((s, c))
+        if s <= 0:
+            continue
+        # якість кейсу: SEO-послуга, наявність слайда для КП / розширеного, гео
+        srv = (c.get("service") or "").lower()
+        if "seo" in srv:
+            s += 15
+        lk = c.get("links", {})
+        if lk.get("kp"):
+            s += 8
+        if lk.get("ext"):
+            s += 4
+        if lk.get("blog"):
+            s += 2
+        if prefer_ua and "укра" in (c.get("country") or "").lower():
+            s += 10
+        scored.append((s, c))
     scored.sort(key=lambda x: -x[0])
     # прибираємо дублі доменів, лишаємо найкращі
     seen, out = set(), []
@@ -142,6 +157,6 @@ def match(niche_info: dict, limit: int = 6) -> list:
         if c["domain"] in seen:
             continue
         seen.add(c["domain"]); out.append(c)
-        if len(out) >= limit:
+        if limit and len(out) >= limit:
             break
     return out

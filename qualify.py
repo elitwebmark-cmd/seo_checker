@@ -74,7 +74,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
     _cat_text = " ".join(c.get("url", "") for c in (onp.get("categories") or []) if isinstance(c, dict))
     niche_info = niche.classify(" ".join([domain, _kw_text, _onp_text, _cat_text]), onp)
     try:
-        matched_cases = cases.match(niche_info, limit=6)
+        matched_cases = cases.match(niche_info, limit=config.CASES_LIMIT)
     except Exception:
         matched_cases = []
 

@@ -23,6 +23,7 @@ CASES_SHEET_CSV = os.getenv(
     "CASES_SHEET_CSV",
     "https://docs.google.com/spreadsheets/d/1ZlhfxFAqtqbR0uhPlhxywbkLAIhOnNDdi61JyBV-xdg/gviz/tq?tqx=out:csv",
 )
+CASES_LIMIT = int(os.getenv("CASES_LIMIT", "0"))   # 0 = усі кейси з посиланнями
 
 # --- Пороги кваліфікації (з вимог) ---
 POS_MIN = int(os.getenv("POS_MIN", "11"))
