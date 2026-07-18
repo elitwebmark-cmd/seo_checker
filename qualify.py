@@ -1,7 +1,7 @@
 """Логіка кваліфікації сайту під офер 'SEO з оплатою за вихід у ТОП'."""
 from __future__ import annotations
 import re
-import config, semrush, onpage, clients, niche, cases
+import config, semrush, onpage, clients, niche, cases, ads
 
 
 def _brand_token(domain: str) -> str:
@@ -36,7 +36,8 @@ def _is_commercial(kw: dict, brand: str) -> bool:
     return False
 
 
-def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
+def qualify(domain: str, do_onpage: bool = True, db: str = None,
+            do_ads: bool = False) -> dict:
     if not config.SEMRUSH_API_KEY:
         raise RuntimeError("SEMRUSH_API_KEY не заданий (ENV).")
 
@@ -93,6 +94,14 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
     except Exception:
         matched_cases = []
 
+    # --- контекстна реклама (лише для одного домену; інформаційно) ---
+    ads_info = None
+    if do_ads:
+        try:
+            ads_info = ads.check(domain)
+        except Exception:
+            ads_info = {"checked": False, "note": "помилка перевірки"}
+
     pos = commercial_count                       # комерційні запити на 11-30
     traf = overview["organic_traffic"]
     c1 = pos >= config.COMMERCIAL_KW_MIN
@@ -144,6 +153,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None) -> dict:
         "niche": niche_info,
         "cases": matched_cases,
         "benefit": benefit,
+        "ads": ads_info,
         "reasons": reasons,
         "dotisk_queries": [
             {"keyword": k["keyword"], "position": k["position"],

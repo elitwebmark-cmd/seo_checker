@@ -90,6 +90,16 @@ def fmt(res: dict) -> str:
         mul = f" · ×{bn['multiplier']}" if bn.get("multiplier") else ""
         lines.append(f"💰 <b>Потенціал</b> (топ-{bn['queries']} зап.): зараз ~{bn['traffic_now']}/міс → "
                      f"у ТОП-1 ~{bn['traffic_top1']}/міс (+{bn['uplift']}{mul})")
+    ad = res.get("ads") or {}
+    if ad.get("checked"):
+        if ad.get("running"):
+            adv = ""
+            if ad.get("advertisers"):
+                adv = " · " + html.escape(", ".join(ad["advertisers"]))
+            lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош.{adv} — "
+                         f"<a href=\"{ad['link']}\">перевірити</a>")
+        else:
+            lines.append(f"📣 <b>Контекст:</b> не знайдено — <a href=\"{ad['link']}\">перевірити</a>")
     lines.append("")
     for name, val, ok in res.get("reasons", []):
         mark = "✔" if ok else ("•" if ok is None else "✗")
@@ -119,7 +129,7 @@ async def run_analysis(msg: Message, domain: str):
         f"🔎 Аналізую <b>{html.escape(domain)}</b> ({REGIONS.get(s['db'], s['db'])}, "
         f"{'повний' if s['depth']=='full' else 'швидкий'})… (10–30 c)", parse_mode="HTML")
     try:
-        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"])
+        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True)
         LAST[msg.chat.id] = {"domain": domain, "res": res}
         await wait.edit_text(fmt(res), parse_mode="HTML", disable_web_page_preview=True,
                              reply_markup=result_kb(domain, bool(res.get("dotisk_queries"))))

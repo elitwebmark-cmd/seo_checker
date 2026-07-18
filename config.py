@@ -14,6 +14,12 @@ SECRET_KEY = os.getenv("SECRET_KEY", "elitweb-seo-qualifier-change-me-please")
 # --- Telegram ---
 TELEGRAM_BOT_URL = os.getenv("TELEGRAM_BOT_URL", "")   # напр. https://t.me/your_bot
 
+# --- Контекстна реклама (SerpApi -> Google Ads Transparency Center) ---
+# Перевіряється ЛИШЕ для одного домену (бот / поодинокий чек на вебі).
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
+ADS_REGION = os.getenv("ADS_REGION", "2804")           # 2804 = Україна
+ADS_TIMEOUT = int(os.getenv("ADS_TIMEOUT", "25"))
+
 # --- Google-таблиця з поточними клієнтами (CSV) ---
 CLIENTS_SHEET_CSV = os.getenv(
     "CLIENTS_SHEET_CSV",

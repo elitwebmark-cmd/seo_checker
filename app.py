@@ -109,9 +109,9 @@ def _err(domain, note):
             "dotisk_queries": []}
 
 
-def _safe_qualify(domain, do_onpage):
+def _safe_qualify(domain, do_onpage, do_ads=False):
     try:
-        return qualify.qualify(domain, do_onpage=do_onpage)
+        return qualify.qualify(domain, do_onpage=do_onpage, do_ads=do_ads)
     except Exception as e:
         log.exception("qualify failed for %s", domain)
         return _err(domain, str(e)[:200])
@@ -127,11 +127,11 @@ def _finish(job_id):
     log.info("job %s finished", job_id)
 
 
-def _process_job(job_id, domains, do_onpage):
-    log.info("job %s START: %d domain(s), onpage=%s", job_id, len(domains), do_onpage)
+def _process_job(job_id, domains, do_onpage, do_ads=False):
+    log.info("job %s START: %d domain(s), onpage=%s, ads=%s", job_id, len(domains), do_onpage, do_ads)
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
+            futs = {ex.submit(_safe_qualify, d, do_onpage, do_ads): d for d in domains}
             try:
                 for fut in concurrent.futures.as_completed(futs, timeout=JOB_TIMEOUT):
                     d = futs[fut]
@@ -183,13 +183,15 @@ def analyze():
     do_onpage = request.form.get("onpage") == "on"
     if not domains:
         return redirect(url_for("index"))
+    # Контекст-рекламу перевіряємо лише коли домен один (економія квоти SerpApi)
+    do_ads = len(domains) == 1
     _prune_jobs()
     job_id = uuid.uuid4().hex[:12]
     with JOBS_LOCK:
         JOBS[job_id] = {"total": len(domains), "done": 0, "results": [],
-                        "status": "running", "do_onpage": do_onpage,
+                        "status": "running", "do_onpage": do_onpage, "do_ads": do_ads,
                         "started": time.time(), "finished": None}
-    threading.Thread(target=_process_job, args=(job_id, domains, do_onpage),
+    threading.Thread(target=_process_job, args=(job_id, domains, do_onpage, do_ads),
                      daemon=True).start()
     return redirect(url_for("progress", job_id=job_id))
 
@@ -234,10 +236,11 @@ def api_analyze():
     raw = "\n".join(raw) if isinstance(raw, list) else str(raw or "")
     domains = _parse_domains(raw)
     do_onpage = bool(data.get("onpage", True))
+    do_ads = len(domains) == 1
     out = []
     if domains:
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futs = {ex.submit(_safe_qualify, d, do_onpage): d for d in domains}
+            futs = {ex.submit(_safe_qualify, d, do_onpage, do_ads): d for d in domains}
             for fut in concurrent.futures.as_completed(futs):
                 out.append(fut.result())
         out.sort(key=lambda r: r.get("score", 0), reverse=True)
