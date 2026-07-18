@@ -183,8 +183,8 @@ def analyze():
     do_onpage = request.form.get("onpage") == "on"
     if not domains:
         return redirect(url_for("index"))
-    # Контекст-рекламу перевіряємо лише коли домен один (економія квоти SerpApi)
-    do_ads = len(domains) == 1
+    # Контекст-рекламу: лише коли домен один І галочку ввімкнено (економія квоти SerpApi)
+    do_ads = (len(domains) == 1) and (request.form.get("ads") == "on")
     _prune_jobs()
     job_id = uuid.uuid4().hex[:12]
     with JOBS_LOCK:
@@ -236,7 +236,7 @@ def api_analyze():
     raw = "\n".join(raw) if isinstance(raw, list) else str(raw or "")
     domains = _parse_domains(raw)
     do_onpage = bool(data.get("onpage", True))
-    do_ads = len(domains) == 1
+    do_ads = (len(domains) == 1) and bool(data.get("ads", True))
     out = []
     if domains:
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
