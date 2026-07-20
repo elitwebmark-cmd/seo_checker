@@ -46,18 +46,20 @@ def get_deal(deal_id: str) -> dict:
 
 
 def create_note(deal_id: str, note_html: str) -> str:
+    # Створюємо нотатку одразу з асоціацією до діла (атомарно, без окремого PUT)
     url = f"{config.HUBSPOT_API_BASE}/crm/v3/objects/notes"
-    body = {"properties": {"hs_note_body": note_html,
-                           "hs_timestamp": int(time.time() * 1000)}}
+    body = {
+        "properties": {"hs_note_body": note_html,
+                       "hs_timestamp": int(time.time() * 1000)},
+        "associations": [{
+            "to": {"id": str(deal_id)},
+            "types": [{"associationCategory": "HUBSPOT_DEFINED",
+                       "associationTypeId": config.HUBSPOT_NOTE_DEAL_ASSOC_ID}],
+        }],
+    }
     r = requests.post(url, headers=_headers(), json=body, timeout=20)
     r.raise_for_status()
-    note_id = r.json().get("id")
-    # прив'язати нотатку до діла (дефолтна асоціація note -> deal)
-    assoc = (f"{config.HUBSPOT_API_BASE}/crm/v4/objects/notes/{note_id}"
-             f"/associations/default/deals/{deal_id}")
-    ra = requests.put(assoc, headers=_headers(), timeout=20)
-    ra.raise_for_status()
-    return note_id
+    return r.json().get("id")
 
 
 def update_verdict_prop(deal_id: str, verdict: str):
@@ -105,6 +107,34 @@ def _note_html(domain: str, res: dict) -> str:
         p.append(f"Послуги: {svc}")
     p.append("<i>Автооцінка — SEO Qualifier</i>")
     return "<br>".join(p)
+
+
+def process_deal_debug(deal_id: str) -> dict:
+    """Синхронний прогін із поверненням точної помилки на кроці, де вона сталась."""
+    out = {"deal_id": deal_id}
+    if not config.HUBSPOT_TOKEN:
+        return {**out, "error": "no HUBSPOT_TOKEN"}
+    try:
+        props = get_deal(deal_id)
+        out["pipeline"] = props.get("pipeline")
+        out["domain"] = props.get(config.HUBSPOT_DEAL_DOMAIN_PROP)
+    except Exception as e:
+        return {**out, "step": "get_deal", "error": repr(e)[:400]}
+    domain = (props.get(config.HUBSPOT_DEAL_DOMAIN_PROP) or "").strip()
+    if not domain:
+        return {**out, "step": "domain", "error": "empty domain"}
+    try:
+        res = qualify.qualify(domain, do_onpage=True,
+                              do_ads=config.HUBSPOT_ENRICH, do_social=config.HUBSPOT_ENRICH)
+        out["verdict"] = res.get("verdict")
+    except Exception as e:
+        return {**out, "step": "qualify", "error": repr(e)[:400]}
+    try:
+        out["note_id"] = create_note(deal_id, _note_html(domain, res))
+        out["ok"] = True
+    except Exception as e:
+        return {**out, "step": "create_note", "error": repr(e)[:600]}
+    return out
 
 
 def process_deal(deal_id: str):

@@ -35,6 +35,8 @@ HUBSPOT_DEAL_DOMAIN_PROP = os.getenv("HUBSPOT_DEAL_DOMAIN_PROP", "domain")
 HUBSPOT_VERDICT_PROP = os.getenv("HUBSPOT_VERDICT_PROP", "")
 # Тягнути в оцінку контекст+соцмережі (SerpApi-квота). 0 = лише SemRush+onpage
 HUBSPOT_ENRICH = os.getenv("HUBSPOT_ENRICH", "1") not in ("0", "false", "False", "")
+# HUBSPOT_DEFINED association type: note -> deal (за замовч. 214)
+HUBSPOT_NOTE_DEAL_ASSOC_ID = int(os.getenv("HUBSPOT_NOTE_DEAL_ASSOC_ID", "214"))
 
 # --- Google-таблиця з поточними клієнтами (CSV) ---
 CLIENTS_SHEET_CSV = os.getenv(
