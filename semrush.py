@@ -99,30 +99,39 @@ def domain_history(domain: str, db: str = None, limit: int = 10) -> List[Dict[st
     return out
 
 
-def top_pages(domain: str, organic_traffic: int = 0, db: str = None,
-              limit: int = 10) -> List[Dict[str, Any]]:
-    """ТОП сторінок за трафіком: URL, к-сть ключів, трафік."""
+def _ctr(pos: int) -> float:
+    return config.CTR_BY_POS.get(int(pos or 99), config.CTR_FLOOR)
+
+
+def top_pages(domain: str, db: str = None, limit: int = 10,
+              kw_scan: int = 500) -> List[Dict[str, Any]]:
+    """ТОП сторінок за трафіком. Рахуємо з найтрафікованіших орг. запитів
+    (обсяг × CTR позиції) і агрегуємо по URL — надійніше за колонку traffic."""
     try:
         text = _request({
-            "type": "domain_organic_unique",
+            "type": "domain_organic",
             "domain": domain,
             "database": _db(db),
-            "export_columns": "Ur,Pc,tr",
-            "display_limit": max(1, int(limit)),
+            "display_limit": max(1, int(kw_scan)),
             "display_sort": "tr_desc",
+            "export_columns": "Ph,Po,Nq,Ur",
         })
     except SemrushError:
         return []
-    out = []
+    agg = {}
     for row in _parse_csv(text):
         url = row.get("Url") or row.get("URL") or ""
-        kw = _safe_int(row.get("Number of Keywords"))
-        trv = _safe_float(row.get("Traffic"))
-        # tr може бути часткою (0..1) або абсолютним значенням
-        traffic = int(round(trv * organic_traffic)) if 0 < trv <= 1.5 else int(round(trv))
-        if url:
-            out.append({"url": url, "keywords": kw, "traffic": traffic})
-    return out
+        if not url:
+            continue
+        pos = _safe_int(row.get("Position"))
+        vol = _safe_int(row.get("Search Volume"))
+        a = agg.setdefault(url, {"url": url, "keywords": 0, "traffic": 0.0})
+        a["keywords"] += 1
+        a["traffic"] += vol * _ctr(pos)
+    pages = sorted(agg.values(), key=lambda x: x["traffic"], reverse=True)[:limit]
+    for p in pages:
+        p["traffic"] = int(round(p["traffic"]))
+    return pages
 
 
 def organic_keywords(domain: str, pos_min: int, pos_max: int,

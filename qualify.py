@@ -51,7 +51,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     except Exception:
         history = []
     try:
-        top_pages_traffic = semrush.top_pages(domain, overview["organic_traffic"], db=db, limit=10)
+        top_pages_traffic = semrush.top_pages(domain, db=db, limit=10)
     except Exception:
         top_pages_traffic = []
     kws = semrush.organic_keywords(domain, config.POS_MIN, config.POS_MAX,
