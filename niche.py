@@ -131,6 +131,35 @@ OFFER_NO = {
 }
 
 
+# --- Мапінг у поля-списки HubSpot (industria/nisa/podnisa) ---
+# Значення, де наше формулювання відрізняється від опції в HubSpot.
+NISA_ALIAS = {
+    "Спеціальні / регульовані": "Спеціальні / регульовані /Сірі",
+}
+PODNISA_ALIAS = {
+    "Вулична і садова меблі": "Вуличні і садові меблі",
+    "Готелі і гостинність": "Готелі і житло",
+    "Консалтинг і агенції": "Консалтинг",
+    "Фітнес і велнес": "Фітнес",
+}
+
+
+def hubspot_fields(niche_info: dict) -> dict:
+    """{industria, nisa, podnisa} для полів діла (з аліасами назв)."""
+    ni = niche_info or {}
+    out = {}
+    d = ni.get("direction_name")
+    g = ni.get("industry_name")
+    s = ni.get("subniche")
+    if d:
+        out["industria"] = d
+    if g:
+        out["nisa"] = NISA_ALIAS.get(g, g)
+    if s:
+        out["podnisa"] = PODNISA_ALIAS.get(s, s)
+    return out
+
+
 def classify(blob: str, onp: dict = None) -> dict:
     text = _norm(blob)
     best_code, best_score = None, 0

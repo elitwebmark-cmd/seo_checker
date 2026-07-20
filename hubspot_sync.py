@@ -10,6 +10,7 @@ import requests
 
 import config
 import qualify
+import niche
 
 log = logging.getLogger("hubspot-sync")
 
@@ -63,12 +64,49 @@ def create_note(deal_id: str, note_html: str) -> str:
     return r.json().get("id")
 
 
-def update_verdict_prop(deal_id: str, verdict: str):
-    if not config.HUBSPOT_VERDICT_PROP:
+_OPT_CACHE = {}
+
+
+def _valid_options(prop: str) -> set:
+    """Значення випадаючого списку властивості діла (кеш у пам'яті)."""
+    if prop in _OPT_CACHE:
+        return _OPT_CACHE[prop]
+    opts = set()
+    try:
+        r = requests.get(f"{config.HUBSPOT_API_BASE}/crm/v3/properties/deals/{prop}",
+                         headers=_headers(), timeout=15)
+        if r.status_code == 200:
+            opts = {o.get("value") for o in (r.json().get("options") or [])}
+    except Exception:
+        pass
+    _OPT_CACHE[prop] = opts
+    return opts
+
+
+def niche_props(niche_info: dict) -> dict:
+    """Поля Индустрия/Ниша/Подниша, лише з валідними значеннями списків."""
+    if not config.HUBSPOT_SET_NICHE:
+        return {}
+    out = {}
+    for prop, val in niche.hubspot_fields(niche_info).items():
+        valid = _valid_options(prop)
+        if val and (not valid or val in valid):
+            out[prop] = val
+    return out
+
+
+def set_deal_props(deal_id: str, props: dict):
+    if not props:
         return
     url = f"{config.HUBSPOT_API_BASE}/crm/v3/objects/deals/{deal_id}"
-    body = {"properties": {config.HUBSPOT_VERDICT_PROP: verdict}}
-    requests.patch(url, headers=_headers(), json=body, timeout=20)
+    requests.patch(url, headers=_headers(), json={"properties": props}, timeout=20)
+
+
+def _deal_update_props(res: dict) -> dict:
+    props = niche_props(res.get("niche") or {})
+    if config.HUBSPOT_VERDICT_PROP:
+        props[config.HUBSPOT_VERDICT_PROP] = res.get("verdict", "")
+    return props
 
 
 SEP = "——————————"
@@ -332,6 +370,12 @@ def process_deal_debug(deal_id: str) -> dict:
         out["ok"] = True
     except Exception as e:
         return {**out, "step": "create_note", "error": repr(e)[:600]}
+    try:
+        props = _deal_update_props(res)
+        set_deal_props(deal_id, props)
+        out["set_props"] = props
+    except Exception as e:
+        out["set_props_error"] = repr(e)[:300]
     return out
 
 
@@ -375,7 +419,7 @@ def process_deal(deal_id: str):
     try:
         dups = find_duplicate_deals(domain, deal_id)
         create_note(deal_id, _note_html(domain, res, dups))
-        update_verdict_prop(deal_id, res.get("verdict", ""))
+        set_deal_props(deal_id, _deal_update_props(res))
         log.info("deal %s (%s) -> %s, note created", deal_id, domain, res.get("verdict"))
     except Exception:
         log.exception("create_note failed for %s", deal_id)
