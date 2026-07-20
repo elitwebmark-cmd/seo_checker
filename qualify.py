@@ -1,7 +1,7 @@
 """Логіка кваліфікації сайту під офер 'SEO з оплатою за вихід у ТОП'."""
 from __future__ import annotations
 import re
-import config, semrush, onpage, clients, niche, cases, ads
+import config, semrush, onpage, clients, niche, cases, ads, social
 
 
 def _brand_token(domain: str) -> str:
@@ -37,7 +37,7 @@ def _is_commercial(kw: dict, brand: str) -> bool:
 
 
 def qualify(domain: str, do_onpage: bool = True, db: str = None,
-            do_ads: bool = False) -> dict:
+            do_ads: bool = False, do_social: bool = False) -> dict:
     if not config.SEMRUSH_API_KEY:
         raise RuntimeError("SEMRUSH_API_KEY не заданий (ENV).")
 
@@ -102,6 +102,14 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             ads_info = {"checked": False, "note": "помилка перевірки"}
 
+    # --- соцмережі (Instagram; лише для одного домену; інформаційно) ---
+    social_info = None
+    if do_social:
+        try:
+            social_info = social.check(domain)
+        except Exception:
+            social_info = {"checked": False, "note": "помилка перевірки"}
+
     pos = commercial_count                       # комерційні запити на 11-30
     traf = overview["organic_traffic"]
     c1 = pos >= config.COMMERCIAL_KW_MIN
@@ -124,6 +132,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     _BASE = {"ІДЕАЛЬНО": 90, "ДОБРЕ": 70, "ПОСЕРЕДНЬО": 45, "НЕ ПІДХОДИТЬ": 10}
     score = _BASE[verdict] + round(min(pos / config.COMMERCIAL_KW_MIN, 1) * 9)
     score = min(score, 100)
+
+    services = _services(verdict, commercial_count, ads_info, social_info)
 
     reasons = []
     reasons.append(("Комерц. запити для просування (11–30)",
@@ -154,6 +164,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "cases": matched_cases,
         "benefit": benefit,
         "ads": ads_info,
+        "social": social_info,
+        "services": services,
         "reasons": reasons,
         "dotisk_queries": [
             {"keyword": k["keyword"], "position": k["position"],
@@ -162,6 +174,56 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         ],
         "onpage": onp if do_onpage else None,
     }
+
+
+def _services(verdict, commercial_count, ads_info, social_info) -> list:
+    """Під які послуги потенційно підходить сайт. Евристика (level: yes|maybe|no)."""
+    out = []
+
+    # 1) SEO з оплатою за ТОП — з вердикту
+    if verdict in ("ІДЕАЛЬНО", "ДОБРЕ"):
+        out.append({"name": "SEO за ТОП", "level": "yes",
+                    "note": "є комерційні позиції та трафік під офер"})
+    elif verdict == "ПОСЕРЕДНЬО":
+        out.append({"name": "SEO за ТОП", "level": "maybe",
+                    "note": "база є, але нижче норм — з доопрацюванням"})
+    else:
+        out.append({"name": "SEO за ТОП", "level": "no",
+                    "note": "немає позицій/трафіку під офер"})
+
+    # 2) Контекстна реклама
+    ads_running = bool(ads_info and ads_info.get("running"))
+    if ads_running:
+        out.append({"name": "Контекстна реклама", "level": "yes",
+                    "note": "вже інвестує в контекст — можна вести/оптимізувати"})
+    elif commercial_count >= 50:
+        out.append({"name": "Контекстна реклама", "level": "yes",
+                    "note": "є комерційна семантика — контекст доречний"})
+    elif commercial_count > 0:
+        out.append({"name": "Контекстна реклама", "level": "maybe",
+                    "note": "мало комерційних запитів"})
+    else:
+        out.append({"name": "Контекстна реклама", "level": "no",
+                    "note": "немає комерційних запитів"})
+
+    # 3) SMM / таргет — лише якщо соцмережі перевіряли
+    if social_info is not None:
+        if not social_info.get("found"):
+            out.append({"name": "SMM / таргет", "level": "maybe",
+                        "note": "профіль не знайдено на сайті — потенціал з нуля"})
+        elif not social_info.get("checked"):
+            out.append({"name": "SMM / таргет", "level": "maybe",
+                        "note": "профіль є, але дані недоступні"})
+        else:
+            f = social_info.get("followers") or 0
+            if f >= config.SMM_FOLLOWERS_MIN:
+                out.append({"name": "SMM / таргет", "level": "yes",
+                            "note": f"є аудиторія (~{f} підписників) — SMM/таргет доречні"})
+            else:
+                out.append({"name": "SMM / таргет", "level": "maybe",
+                            "note": f"профіль слабкий (~{f}) — треба розвивати"})
+
+    return out
 
 
 def _onpage_summary(onp: dict) -> str:

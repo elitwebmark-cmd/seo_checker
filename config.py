@@ -20,6 +20,10 @@ SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 ADS_REGION = os.getenv("ADS_REGION", "2804")           # 2804 = Україна
 ADS_TIMEOUT = int(os.getenv("ADS_TIMEOUT", "25"))
 
+# --- Соцмережі (Instagram через SerpApi) ---
+# Поріг аудиторії, з якого SMM/таргет вважаємо доречним
+SMM_FOLLOWERS_MIN = int(os.getenv("SMM_FOLLOWERS_MIN", "1000"))
+
 # --- Google-таблиця з поточними клієнтами (CSV) ---
 CLIENTS_SHEET_CSV = os.getenv(
     "CLIENTS_SHEET_CSV",
@@ -35,7 +39,7 @@ CASES_LIMIT = int(os.getenv("CASES_LIMIT", "0"))   # 0 = усі кейси з п
 POS_MIN = int(os.getenv("POS_MIN", "11"))
 POS_MAX = int(os.getenv("POS_MAX", "30"))
 COMMERCIAL_KW_MIN = int(os.getenv("COMMERCIAL_KW_MIN", "300"))
-TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "500"))
+TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "1000"))
 STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
 STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))
 KW_FETCH_LIMIT = int(os.getenv("KW_FETCH_LIMIT", "2000"))

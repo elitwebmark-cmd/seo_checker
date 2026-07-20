@@ -100,6 +100,26 @@ def fmt(res: dict) -> str:
                          f"<a href=\"{ad['link']}\">перевірити</a>")
         else:
             lines.append(f"📣 <b>Контекст:</b> не знайдено — <a href=\"{ad['link']}\">перевірити</a>")
+    sc = res.get("social") or {}
+    if sc.get("checked") and sc.get("found"):
+        foll = sc.get("followers")
+        foll = f"~{foll}" if foll is not None else "?"
+        if sc.get("is_private"):
+            lines.append(f"📱 <b>Instagram:</b> @{html.escape(sc.get('handle',''))} · приватний · "
+                         f"{foll} підписн. — <a href=\"{sc['url']}\">профіль</a>")
+        else:
+            act = "активний" if sc.get("active") else "активність низька"
+            lines.append(f"📱 <b>Instagram:</b> @{html.escape(sc.get('handle',''))} · {foll} підписн. · "
+                         f"залуч. ~{sc.get('avg_engagement', 0)}/пост · {act} — "
+                         f"<a href=\"{sc['url']}\">профіль</a>")
+    elif sc.get("checked") and not sc.get("found"):
+        lines.append("📱 <b>Instagram:</b> посилання на сайті не знайдено")
+    sv = res.get("services") or []
+    if sv:
+        mk = {"yes": "✅", "maybe": "🟡", "no": "⛔"}
+        lines.append("\n🧩 <b>Підходить під послуги:</b>")
+        for s in sv:
+            lines.append(f"{mk.get(s['level'], '•')} {html.escape(s['name'])} — {html.escape(s['note'])}")
     lines.append("")
     for name, val, ok in res.get("reasons", []):
         mark = "✔" if ok else ("•" if ok is None else "✗")
@@ -109,18 +129,35 @@ def fmt(res: dict) -> str:
         lines.append("\n🎯 <b>Кандидати в ТОП-1:</b>")
         for q in dq[:8]:
             lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']}")
-    cs = res.get("cases") or []
-    if cs:
-        lines.append("\n📁 <b>Схожі кейси Elit-Web:</b>")
-        for c in cs[:4]:
-            lk = c.get("links", {})
-            parts = []
-            if lk.get("kp"): parts.append(f"<a href=\"{lk['kp']}\">КП</a>")
-            if lk.get("ext"): parts.append(f"<a href=\"{lk['ext']}\">розшир.</a>")
-            if lk.get("blog"): parts.append(f"<a href=\"{lk['blog']}\">стаття</a>")
-            geo = f", {html.escape(c.get('country',''))}" if c.get("country") else ""
-            lines.append(f"• {html.escape(c['domain'])} ({html.escape(c.get('service','')) }{geo}) — " + " · ".join(parts))
     return "\n".join(lines)
+
+
+def _case_line(c: dict) -> str:
+    lk = c.get("links", {})
+    parts = []
+    if lk.get("kp"): parts.append(f"<a href=\"{lk['kp']}\">КП</a>")
+    if lk.get("ext"): parts.append(f"<a href=\"{lk['ext']}\">розшир.</a>")
+    if lk.get("blog"): parts.append(f"<a href=\"{lk['blog']}\">стаття</a>")
+    geo = f", {html.escape(c.get('country',''))}" if c.get("country") else ""
+    return f"• {html.escape(c['domain'])} ({html.escape(c.get('service','')) }{geo}) — " + " · ".join(parts)
+
+
+def fmt_cases(res: dict, chunk_limit: int = 3500) -> list:
+    """Кейси окремими повідомленнями (щоб влізти в ліміт Telegram 4096)."""
+    cs = res.get("cases") or []
+    if not cs:
+        return []
+    header = f"📁 <b>Схожі кейси Elit-Web ({len(cs)}):</b>"
+    msgs, cur = [], header
+    for c in cs:
+        line = _case_line(c)
+        if len(cur) + len(line) + 1 > chunk_limit:
+            msgs.append(cur)
+            cur = ""
+        cur += ("\n" if cur else "") + line
+    if cur.strip():
+        msgs.append(cur)
+    return msgs
 
 
 async def run_analysis(msg: Message, domain: str):
@@ -129,10 +166,12 @@ async def run_analysis(msg: Message, domain: str):
         f"🔎 Аналізую <b>{html.escape(domain)}</b> ({REGIONS.get(s['db'], s['db'])}, "
         f"{'повний' if s['depth']=='full' else 'швидкий'})… (10–30 c)", parse_mode="HTML")
     try:
-        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True)
+        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True, True)
         LAST[msg.chat.id] = {"domain": domain, "res": res}
         await wait.edit_text(fmt(res), parse_mode="HTML", disable_web_page_preview=True,
                              reply_markup=result_kb(domain, bool(res.get("dotisk_queries"))))
+        for cm in fmt_cases(res):
+            await msg.answer(cm, parse_mode="HTML", disable_web_page_preview=True)
     except Exception:
         log.exception("Analyze error for %s", domain)
         await wait.edit_text(f"⚠️ Помилка аналізу <b>{html.escape(domain)}</b>. Спробуй пізніше.",
