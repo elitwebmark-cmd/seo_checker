@@ -3,7 +3,7 @@ import os, uuid, threading, concurrent.futures, functools, time, logging
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session)
 
-import qualify, config
+import qualify, config, hubspot_sync
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -251,9 +251,25 @@ def api_analyze():
     return jsonify({"results": out})
 
 
+@app.route("/hooks/hubspot-deal", methods=["POST"])
+def hubspot_deal_hook():
+    # Захист: секрет з ?secret= або заголовка. Порожній секрет = endpoint закритий.
+    secret = request.args.get("secret") or request.headers.get("X-Webhook-Secret", "")
+    if not config.HUBSPOT_WEBHOOK_SECRET or secret != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    data = request.get_json(force=True, silent=True) or {}
+    deal_id = hubspot_sync.extract_deal_id(data, request.args)
+    if not deal_id:
+        return jsonify({"ok": False, "error": "no deal id"}), 400
+    # Відповідаємо миттєво, аналіз — у фоні (HubSpot чекає лише кілька секунд)
+    threading.Thread(target=hubspot_sync.process_deal, args=(deal_id,), daemon=True).start()
+    return jsonify({"ok": True, "deal_id": deal_id})
+
+
 @app.route("/healthz")
 def healthz():
-    return {"ok": True, "has_key": bool(config.SEMRUSH_API_KEY)}
+    return {"ok": True, "has_key": bool(config.SEMRUSH_API_KEY),
+            "hubspot": bool(config.HUBSPOT_TOKEN)}
 
 
 if __name__ == "__main__":

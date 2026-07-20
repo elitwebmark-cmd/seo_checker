@@ -24,6 +24,18 @@ ADS_TIMEOUT = int(os.getenv("ADS_TIMEOUT", "25"))
 # Поріг аудиторії, з якого SMM/таргет вважаємо доречним
 SMM_FOLLOWERS_MIN = int(os.getenv("SMM_FOLLOWERS_MIN", "1000"))
 
+# --- HubSpot (авто-оцінка діла через вебхук) ---
+HUBSPOT_TOKEN = os.getenv("HUBSPOT_TOKEN", "")
+HUBSPOT_API_BASE = os.getenv("HUBSPOT_API_BASE", "https://api.hubapi.com")
+HUBSPOT_WEBHOOK_SECRET = os.getenv("HUBSPOT_WEBHOOK_SECRET", "")
+# Обробляємо лише цю воронку (порожньо = усі). За замовч. — Elit-Web/DRP.
+HUBSPOT_TEST_PIPELINE_ID = os.getenv("HUBSPOT_TEST_PIPELINE_ID", "3059032293")
+HUBSPOT_DEAL_DOMAIN_PROP = os.getenv("HUBSPOT_DEAL_DOMAIN_PROP", "domain")
+# Властивість діла для запису вердикту (порожньо = не писати)
+HUBSPOT_VERDICT_PROP = os.getenv("HUBSPOT_VERDICT_PROP", "")
+# Тягнути в оцінку контекст+соцмережі (SerpApi-квота). 0 = лише SemRush+onpage
+HUBSPOT_ENRICH = os.getenv("HUBSPOT_ENRICH", "1") not in ("0", "false", "False", "")
+
 # --- Google-таблиця з поточними клієнтами (CSV) ---
 CLIENTS_SHEET_CSV = os.getenv(
     "CLIENTS_SHEET_CSV",
