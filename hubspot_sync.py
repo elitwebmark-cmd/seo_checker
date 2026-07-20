@@ -92,13 +92,13 @@ _TH = 'style="padding:3px 10px;border-bottom:2px solid #d0d0d0;text-align:left"'
 
 def _arrow(cur, prev) -> str:
     if not prev:
-        return "▫️"
+        return "⚪"
     ch = (cur - prev) / prev
     if ch > 0.05:
-        return "🟢▲"
+        return "🟢"
     if ch < -0.05:
-        return "🔴▼"
-    return "🟡="
+        return "🔴"
+    return "🟡"
 
 
 def _url_short(url: str) -> str:
@@ -119,10 +119,10 @@ def _table(header_cells, rows) -> str:
 def _dyn_seo(hist) -> str:
     if not hist:
         return "н/д"
-    n = len(hist)
+    data = list(reversed(hist[:10]))   # найстаріші зверху, свіжі знизу
     rows = []
-    for i, h in enumerate(hist[:10]):
-        prev = hist[i + 1].get("org_traffic", 0) if i + 1 < n else 0
+    for i, h in enumerate(data):
+        prev = data[i - 1].get("org_traffic", 0) if i > 0 else 0
         rows.append([f"{_arrow(h.get('org_traffic', 0), prev)} {_ym(h.get('date'))}",
                      _fmt(h.get("org_traffic", 0)), _fmt(h.get("org_kw", 0))])
     return _table(["Міс.", "Трафік", "Ключі"], rows)
@@ -131,14 +131,23 @@ def _dyn_seo(hist) -> str:
 def _dyn_ppc(hist) -> str:
     if not hist:
         return "н/д"
-    n = len(hist)
+    data = list(reversed(hist[:10]))
     rows = []
-    for i, h in enumerate(hist[:10]):
-        prev = hist[i + 1].get("ad_traffic", 0) if i + 1 < n else 0
+    for i, h in enumerate(data):
+        prev = data[i - 1].get("ad_traffic", 0) if i > 0 else 0
         rows.append([f"{_arrow(h.get('ad_traffic', 0), prev)} {_ym(h.get('date'))}",
                      _fmt(h.get("ad_kw", 0)), _fmt(h.get("ad_traffic", 0)),
                      f"${_fmt(h.get('ad_cost', 0))}"])
     return _table(["Міс.", "Ключі", "Трафік", "Бюджет"], rows)
+
+
+def _cases_tbl(cases) -> str:
+    rows = []
+    for c in (cases or [])[:10]:
+        rows.append([_html.escape(c.get("domain", "")),
+                     _html.escape(c.get("service", "") or "—"),
+                     _html.escape(c.get("country", "") or "—")])
+    return _table(["Домен", "Послуга", "Країна"], rows)
 
 
 def _pages_traffic_tbl(pages) -> str:
@@ -257,7 +266,6 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         return f"<b>{label}:</b> {value}"
 
     p = [
-        f"{emoji} <b>SEO-кваліфікація: {v}</b> (бал {res.get('score', '—')})", "",
         "<b>ЗАГАЛЬНА ІНФОРМАЦІЯ</b>",
         _lbl("Домен", f"<b>{_html.escape(domain)}</b>"),
         _lbl("Ніша", _html.escape(niche_line)),
@@ -290,8 +298,10 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         _lbl("Висновок по SMM", _smm_conclusion(res)),
         SEP, "",
         "<b>Під які послуги підходить:</b>",
-        svc, "",
-        "<i>Автооцінка — SEO Qualifier</i>",
+        svc,
+        SEP, "",
+        "<b>НАШІ КЕЙСИ (схожа ніша):</b>",
+        _cases_tbl(res.get("cases")),
     ]
     return "<br>".join(p)
 
