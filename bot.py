@@ -100,6 +100,11 @@ def fmt(res: dict) -> str:
                          f"<a href=\"{ad['link']}\">перевірити</a>")
         else:
             lines.append(f"📣 <b>Контекст:</b> не знайдено — <a href=\"{ad['link']}\">перевірити</a>")
+    pd = res.get("paid") or {}
+    if pd.get("budget") or pd.get("keywords"):
+        b = f"~${pd['budget']}/міс" if pd.get("budget") else "н/д"
+        lines.append(f"💵 <b>Бюджет контексту</b> (SemRush, оцінка): {b} · "
+                     f"{pd.get('keywords', 0)} платних запитів")
     sc = res.get("social") or {}
     if sc.get("checked") and sc.get("found"):
         foll = sc.get("followers")

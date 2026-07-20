@@ -35,7 +35,7 @@
     </div>
   </div>
   {% endif %}
-  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) %}
+  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) %}
   <div class="sigs">
     {% if r.ads and r.ads.checked %}
     <div class="sig">
@@ -49,6 +49,13 @@
       <span class="sig-v">Не знайдено</span>
       {% endif %}
       <a class="btn-sm" href="{{ r.ads.link }}" target="_blank" rel="noopener">Transparency Center</a>
+    </div>
+    {% endif %}
+    {% if r.paid and (r.paid.budget or r.paid.keywords) %}
+    <div class="sig">
+      <span class="sig-l"><span class="sig-ico">💵</span>Бюджет контексту</span>
+      {% if r.paid.budget %}<span class="sig-v"><span class="u">~${{ "{:,}".format(r.paid.budget).replace(",", " ") }}</span>/міс</span>{% else %}<span class="sig-v">н/д</span>{% endif %}
+      <span class="sig-sub">SemRush (оцінка) · {{ r.paid.keywords }} платних запитів</span>
     </div>
     {% endif %}
     {% if r.social and r.social.checked %}

@@ -43,25 +43,33 @@ def _parse_csv(text: str) -> List[Dict[str, str]]:
 
 
 def domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
+    # Ad/At/Ac — платні (AdWords) ключі, трафік і приблизний місячний бюджет
     text = _request({
         "type": "domain_ranks",
         "domain": domain,
         "database": _db(db),
-        "export_columns": "Dn,Rk,Or,Ot,Oc",
+        "export_columns": "Dn,Rk,Or,Ot,Oc,Ad,At,Ac",
     })
     rows = _parse_csv(text)
     if not rows:
-        return {"organic_keywords": 0, "organic_traffic": 0, "rank": None}
+        return {"organic_keywords": 0, "organic_traffic": 0, "rank": None,
+                "adwords_keywords": 0, "adwords_traffic": 0, "adwords_cost": 0}
     row = rows[0]
-    def _int(k):
-        try:
-            return int(float(row.get(k, "0") or 0))
-        except ValueError:
-            return 0
+    def _int(*keys):
+        for k in keys:
+            if k in row:
+                try:
+                    return int(float(row.get(k) or 0))
+                except (ValueError, TypeError):
+                    return 0
+        return 0
     return {
         "organic_keywords": _int("Organic Keywords"),
         "organic_traffic": _int("Organic Traffic"),
         "rank": row.get("Rank"),
+        "adwords_keywords": _int("Adwords Keywords"),
+        "adwords_traffic": _int("Adwords Traffic"),
+        "adwords_cost": _int("Adwords Cost", "Adwords Traffic Cost", "Adwords Budget"),
     }
 
 
