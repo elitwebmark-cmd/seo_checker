@@ -99,6 +99,32 @@ def domain_history(domain: str, db: str = None, limit: int = 10) -> List[Dict[st
     return out
 
 
+def top_pages(domain: str, organic_traffic: int = 0, db: str = None,
+              limit: int = 10) -> List[Dict[str, Any]]:
+    """ТОП сторінок за трафіком: URL, к-сть ключів, трафік."""
+    try:
+        text = _request({
+            "type": "domain_organic_unique",
+            "domain": domain,
+            "database": _db(db),
+            "export_columns": "Ur,Pc,tr",
+            "display_limit": max(1, int(limit)),
+            "display_sort": "tr_desc",
+        })
+    except SemrushError:
+        return []
+    out = []
+    for row in _parse_csv(text):
+        url = row.get("Url") or row.get("URL") or ""
+        kw = _safe_int(row.get("Number of Keywords"))
+        trv = _safe_float(row.get("Traffic"))
+        # tr може бути часткою (0..1) або абсолютним значенням
+        traffic = int(round(trv * organic_traffic)) if 0 < trv <= 1.5 else int(round(trv))
+        if url:
+            out.append({"url": url, "keywords": kw, "traffic": traffic})
+    return out
+
+
 def organic_keywords(domain: str, pos_min: int, pos_max: int,
                      limit: int = 2000, db: str = None) -> List[Dict[str, Any]]:
     collected: List[Dict[str, Any]] = []

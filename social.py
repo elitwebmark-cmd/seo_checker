@@ -25,23 +25,25 @@ def _session() -> requests.Session:
     return s
 
 
-def find_instagram(domain: str) -> str | None:
-    """Повертає IG-handle, знайдений на головній сайту, або None."""
+def find_instagram(domain: str):
+    """(handle|None, site_reachable). site_reachable=False, якщо сайт не відкрився."""
     host = re.sub(r"^https?://", "", (domain or "").strip().lower()).split("/")[0]
     sess = _session()
+    reachable = False
     for url in (f"https://{host}", f"http://{host}"):
         try:
             r = sess.get(url, timeout=config.HTTP_TIMEOUT, allow_redirects=True)
             if r.status_code >= 400 or not r.text:
                 continue
+            reachable = True
             for m in _IG_RE.finditer(r.text):
                 handle = m.group(1).strip("/.").lower()
                 if handle and handle not in _RESERVED:
-                    return handle
-            return None
+                    return handle, True
+            return None, True
         except requests.RequestException:
             continue
-    return None
+    return None, reachable
 
 
 def _profile(handle: str) -> dict:
@@ -52,9 +54,9 @@ def _profile(handle: str) -> dict:
 
 
 def check(domain: str) -> dict:
-    handle = find_instagram(domain)
+    handle, site_reachable = find_instagram(domain)
     if not handle:
-        return {"checked": True, "found": False}
+        return {"checked": True, "found": False, "site_reachable": site_reachable}
 
     url = f"https://www.instagram.com/{handle}/"
     if not config.SERPAPI_KEY:

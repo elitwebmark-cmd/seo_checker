@@ -2,6 +2,7 @@
 алгоритмом і залишити Note на ділі. Працює лише для тестової воронки
 (HUBSPOT_TEST_PIPELINE_ID); токен приватного застосунку — у HUBSPOT_TOKEN."""
 from __future__ import annotations
+import re
 import time
 import logging
 import html as _html
@@ -85,20 +86,72 @@ def _ym(d: str) -> str:
     return f"{d[:4]}-{d[4:6]}" if len(d) >= 6 else (d or "—")
 
 
-def _hist_seo(hist) -> str:
-    if not hist:
-        return "н/д"
-    return "<br>".join(
-        f"{_ym(h.get('date'))}: трафік {_fmt(h.get('org_traffic', 0))} · ключів {_fmt(h.get('org_kw', 0))}"
-        for h in hist[:10])
+_TD = 'style="padding:3px 10px;border-bottom:1px solid #e6e6e6;white-space:nowrap"'
+_TH = 'style="padding:3px 10px;border-bottom:2px solid #d0d0d0;text-align:left"'
 
 
-def _hist_ppc(hist) -> str:
+def _arrow(cur, prev) -> str:
+    if not prev:
+        return "▫️"
+    ch = (cur - prev) / prev
+    if ch > 0.05:
+        return "🟢▲"
+    if ch < -0.05:
+        return "🔴▼"
+    return "🟡="
+
+
+def _url_short(url: str) -> str:
+    u = re.sub(r"^https?://", "", url or "")
+    parts = u.split("/", 1)
+    path = "/" + parts[1] if len(parts) > 1 and parts[1] else "/"
+    return _html.escape(path[:48])
+
+
+def _table(header_cells, rows) -> str:
+    if not rows:
+        return "н/д"
+    head = "".join(f"<th {_TH}>{c}</th>" for c in header_cells)
+    body = "".join("<tr>" + "".join(f"<td {_TD}>{c}</td>" for c in r) + "</tr>" for r in rows)
+    return f'<table style="border-collapse:collapse;font-size:13px"><tr>{head}</tr>{body}</table>'
+
+
+def _dyn_seo(hist) -> str:
     if not hist:
         return "н/д"
-    return "<br>".join(
-        f"{_ym(h.get('date'))}: ключів {_fmt(h.get('ad_kw', 0))} · трафік {_fmt(h.get('ad_traffic', 0))} · ${_fmt(h.get('ad_cost', 0))}"
-        for h in hist[:10])
+    n = len(hist)
+    rows = []
+    for i, h in enumerate(hist[:10]):
+        prev = hist[i + 1].get("org_traffic", 0) if i + 1 < n else 0
+        rows.append([f"{_arrow(h.get('org_traffic', 0), prev)} {_ym(h.get('date'))}",
+                     _fmt(h.get("org_traffic", 0)), _fmt(h.get("org_kw", 0))])
+    return _table(["Міс.", "Трафік", "Ключі"], rows)
+
+
+def _dyn_ppc(hist) -> str:
+    if not hist:
+        return "н/д"
+    n = len(hist)
+    rows = []
+    for i, h in enumerate(hist[:10]):
+        prev = hist[i + 1].get("ad_traffic", 0) if i + 1 < n else 0
+        rows.append([f"{_arrow(h.get('ad_traffic', 0), prev)} {_ym(h.get('date'))}",
+                     _fmt(h.get("ad_kw", 0)), _fmt(h.get("ad_traffic", 0)),
+                     f"${_fmt(h.get('ad_cost', 0))}"])
+    return _table(["Міс.", "Ключі", "Трафік", "Бюджет"], rows)
+
+
+def _pages_traffic_tbl(pages) -> str:
+    rows = [[_url_short(p.get("url")), _fmt(p.get("keywords", 0)), _fmt(p.get("traffic", 0))]
+            for p in (pages or [])[:10]]
+    return _table(["Сторінка", "Ключі", "Трафік"], rows)
+
+
+def _pages_seo_tbl(pages) -> str:
+    rows = [[_url_short(p.get("url")), _fmt(p.get("queries", 0)),
+             _fmt(p.get("traffic_now", 0)), _fmt(p.get("traffic_top1", 0))]
+            for p in (pages or [])[:10]]
+    return _table(["Сторінка", "Запити 11–30", "Трафік зараз", "Потенціал ТОП-1"], rows)
 
 
 def _seo_conclusion(res) -> str:
@@ -133,6 +186,8 @@ def _smm_conclusion(res) -> str:
     if not sc.get("checked"):
         return "не перевірялось"
     if not sc.get("found"):
+        if sc.get("site_reachable") is False:
+            return "Немає доступу до сайту — соцмережі не перевірено."
         return "Профіль Instagram на сайті не знайдено — потенціал з нуля."
     f = sc.get("followers") or 0
     if sc.get("is_private"):
@@ -184,42 +239,55 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         ig_line = f"@{_html.escape(sc.get('handle', ''))} · ~{_fmt(sc.get('followers') or 0)} підписн."
         reg_line = (f"залученість ~{sc.get('avg_engagement', 0)}/пост · "
                     f"{'активний' if sc.get('active') else 'активність низька'} (дати постів недоступні)")
+    elif sc.get("checked") and sc.get("site_reachable") is False:
+        ig_line, reg_line = "немає доступу до сайту — не перевірено", "—"
     elif sc.get("checked"):
         ig_line, reg_line = "профіль на сайті не знайдено", "—"
     else:
         ig_line, reg_line = "не перевірялось", "—"
 
+    contractor = res.get("contractor")
+    contractor_line = (_html.escape(contractor.get("domain")) if isinstance(contractor, dict)
+                       and contractor.get("domain") else "—")
+
     mk = {"yes": "✅", "maybe": "🟡", "no": "⛔"}
     svc = "<br>".join(f"{mk.get(s['level'], '•')} {_html.escape(s['name'])}" for s in (res.get("services") or []))
+
+    def _lbl(label, value):
+        return f"<b>{label}:</b> {value}"
 
     p = [
         f"{emoji} <b>SEO-кваліфікація: {v}</b> (бал {res.get('score', '—')})", "",
         "<b>ЗАГАЛЬНА ІНФОРМАЦІЯ</b>",
-        f"Домен: <b>{_html.escape(domain)}</b>",
-        f"Ніша: {_html.escape(niche_line)}",
-        "Підрядник: —",
-        f"Дублі в ЦРМ: {dup_txt}",
+        _lbl("Домен", f"<b>{_html.escape(domain)}</b>"),
+        _lbl("Ніша", _html.escape(niche_line)),
+        _lbl("Підрядник", contractor_line),
+        _lbl("Дублі в ЦРМ", dup_txt),
         SEP, "",
         "<b>SEO ІНФОРМАЦІЯ</b>",
-        f"Пошуковий трафік зараз: {_fmt(m.get('organic_traffic', 0))}/міс",
-        "Динаміка пошукового (10 міс.):",
-        _hist_seo(hist),
-        f"Комерц. запити ТОП 11–30: {m.get('commercial_kw_11_30', 0)} шт",
-        f"Трафік цих запитів: ~{_fmt(bn.get('traffic_now', 0))} відвідувачів/міс",
-        f"Потенційний трафік (ТОП-1): ~{_fmt(bn.get('traffic_top1', 0))}/міс",
-        f"Висновок по SEO: {_seo_conclusion(res)}",
+        _lbl("Пошуковий трафік зараз", f"{_fmt(m.get('organic_traffic', 0))}/міс"),
+        "<b>Динаміка пошукового (10 міс.):</b>",
+        _dyn_seo(hist), "",
+        _lbl("Комерц. запити ТОП 11–30", f"{m.get('commercial_kw_11_30', 0)} шт"),
+        _lbl("Трафік цих запитів", f"~{_fmt(bn.get('traffic_now', 0))} відвідувачів/міс"),
+        _lbl("Потенційний трафік (ТОП-1)", f"~{_fmt(bn.get('traffic_top1', 0))}/міс"), "",
+        "<b>ТОП комерційні сторінки по трафіку:</b>",
+        _pages_traffic_tbl(res.get("top_pages_traffic")), "",
+        "<b>ТОП сторінки по перспективі SEO:</b>",
+        _pages_seo_tbl(res.get("top_pages_seo")), "",
+        _lbl("Висновок по SEO", _seo_conclusion(res)),
         SEP, "",
         "<b>PPC ІНФОРМАЦІЯ</b>",
-        f"Контекст (Transparency): {ads_line}",
-        f"Контекст-бюджет (SemRush): {budget_line}",
-        "Динаміка PPC (10 міс.):",
-        _hist_ppc(hist),
-        f"Висновок по PPC: {_ppc_conclusion(res)}",
+        _lbl("Контекст (Transparency)", ads_line),
+        _lbl("Контекст-бюджет (SemRush)", budget_line),
+        "<b>Динаміка PPC (10 міс.):</b>",
+        _dyn_ppc(hist), "",
+        _lbl("Висновок по PPC", _ppc_conclusion(res)),
         SEP, "",
         "<b>SMM ІНФОРМАЦІЯ</b>",
-        f"Instagram: {ig_line}",
-        f"Регулярність: {reg_line}",
-        f"Висновок по SMM: {_smm_conclusion(res)}",
+        _lbl("Instagram", ig_line),
+        _lbl("Регулярність", reg_line),
+        _lbl("Висновок по SMM", _smm_conclusion(res)),
         SEP, "",
         "<b>Під які послуги підходить:</b>",
         svc, "",

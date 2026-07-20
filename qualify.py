@@ -50,6 +50,10 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         history = semrush.domain_history(domain, db=db, limit=config.HISTORY_MONTHS)
     except Exception:
         history = []
+    try:
+        top_pages_traffic = semrush.top_pages(domain, overview["organic_traffic"], db=db, limit=10)
+    except Exception:
+        top_pages_traffic = []
     kws = semrush.organic_keywords(domain, config.POS_MIN, config.POS_MAX,
                                    limit=config.KW_FETCH_LIMIT, db=db)
     commercial = [k for k in kws if _is_commercial(k, brand)]
@@ -78,6 +82,21 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "uplift": int(round(traf_top1 - traf_now)),
         "multiplier": round(traf_top1 / traf_now, 1) if traf_now > 0 else None,
     }
+
+    # --- ТОП сторінок по перспективі SEO (агрегація комерц. запитів 11-30 по URL) ---
+    _page_agg = {}
+    for k in commercial:
+        u = k.get("url") or ""
+        if not u:
+            continue
+        a = _page_agg.setdefault(u, {"url": u, "queries": 0, "traffic_now": 0.0, "traffic_top1": 0.0})
+        a["queries"] += 1
+        a["traffic_now"] += (k.get("volume") or 0) * _ctr(k.get("position"))
+        a["traffic_top1"] += (k.get("volume") or 0) * config.CTR_BY_POS[1]
+    top_pages_seo = sorted(_page_agg.values(), key=lambda x: x["traffic_top1"], reverse=True)[:10]
+    for a in top_pages_seo:
+        a["traffic_now"] = int(round(a["traffic_now"]))
+        a["traffic_top1"] = int(round(a["traffic_top1"]))
 
     onp = {"optimized": None, "reachable": None, "assessable": None, "status_note": None}
     if do_onpage:
@@ -224,6 +243,9 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "cases": matched_cases,
         "benefit": benefit,
         "history": history,
+        "top_pages_traffic": top_pages_traffic,
+        "top_pages_seo": top_pages_seo,
+        "contractor": onp.get("contractor") if do_onpage else None,
         "ads": ads_info,
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),

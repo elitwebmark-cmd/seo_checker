@@ -125,10 +125,36 @@ def _find_categories(base_url: str, html: str, limit: int = 3):
     return cats[:limit]
 
 
+CONTRACTOR_KW = ("просуванн", "seo", "оптиміз", "оптимиз", "продвиж",
+                 "маркетинг", "реклам", "розкрут", "раскрут")
+
+
+def _find_contractor(base_url: str, html: str):
+    """Посилання на підрядника у футері/низу сайту (анкор із ключовими словами)."""
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+    except Exception:
+        return None
+    host = urlparse(base_url).netloc.replace("www.", "").lower()
+    scopes = soup.find_all("footer") or [soup]
+    for scope in scopes:
+        for a in scope.find_all("a", href=True):
+            anchor = (a.get_text(" ", strip=True) or "").lower()
+            if not anchor or not any(k in anchor for k in CONTRACTOR_KW):
+                continue
+            href = urljoin(base_url, a["href"])
+            netloc = urlparse(href).netloc.replace("www.", "").lower()
+            if not netloc or netloc == host or host in netloc or netloc in host:
+                continue   # внутрішнє посилання — пропускаємо
+            return {"domain": netloc, "anchor": a.get_text(" ", strip=True)[:70], "url": href}
+    return None
+
+
 def _unavailable(note: str) -> dict:
     return {"reachable": False, "assessable": False, "optimized": None,
             "status_note": note, "home": None, "categories": [],
-            "checked_pages": 0, "meta_pages_ok": 0, "seo_text_pages": 0}
+            "checked_pages": 0, "meta_pages_ok": 0, "seo_text_pages": 0,
+            "contractor": None}
 
 
 def analyze_site(domain: str) -> dict:
@@ -167,4 +193,5 @@ def analyze_site(domain: str) -> dict:
         "status_note": "ok",
         "home": home, "categories": cats,
         "checked_pages": checked, "meta_pages_ok": meta_pages, "seo_text_pages": seo_text_pages,
+        "contractor": _find_contractor(base, home_html),
     }
