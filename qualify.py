@@ -118,10 +118,20 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     c3 = bool(onp.get("optimized")) if assessable else None
     c4 = (overview["organic_keywords"] >= config.STRUCTURE_KW_MIN)   # лише інформаційно
 
+    # потенціал зростання за трафіком (True сильний / None середній / False замало)
+    if traf > config.GROWTH_TRAFFIC_MID:
+        growth = True
+    elif traf < config.GROWTH_TRAFFIC_MIN:
+        growth = False
+    else:
+        growth = None
+
     # --- градація ---
     if pos == 0 or traf == 0:
         verdict, color = "НЕ ПІДХОДИТЬ", "red"          # немає позицій або трафіку взагалі
-    elif c1 and c2:
+    elif growth is False:
+        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # трафіку/потенціалу замало (<MIN)
+    elif c1 and c2 and growth is True:
         if c3 is False:
             verdict, color = "ДОБРЕ", "blue"            # все ок, крім оптимізації
         else:
@@ -140,6 +150,10 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
                     f"{pos} / треба {config.COMMERCIAL_KW_MIN} — пул, з якого клієнт обирає семантику", c1))
     reasons.append(("SEO-трафік/міс",
                     f"{overview['organic_traffic']} / потрібно {config.TRAFFIC_MIN}", c2))
+    reasons.append(("Потенціал зростання (трафік/міс)",
+                    f"{traf} — <{config.GROWTH_TRAFFIC_MIN} замало · "
+                    f"{config.GROWTH_TRAFFIC_MIN}–{config.GROWTH_TRAFFIC_MID} середній · "
+                    f">{config.GROWTH_TRAFFIC_MID} сильний", growth))
     if do_onpage:
         reasons.append(("Ознаки SEO-оптимізації", _onpage_summary(onp), c3))
     reasons.append(("Широка структура (орг. ключів)",
@@ -169,7 +183,9 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "reasons": reasons,
         "dotisk_queries": [
             {"keyword": k["keyword"], "position": k["position"],
-             "volume": k["volume"], "cpc": k["cpc"], "url": k.get("url", "")}
+             "volume": k["volume"], "cpc": k["cpc"], "url": k.get("url", ""),
+             "traffic_now": int(round((k.get("volume") or 0) * _ctr(k.get("position")))),
+             "traffic_top1": int(round((k.get("volume") or 0) * config.CTR_BY_POS[1]))}
             for k in dotisk
         ],
         "onpage": onp if do_onpage else None,

@@ -128,7 +128,8 @@ def fmt(res: dict) -> str:
     if dq:
         lines.append("\n🎯 <b>Кандидати в ТОП-1:</b>")
         for q in dq[:8]:
-            lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']}")
+            lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']} · "
+                         f"у ТОП-1 ~{q.get('traffic_top1', 0)}/міс")
     return "\n".join(lines)
 
 
@@ -243,7 +244,8 @@ async def cb_allq(cb: CallbackQuery):
     dq = last["res"]["dotisk_queries"]
     lines = [f"🎯 <b>Усі кандидати в ТОП-1 — {html.escape(last['domain'])}</b>", ""]
     for q in dq:
-        lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']}")
+        lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']} · "
+                     f"у ТОП-1 ~{q.get('traffic_top1', 0)}/міс")
     await cb.message.answer("\n".join(lines), parse_mode="HTML", disable_web_page_preview=True)
     await cb.answer()
 
