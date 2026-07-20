@@ -127,20 +127,16 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         growth = None
     growth_tier = "сильний" if growth is True else ("замало" if growth is False else "середній")
 
-    # --- градація ---
-    if pos == 0 or traf == 0:
-        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # немає позицій або трафіку взагалі
-    elif growth is False:
-        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # трафіку/потенціалу замало (<MIN)
-    elif c1 and c2 and growth is True:
+    # --- градація (три рівні: Ідеально / Добре / Не підходить) ---
+    if c1 and c2 and growth is True and pos > 0 and traf > 0:
         if c3 is False:
             verdict, color = "ДОБРЕ", "blue"            # все ок, крім оптимізації
         else:
             verdict, color = "ІДЕАЛЬНО", "green"        # усі фактори зійшлись
     else:
-        verdict, color = "ПОСЕРЕДНЬО", "amber"          # є, але нижче наших норм
+        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # будь-який фактор нижче норм
 
-    _BASE = {"ІДЕАЛЬНО": 90, "ДОБРЕ": 70, "ПОСЕРЕДНЬО": 45, "НЕ ПІДХОДИТЬ": 10}
+    _BASE = {"ІДЕАЛЬНО": 90, "ДОБРЕ": 70, "НЕ ПІДХОДИТЬ": 10}
     score = _BASE[verdict] + round(min(pos / config.COMMERCIAL_KW_MIN, 1) * 9)
     score = min(score, 100)
 
@@ -227,13 +223,10 @@ def _services(verdict, commercial_count, ads_info, social_info) -> list:
     # 1) SEO з оплатою за ТОП — з вердикту
     if verdict in ("ІДЕАЛЬНО", "ДОБРЕ"):
         out.append({"name": "SEO за ТОП", "level": "yes",
-                    "note": "є комерційні позиції та трафік під офер"})
-    elif verdict == "ПОСЕРЕДНЬО":
-        out.append({"name": "SEO за ТОП", "level": "maybe",
-                    "note": "база є, але нижче норм — з доопрацюванням"})
+                    "note": "є комерційні позиції, трафік і потенціал під офер"})
     else:
         out.append({"name": "SEO за ТОП", "level": "no",
-                    "note": "немає позицій/трафіку під офер"})
+                    "note": "фактори нижче норм під офер"})
 
     # 2) Контекстна реклама
     ads_running = bool(ads_info and ads_info.get("running"))
