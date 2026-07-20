@@ -86,7 +86,30 @@
   </div>
   {% endif %}
   <div class="rc-acc">
-    {% if r.reasons %}<details><summary>критерії</summary>{% for name,val,ok in r.reasons %}<div class="q">{% if ok %}<span class="ok">✔</span>{% elif ok is none %}<span class="small">•</span>{% else %}<span class="no">✗</span>{% endif %} {{ name }}: {{ val }}</div>{% endfor %}</details>{% endif %}
+    {% if r.factors %}<details><summary>критерії</summary>
+      <div class="facts">
+      {% for f in r.factors %}
+        <div class="fact fact-{{ 'ok' if f.ok else ('na' if f.ok is none else 'no') }}">
+          <div class="fact-top">
+            <span class="fact-ic">{% if f.ok %}✓{% elif f.ok is none %}•{% else %}✕{% endif %}</span>
+            <span class="fact-name">{{ f.name }}</span>
+            <span class="fact-val">{% if f.value is number %}{{ "{:,}".format(f.value).replace(",", " ") }}{% else %}{{ f.value }}{% endif %}{% if f.target %} <span class="fact-t">/ {{ f.target }}</span>{% endif %}{% if f.mult %}<span class="fact-mult">×{{ f.mult }}</span>{% endif %}</span>
+          </div>
+          {% if f.kind == 'ratio' %}
+          <div class="fbar"><div class="fbar-fill {{ 'g' if f.ok else 'r' }}" style="width:{{ f.pct }}%"></div></div>
+          {% elif f.kind == 'growth' %}
+          <div class="fbar fbar-seg">
+            <div class="seg seg-r" style="width:{{ f.z1 }}%"></div>
+            <div class="seg seg-a" style="width:{{ f.z2 - f.z1 }}%"></div>
+            <div class="seg seg-g" style="width:{{ 100 - f.z2 }}%"></div>
+            <div class="fmark" style="left:{{ f.marker }}%"></div>
+          </div>
+          <div class="fseg-labels"><span {% if f.tier=='замало' %}class="b"{% endif %}>замало</span><span {% if f.tier=='середній' %}class="b"{% endif %}>середній</span><span {% if f.tier=='сильний' %}class="b"{% endif %}>сильний</span></div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      </div>
+    </details>{% endif %}
     {% if r.dotisk_queries %}<details><summary>дотиск у ТОП-1 ({{ r.dotisk_queries|length }})</summary>
       <div class="dtbl-wrap"><table class="dtbl">
         <thead><tr><th>Запит</th><th class="r">Позиція</th><th class="r">Частотність</th><th class="r">Трафік зараз</th><th class="r">Трафік у ТОП-1</th></tr></thead>

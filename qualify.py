@@ -125,6 +125,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         growth = False
     else:
         growth = None
+    growth_tier = "сильний" if growth is True else ("замало" if growth is False else "середній")
 
     # --- градація ---
     if pos == 0 or traf == 0:
@@ -150,14 +151,40 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
                     f"{pos} / треба {config.COMMERCIAL_KW_MIN} — пул, з якого клієнт обирає семантику", c1))
     reasons.append(("SEO-трафік/міс",
                     f"{overview['organic_traffic']} / потрібно {config.TRAFFIC_MIN}", c2))
-    reasons.append(("Потенціал зростання (трафік/міс)",
-                    f"{traf} — <{config.GROWTH_TRAFFIC_MIN} замало · "
-                    f"{config.GROWTH_TRAFFIC_MIN}–{config.GROWTH_TRAFFIC_MID} середній · "
-                    f">{config.GROWTH_TRAFFIC_MID} сильний", growth))
+    reasons.append(("Потенціал зростання (трафік/міс)", f"{traf} — {growth_tier}", growth))
     if do_onpage:
         reasons.append(("Ознаки SEO-оптимізації", _onpage_summary(onp), c3))
     reasons.append(("Широка структура (орг. ключів)",
                     f"{overview['organic_keywords']} / бажано {config.STRUCTURE_KW_MIN}", c4))
+
+    # --- структуровані фактори для веб-інфографіки ---
+    def _ratio(value, target):
+        pct = round(min(value / target, 1) * 100) if target else 0
+        mult = round(value / target, 1) if target and value >= target else None
+        return pct, mult
+
+    factors = []
+    _p, _m = _ratio(pos, config.COMMERCIAL_KW_MIN)
+    factors.append({"name": "Комерційні запити (11–30)", "value": pos,
+                    "target": config.COMMERCIAL_KW_MIN, "ok": c1, "kind": "ratio",
+                    "pct": _p, "mult": _m})
+    _p, _m = _ratio(traf, config.TRAFFIC_MIN)
+    factors.append({"name": "SEO-трафік / міс", "value": traf,
+                    "target": config.TRAFFIC_MIN, "ok": c2, "kind": "ratio",
+                    "pct": _p, "mult": _m})
+    _gmax = config.GROWTH_TRAFFIC_MID * 2 or 1
+    factors.append({"name": "Потенціал зростання", "value": traf, "ok": growth,
+                    "kind": "growth", "tier": growth_tier,
+                    "z1": round(config.GROWTH_TRAFFIC_MIN / _gmax * 100),
+                    "z2": round(config.GROWTH_TRAFFIC_MID / _gmax * 100),
+                    "marker": round(min(traf / _gmax, 1) * 100)})
+    if do_onpage:
+        factors.append({"name": "SEO-оптимізація", "value": _onpage_summary(onp),
+                        "ok": c3, "kind": "status"})
+    _p, _m = _ratio(overview["organic_keywords"], config.STRUCTURE_KW_MIN)
+    factors.append({"name": "Широка структура (орг. ключів)", "value": overview["organic_keywords"],
+                    "target": config.STRUCTURE_KW_MIN, "ok": c4, "kind": "ratio",
+                    "pct": _p, "mult": _m})
 
     return {
         "domain": domain,
@@ -180,6 +207,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "ads": ads_info,
         "social": social_info,
         "services": services,
+        "factors": factors,
         "reasons": reasons,
         "dotisk_queries": [
             {"keyword": k["keyword"], "position": k["position"],
