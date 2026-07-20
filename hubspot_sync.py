@@ -70,42 +70,161 @@ def update_verdict_prop(deal_id: str, verdict: str):
     requests.patch(url, headers=_headers(), json=body, timeout=20)
 
 
-def _note_html(domain: str, res: dict) -> str:
+SEP = "——————————"
+
+
+def _fmt(n) -> str:
+    try:
+        return f"{int(n):,}".replace(",", " ")
+    except (ValueError, TypeError):
+        return str(n)
+
+
+def _ym(d: str) -> str:
+    d = str(d or "")
+    return f"{d[:4]}-{d[4:6]}" if len(d) >= 6 else (d or "—")
+
+
+def _hist_seo(hist) -> str:
+    if not hist:
+        return "н/д"
+    return "<br>".join(
+        f"{_ym(h.get('date'))}: трафік {_fmt(h.get('org_traffic', 0))} · ключів {_fmt(h.get('org_kw', 0))}"
+        for h in hist[:10])
+
+
+def _hist_ppc(hist) -> str:
+    if not hist:
+        return "н/д"
+    return "<br>".join(
+        f"{_ym(h.get('date'))}: ключів {_fmt(h.get('ad_kw', 0))} · трафік {_fmt(h.get('ad_traffic', 0))} · ${_fmt(h.get('ad_cost', 0))}"
+        for h in hist[:10])
+
+
+def _seo_conclusion(res) -> str:
+    v = res.get("verdict"); m = res.get("metrics") or {}; nz = res.get("niche") or {}
+    pos = m.get("commercial_kw_11_30", 0); traf = m.get("organic_traffic", 0)
+    if nz.get("offer_fit") is False:
+        return "Ніша не підходить під офер SEO за ТОП."
+    if v in ("ІДЕАЛЬНО", "ДОБРЕ"):
+        return (f"Сильний кандидат: {pos} комерц. запитів у ТОП 11–30, "
+                f"трафік {_fmt(traf)}/міс, є потенціал зростання.")
+    if traf < config.GROWTH_TRAFFIC_MIN:
+        return f"Замало трафіку/потенціалу ({_fmt(traf)}/міс, треба >{_fmt(config.GROWTH_TRAFFIC_MIN)})."
+    if pos < config.COMMERCIAL_KW_MIN:
+        return f"Мало комерційних запитів у ТОП 11–30 ({pos}, треба {config.COMMERCIAL_KW_MIN}+)."
+    return "Не проходить за нашими порогами під офер."
+
+
+def _ppc_conclusion(res) -> str:
+    ad = res.get("ads") or {}; pd = res.get("paid") or {}; m = res.get("metrics") or {}
+    budget = pd.get("budget", 0); pk = pd.get("keywords", 0)
+    comm = m.get("commercial_kw_11_30", 0)
+    if ad.get("running"):
+        b = f"~${_fmt(budget)}/міс, {pk} запитів" if budget else "бюджет SemRush не оцінив"
+        return f"Уже інвестує в контекст ({b}) — є бюджет і намір; можна вести/оптимізувати."
+    if comm >= 50 or pk > 0:
+        return "Комерційна семантика є — контекст доречний для запуску."
+    return "Слабкий потенціал під контекст (мало комерційних запитів)."
+
+
+def _smm_conclusion(res) -> str:
+    sc = res.get("social") or {}
+    if not sc.get("checked"):
+        return "не перевірялось"
+    if not sc.get("found"):
+        return "Профіль Instagram на сайті не знайдено — потенціал з нуля."
+    f = sc.get("followers") or 0
+    if sc.get("is_private"):
+        return f"Профіль приватний (~{_fmt(f)} підписн.) — оцінка обмежена."
+    base = f"~{_fmt(f)} підписн., залученість ~{sc.get('avg_engagement', 0)}/пост"
+    if f >= config.SMM_FOLLOWERS_MIN:
+        return f"Є аудиторія ({base}) — SMM/таргет доречні."
+    return f"Профіль слабкий ({base}) — треба розвивати."
+
+
+def find_duplicate_deals(domain: str, exclude_id: str):
+    """Інші угоди з тим самим доменом у HubSpot. None = перевірка не вдалася."""
+    try:
+        url = f"{config.HUBSPOT_API_BASE}/crm/v3/objects/deals/search"
+        body = {"filterGroups": [{"filters": [
+            {"propertyName": config.HUBSPOT_DEAL_DOMAIN_PROP, "operator": "EQ", "value": domain}]}],
+            "properties": ["dealname"], "limit": 20}
+        r = requests.post(url, headers=_headers(), json=body, timeout=20)
+        if r.status_code != 200:
+            return None
+        rows = r.json().get("results", [])
+        return [d for d in rows if str(d.get("id")) != str(exclude_id)]
+    except Exception:
+        return None
+
+
+def _note_html(domain: str, res: dict, dups=None) -> str:
     v = res.get("verdict", "?")
     emoji = VERDICT_EMOJI.get(v, "•")
-    p = [f"{emoji} <b>SEO-кваліфікація: {v}</b> (бал {res.get('score', '—')})",
-         f"Домен: <b>{_html.escape(domain)}</b>"]
-    nz = res.get("niche") or {}
-    if nz.get("subniche"):
-        fit = {True: "підходить", False: "не підходить", None: "не визначено"}.get(nz.get("offer_fit"))
-        p.append(f"Ніша: {_html.escape(nz.get('direction_name') or '?')} → "
-                 f"{_html.escape(nz.get('industry_name') or '?')} → "
-                 f"{_html.escape(nz.get('subniche'))} ({fit} під офер)")
-    m = res.get("metrics") or {}
-    p.append(f"Комерц. запити 11–30: {m.get('commercial_kw_11_30', '—')} · "
-             f"SEO-трафік/міс: {m.get('organic_traffic', '—')}")
-    bn = res.get("benefit") or {}
-    if bn.get("queries"):
-        p.append(f"Потенціал (топ-{bn['queries']}): зараз ~{bn['traffic_now']} → "
-                 f"у ТОП-1 ~{bn['traffic_top1']}/міс")
-    pd = res.get("paid") or {}
-    if pd.get("budget") or pd.get("keywords"):
-        b = f"~${pd['budget']}/міс" if pd.get("budget") else "н/д"
-        p.append(f"Контекст-бюджет (SemRush): {b} · {pd.get('keywords', 0)} платних запитів")
-    ad = res.get("ads") or {}
-    if ad.get("checked"):
-        p.append("Контекст (Transparency): "
-                 + (f"працює, ~{ad.get('count')} оголош." if ad.get("running") else "не знайдено"))
-    sc = res.get("social") or {}
+    m = res.get("metrics") or {}; nz = res.get("niche") or {}; bn = res.get("benefit") or {}
+    pd = res.get("paid") or {}; ad = res.get("ads") or {}; sc = res.get("social") or {}
+    hist = res.get("history") or []
+
+    niche_line = (f"{nz.get('direction_name') or '?'} → {nz.get('industry_name') or '?'} → {nz.get('subniche')}"
+                  if nz.get("subniche") else "не визначено")
+    if dups is None:
+        dup_txt = "перевірка недоступна"
+    elif not dups:
+        dup_txt = "не знайдено"
+    else:
+        dup_txt = f"знайдено {len(dups)} угод(и) з цим доменом"
+
+    ads_line = ((f"працює, ~{ad.get('count')} оголош." if ad.get("running") else "не знайдено")
+                if ad.get("checked") else "не перевірялось")
+    budget_line = (f"~${_fmt(pd.get('budget'))}/міс · {pd.get('keywords', 0)} платних запитів"
+                   if (pd.get("budget") or pd.get("keywords")) else "н/д")
+
     if sc.get("checked") and sc.get("found"):
-        p.append(f"Instagram: @{_html.escape(sc.get('handle', ''))} · "
-                 f"~{sc.get('followers', '?')} підписн.")
-    sv = res.get("services") or []
-    if sv:
-        mk = {"yes": "✅", "maybe": "🟡", "no": "⛔"}
-        svc = "; ".join(f"{mk.get(s['level'], '•')} {s['name']}" for s in sv)
-        p.append(f"Послуги: {svc}")
-    p.append("<i>Автооцінка — SEO Qualifier</i>")
+        ig_line = f"@{_html.escape(sc.get('handle', ''))} · ~{_fmt(sc.get('followers') or 0)} підписн."
+        reg_line = (f"залученість ~{sc.get('avg_engagement', 0)}/пост · "
+                    f"{'активний' if sc.get('active') else 'активність низька'} (дати постів недоступні)")
+    elif sc.get("checked"):
+        ig_line, reg_line = "профіль на сайті не знайдено", "—"
+    else:
+        ig_line, reg_line = "не перевірялось", "—"
+
+    mk = {"yes": "✅", "maybe": "🟡", "no": "⛔"}
+    svc = "<br>".join(f"{mk.get(s['level'], '•')} {_html.escape(s['name'])}" for s in (res.get("services") or []))
+
+    p = [
+        f"{emoji} <b>SEO-кваліфікація: {v}</b> (бал {res.get('score', '—')})", "",
+        "<b>ЗАГАЛЬНА ІНФОРМАЦІЯ</b>",
+        f"Домен: <b>{_html.escape(domain)}</b>",
+        f"Ніша: {_html.escape(niche_line)}",
+        "Підрядник: —",
+        f"Дублі в ЦРМ: {dup_txt}",
+        SEP, "",
+        "<b>SEO ІНФОРМАЦІЯ</b>",
+        f"Пошуковий трафік зараз: {_fmt(m.get('organic_traffic', 0))}/міс",
+        "Динаміка пошукового (10 міс.):",
+        _hist_seo(hist),
+        f"Комерц. запити ТОП 11–30: {m.get('commercial_kw_11_30', 0)} шт",
+        f"Трафік цих запитів: ~{_fmt(bn.get('traffic_now', 0))} відвідувачів/міс",
+        f"Потенційний трафік (ТОП-1): ~{_fmt(bn.get('traffic_top1', 0))}/міс",
+        f"Висновок по SEO: {_seo_conclusion(res)}",
+        SEP, "",
+        "<b>PPC ІНФОРМАЦІЯ</b>",
+        f"Контекст (Transparency): {ads_line}",
+        f"Контекст-бюджет (SemRush): {budget_line}",
+        "Динаміка PPC (10 міс.):",
+        _hist_ppc(hist),
+        f"Висновок по PPC: {_ppc_conclusion(res)}",
+        SEP, "",
+        "<b>SMM ІНФОРМАЦІЯ</b>",
+        f"Instagram: {ig_line}",
+        f"Регулярність: {reg_line}",
+        f"Висновок по SMM: {_smm_conclusion(res)}",
+        SEP, "",
+        "<b>Під які послуги підходить:</b>",
+        svc, "",
+        "<i>Автооцінка — SEO Qualifier</i>",
+    ]
     return "<br>".join(p)
 
 
@@ -130,7 +249,8 @@ def process_deal_debug(deal_id: str) -> dict:
     except Exception as e:
         return {**out, "step": "qualify", "error": repr(e)[:400]}
     try:
-        out["note_id"] = create_note(deal_id, _note_html(domain, res))
+        dups = find_duplicate_deals(domain, deal_id)
+        out["note_id"] = create_note(deal_id, _note_html(domain, res, dups))
         out["ok"] = True
     except Exception as e:
         return {**out, "step": "create_note", "error": repr(e)[:600]}
@@ -175,7 +295,8 @@ def process_deal(deal_id: str):
         return
 
     try:
-        create_note(deal_id, _note_html(domain, res))
+        dups = find_duplicate_deals(domain, deal_id)
+        create_note(deal_id, _note_html(domain, res, dups))
         update_verdict_prop(deal_id, res.get("verdict", ""))
         log.info("deal %s (%s) -> %s, note created", deal_id, domain, res.get("verdict"))
     except Exception:

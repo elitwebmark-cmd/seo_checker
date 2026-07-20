@@ -73,6 +73,32 @@ def domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
     }
 
 
+def domain_history(domain: str, db: str = None, limit: int = 10) -> List[Dict[str, Any]]:
+    """Історія по місяцях: орг. ключі/трафік + платні ключі/трафік/бюджет."""
+    try:
+        text = _request({
+            "type": "domain_rank_history",
+            "domain": domain,
+            "database": _db(db),
+            "export_columns": "Rk,Or,Ot,Oc,Ad,At,Ac,Dt",
+            "display_limit": max(1, int(limit)),
+            "display_sort": "dt_desc",
+        })
+    except SemrushError:
+        return []
+    out = []
+    for row in _parse_csv(text):
+        out.append({
+            "date": (row.get("Date", "") or "")[:6],   # YYYYMM
+            "org_kw": _safe_int(row.get("Organic Keywords")),
+            "org_traffic": _safe_int(row.get("Organic Traffic")),
+            "ad_kw": _safe_int(row.get("Adwords Keywords")),
+            "ad_traffic": _safe_int(row.get("Adwords Traffic")),
+            "ad_cost": _safe_int(row.get("Adwords Cost")),
+        })
+    return out
+
+
 def organic_keywords(domain: str, pos_min: int, pos_max: int,
                      limit: int = 2000, db: str = None) -> List[Dict[str, Any]]:
     collected: List[Dict[str, Any]] = []

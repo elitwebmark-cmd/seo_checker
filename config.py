@@ -97,3 +97,4 @@ CTR_BY_POS = {
 }
 CTR_FLOOR = float(os.getenv("CTR_FLOOR", "0.002"))    # для позицій > 20
 BENEFIT_QUERIES = int(os.getenv("BENEFIT_QUERIES", "20"))   # скільки топ-запитів беремо
+HISTORY_MONTHS = int(os.getenv("HISTORY_MONTHS", "10"))     # глибина динаміки SEO/PPC

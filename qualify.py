@@ -46,6 +46,10 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     client_info = clients.check(domain)
 
     overview = semrush.domain_overview(domain, db=db)
+    try:
+        history = semrush.domain_history(domain, db=db, limit=config.HISTORY_MONTHS)
+    except Exception:
+        history = []
     kws = semrush.organic_keywords(domain, config.POS_MIN, config.POS_MAX,
                                    limit=config.KW_FETCH_LIMIT, db=db)
     commercial = [k for k in kws if _is_commercial(k, brand)]
@@ -155,7 +159,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     score = _BASE[verdict] + round(min(pos / config.COMMERCIAL_KW_MIN, 1) * 9)
     score = min(score, 100)
 
-    services = _services(verdict, commercial_count, ads_info, social_info)
+    services = _services(verdict, commercial_count, ads_info, social_info,
+                         overview["organic_keywords"])
 
     reasons = []
     reasons.append(("Ніша під офер", niche_note_full, niche_ok))
@@ -218,6 +223,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "niche": niche_info,
         "cases": matched_cases,
         "benefit": benefit,
+        "history": history,
         "ads": ads_info,
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),
@@ -237,7 +243,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     }
 
 
-def _services(verdict, commercial_count, ads_info, social_info) -> list:
+def _services(verdict, commercial_count, ads_info, social_info, organic_keywords=0) -> list:
     """Під які послуги потенційно підходить сайт. Евристика (level: yes|maybe|no)."""
     out = []
 
@@ -248,6 +254,17 @@ def _services(verdict, commercial_count, ads_info, social_info) -> list:
     else:
         out.append({"name": "SEO за ТОП", "level": "no",
                     "note": "фактори нижче норм під офер"})
+
+    # 1b) Базове (щомісячне) SEO — від наявної SEO-бази
+    if organic_keywords >= config.STRUCTURE_KW_MIN or commercial_count > 0:
+        out.append({"name": "Базове SEO", "level": "yes",
+                    "note": "є SEO-база для щомісячного просування"})
+    elif organic_keywords > 0:
+        out.append({"name": "Базове SEO", "level": "maybe",
+                    "note": "невелика SEO-база — потрібне доопрацювання"})
+    else:
+        out.append({"name": "Базове SEO", "level": "no",
+                    "note": "немає SEO-присутності"})
 
     # 2) Контекстна реклама
     ads_running = bool(ads_info and ads_info.get("running"))
