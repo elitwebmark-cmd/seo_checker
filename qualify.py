@@ -127,8 +127,23 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         growth = None
     growth_tier = "сильний" if growth is True else ("замало" if growth is False else "середній")
 
+    niche_fit = niche_info.get("offer_fit")   # True підходить / False ні / None невідомо
+    # Гейт нішею застосовуємо лише коли ніша визначена впевнено.
+    # Якщо сайт блокує / мало даних (confidence "низька") — не рубаємо.
+    niche_sure = niche_info.get("confidence") != "низька"
+    niche_blocks = (niche_fit is False) and niche_sure
+    if niche_fit is True:
+        _niche_note, niche_ok = "підходить під офер", True
+    elif niche_blocks:
+        _niche_note, niche_ok = "не підходить під офер", False
+    else:
+        _niche_note, niche_ok = "не визначено впевнено — не враховано", None
+    niche_note_full = f"{niche_info.get('subniche') or 'не визначено'} — {_niche_note}"
+
     # --- градація (три рівні: Ідеально / Добре / Не підходить) ---
-    if c1 and c2 and growth is True and pos > 0 and traf > 0:
+    if niche_blocks:
+        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # ніша не підходить під офер
+    elif c1 and c2 and growth is True and pos > 0 and traf > 0:
         if c3 is False:
             verdict, color = "ДОБРЕ", "blue"            # все ок, крім оптимізації
         else:
@@ -143,6 +158,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     services = _services(verdict, commercial_count, ads_info, social_info)
 
     reasons = []
+    reasons.append(("Ніша під офер", niche_note_full, niche_ok))
     reasons.append(("Комерц. запити для просування (11–30)",
                     f"{pos} / треба {config.COMMERCIAL_KW_MIN} — пул, з якого клієнт обирає семантику", c1))
     reasons.append(("SEO-трафік/міс",
@@ -160,6 +176,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         return pct, mult
 
     factors = []
+    factors.append({"name": "Ніша під офер", "value": niche_note_full,
+                    "ok": niche_ok, "kind": "status"})
     _p, _m = _ratio(pos, config.COMMERCIAL_KW_MIN)
     factors.append({"name": "Комерційні запити (11–30)", "value": pos,
                     "target": config.COMMERCIAL_KW_MIN, "ok": c1, "kind": "ratio",

@@ -120,6 +120,17 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").lower())
 
 
+# Підніші, що НЕ підходять під офер «SEO за ТОП» (стовпець з таблиці категоризації).
+OFFER_NO = {
+    "AUTO-01", "AUTO-03", "AUTO-04", "BEAUTY-05", "CONSTR-02", "CONSTR-03", "CONSTR-05",
+    "EDU-02", "EDU-03", "EDU-04", "EDU-05", "FASH-06", "FOOD-01", "FOOD-02", "FOOD-03",
+    "FOOD-04", "FOOD-05", "INDB2B-02", "INDB2B-06", "INDB2B-07", "IT-01", "IT-02", "IT-03",
+    "IT-05", "KIDS-05", "KIDS-06", "MED-03", "MED-04", "MED-06", "OTHER-01", "PERS-01",
+    "PERS-02", "PERS-03", "PERS-04", "PERS-05", "PROF-02", "PROF-04", "PROF-05", "SPEC-02",
+    "SPEC-03", "SPEC-04", "TRAVEL-02", "TRAVEL-03", "TRAVEL-04",
+}
+
+
 def classify(blob: str, onp: dict = None) -> dict:
     text = _norm(blob)
     best_code, best_score = None, 0
@@ -137,7 +148,7 @@ def classify(blob: str, onp: dict = None) -> dict:
     if not best_code or best_score < 1:
         return {"direction": None, "direction_name": None, "industry": None,
                 "industry_name": None, "subniche": None, "subniche_code": None,
-                "confidence": "низька"}
+                "confidence": "низька", "offer_fit": None}
 
     code, ind, name, direction, _ = next(s for s in SUB if s[0] == best_code)
 
@@ -155,4 +166,5 @@ def classify(blob: str, onp: dict = None) -> dict:
         "industry": ind, "industry_name": INDUSTRIES.get(ind),
         "subniche": name, "subniche_code": code,
         "confidence": conf,
+        "offer_fit": code not in OFFER_NO,
     }
