@@ -4,6 +4,7 @@
 from __future__ import annotations
 import re
 import time
+import threading
 import logging
 import html as _html
 import requests
@@ -11,6 +12,7 @@ import requests
 import config
 import qualify
 import niche
+import manus
 
 log = logging.getLogger("hubspot-sync")
 
@@ -379,6 +381,26 @@ def process_deal_debug(deal_id: str) -> dict:
     return out
 
 
+def _manus_worker(deal_id: str, domain: str, res: dict):
+    data = manus.run(domain, res)
+    if not data:
+        return
+    try:
+        create_note(deal_id, manus.format_html(domain, data))
+        log.info("manus note created for deal %s (%s)", deal_id, domain)
+    except Exception:
+        log.exception("manus note failed for %s", deal_id)
+
+
+def maybe_manus(deal_id: str, domain: str, res: dict):
+    """Запускає Manus у фоні лише для перспективних лідів (Ідеально/Добре)."""
+    if not config.MANUS_API_KEY:
+        return
+    if res.get("verdict") not in config.MANUS_VERDICTS:
+        return
+    threading.Thread(target=_manus_worker, args=(deal_id, domain, res), daemon=True).start()
+
+
 def process_deal(deal_id: str):
     """Викликається у фоні. Тихо ігнорує діли не з тестової воронки."""
     if not config.HUBSPOT_TOKEN:
@@ -423,3 +445,5 @@ def process_deal(deal_id: str):
         log.info("deal %s (%s) -> %s, note created", deal_id, domain, res.get("verdict"))
     except Exception:
         log.exception("create_note failed for %s", deal_id)
+    # Глибока аналітика Manus (у фоні, лише Ідеально/Добре)
+    maybe_manus(deal_id, domain, res)

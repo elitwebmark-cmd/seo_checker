@@ -37,6 +37,17 @@ HUBSPOT_VERDICT_PROP = os.getenv("HUBSPOT_VERDICT_PROP", "")
 HUBSPOT_ENRICH = os.getenv("HUBSPOT_ENRICH", "1") not in ("0", "false", "False", "")
 # Автозаповнення полів-списків діла: Индустрия/Ниша/Подниша
 HUBSPOT_SET_NICHE = os.getenv("HUBSPOT_SET_NICHE", "1") not in ("0", "false", "False", "")
+
+# --- Manus (глибока якісна аналітика, асинхронно) ---
+MANUS_API_KEY = os.getenv("MANUS_API_KEY", "")
+MANUS_API_BASE = os.getenv("MANUS_API_BASE", "https://api.manus.ai/v2")
+MANUS_AGENT_PROFILE = os.getenv("MANUS_AGENT_PROFILE", "manus-1.6")
+MANUS_POLL_TIMEOUT = int(os.getenv("MANUS_POLL_TIMEOUT", "600"))   # макс. очікування, c
+MANUS_POLL_INTERVAL = int(os.getenv("MANUS_POLL_INTERVAL", "15"))  # інтервал опитування, c
+# Manus запускаємо лише для цих вердиктів
+MANUS_VERDICTS = {"ІДЕАЛЬНО", "ДОБРЕ"}
+# Telegram-токен для доставки результату у чат (для веб-сервісу)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 # HUBSPOT_DEFINED association type: note -> deal (за замовч. 214)
 HUBSPOT_NOTE_DEAL_ASSOC_ID = int(os.getenv("HUBSPOT_NOTE_DEAL_ASSOC_ID", "214"))
 
