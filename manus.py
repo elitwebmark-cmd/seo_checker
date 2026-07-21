@@ -148,8 +148,12 @@ def create_task(domain: str, res: dict) -> str | None:
     }
     r = requests.post(f"{config.MANUS_API_BASE}/task.create", headers=_headers(),
                       json=body, timeout=30)
-    r.raise_for_status()
-    return r.json().get("task_id")
+    if not r.ok:
+        raise RuntimeError(f"HTTP {r.status_code}: {r.text[:500]}")
+    data = r.json()
+    if not data.get("ok"):
+        raise RuntimeError(f"manus error: {data.get('error')}")
+    return data.get("task_id")
 
 
 def poll_result(task_id: str) -> dict | None:
@@ -167,12 +171,12 @@ def poll_result(task_id: str) -> dict | None:
         status = _deep_find(data, "agent_status")
         if status == "stopped":
             out = _deep_find(data, "structured_output_result")
-            if isinstance(out, str):
-                try:
-                    out = json.loads(out)
-                except Exception:
-                    pass
-            return out if isinstance(out, dict) else None
+            if isinstance(out, dict):
+                # обгортка {success, value, error}
+                if "value" in out:
+                    return out["value"] if out.get("success", True) else None
+                return out
+            return None
         if status == "error":
             log.warning("manus task %s error", task_id)
             return None
