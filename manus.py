@@ -79,6 +79,22 @@ def _facts(domain: str, res: dict) -> str:
         f"Instagram підписників: {sc.get('followers') if sc.get('found') else 'н/д'}",
         f"Наш вердикт кваліфікації: {res.get('verdict')}",
     ]
+    hist = res.get("history") or []
+    if len(hist) >= 2:
+        newest = hist[0].get("org_traffic") or 0     # історія dt_desc: [0]=свіжий, [-1]=старий
+        oldest = hist[-1].get("org_traffic") or 0
+        if oldest:
+            ch = round((newest - oldest) / oldest * 100)
+            lines.append(f"Динаміка орг. трафіку за ~{len(hist)} міс.: {oldest} → {newest} "
+                         f"({'+' if ch >= 0 else ''}{ch}%)")
+    tpt = res.get("top_pages_traffic") or []
+    if tpt:
+        lines.append("ТОП-сторінки по трафіку: "
+                     + "; ".join(f"{p.get('url')} (~{p.get('traffic')})" for p in tpt[:3]))
+    tps = res.get("top_pages_seo") or []
+    if tps:
+        lines.append("ТОП-сторінки з потенціалом SEO (11–30): "
+                     + "; ".join(f"{p.get('url')} (потенціал ~{p.get('traffic_top1')})" for p in tps[:3]))
     return "\n".join(lines)
 
 
