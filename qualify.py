@@ -164,15 +164,16 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     niche_note_full = f"{niche_info.get('subniche') or 'не визначено'} — {_niche_note}"
 
     # --- градація (три рівні: Ідеально / Добре / Не підходить) ---
-    if niche_blocks:
-        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # ніша не підходить під офер
-    elif c1 and c2 and growth is True and pos > 0 and traf > 0:
-        if c3 is False:
-            verdict, color = "ДОБРЕ", "blue"            # все ок, крім оптимізації
-        else:
-            verdict, color = "ІДЕАЛЬНО", "green"        # усі фактори зійшлись
+    # Не підходить: ніша не та, трафік <5000 (growth False), нема позицій/трафіку,
+    # або замало комерц. запитів / трафіку під норму.
+    if niche_blocks or growth is False or pos == 0 or traf == 0 or not (c1 and c2):
+        verdict, color = "НЕ ПІДХОДИТЬ", "red"
+    elif growth is True and c3 is not False:
+        # сильний трафік (>20000) + оптимізація ок/недоступна
+        verdict, color = "ІДЕАЛЬНО", "green"
     else:
-        verdict, color = "НЕ ПІДХОДИТЬ", "red"          # будь-який фактор нижче норм
+        # трафік середній (5–20k) АБО слабка оптимізація
+        verdict, color = "ДОБРЕ", "blue"
 
     _BASE = {"ІДЕАЛЬНО": 90, "ДОБРЕ": 70, "НЕ ПІДХОДИТЬ": 10}
     score = _BASE[verdict] + round(min(pos / config.COMMERCIAL_KW_MIN, 1) * 9)
