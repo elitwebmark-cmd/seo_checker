@@ -44,6 +44,7 @@ MANUS_API_BASE = os.getenv("MANUS_API_BASE", "https://api.manus.ai/v2")
 MANUS_AGENT_PROFILE = os.getenv("MANUS_AGENT_PROFILE", "manus-1.6")
 MANUS_POLL_TIMEOUT = int(os.getenv("MANUS_POLL_TIMEOUT", "600"))   # макс. очікування, c
 MANUS_POLL_INTERVAL = int(os.getenv("MANUS_POLL_INTERVAL", "15"))  # інтервал опитування, c
+MANUS_HIDE_TASKS = os.getenv("MANUS_HIDE_TASKS", "0") in ("1", "true", "True")  # ховати в списку Manus
 # Manus запускаємо лише для цих вердиктів
 MANUS_VERDICTS = {"ІДЕАЛЬНО", "ДОБРЕ"}
 # Telegram-токен для доставки результату у чат (для веб-сервісу)

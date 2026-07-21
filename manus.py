@@ -125,7 +125,7 @@ def create_task(domain: str, res: dict) -> str | None:
         "message": {"content": [{"type": "text", "text": _prompt(domain, res)}]},
         "structured_output_schema": SCHEMA,
         "agent_profile": config.MANUS_AGENT_PROFILE,
-        "hide_in_task_list": True,
+        "hide_in_task_list": config.MANUS_HIDE_TASKS,
         "interactive_mode": False,
         "locale": "uk",
         "title": f"SEO-кваліфікація: {domain}",
