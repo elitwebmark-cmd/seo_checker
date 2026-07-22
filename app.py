@@ -3,7 +3,7 @@ import os, uuid, threading, concurrent.futures, functools, time, logging
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session)
 
-import qualify, config, hubspot_sync, manus
+import qualify, config, hubspot_sync, manus, semrush
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -291,6 +291,31 @@ def manus_test():
                         "verdict": res.get("verdict")})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:400]})
+
+
+@app.route("/traffic", methods=["POST"])
+def traffic():
+    # Пакетний збір органічного трафіку/ключів по списку доменів (серверний SemRush-ключ).
+    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    data = request.get_json(force=True, silent=True) or {}
+    domains = [str(d).strip() for d in (data.get("domains") or []) if str(d).strip()]
+    db = data.get("db")
+
+    def _one(d):
+        try:
+            ov = semrush.domain_overview(d, db=db)
+            return d, {"traffic": ov.get("organic_traffic", 0),
+                       "keywords": ov.get("organic_keywords", 0)}
+        except Exception as e:
+            return d, {"error": str(e)[:100]}
+
+    out = {}
+    if domains:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            for d, r in ex.map(_one, domains):
+                out[d] = r
+    return jsonify({"ok": True, "results": out})
 
 
 @app.route("/healthz")
