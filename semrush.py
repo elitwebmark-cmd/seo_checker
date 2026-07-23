@@ -118,6 +118,8 @@ def top_pages(domain: str, db: str = None, limit: int = 10,
         })
     except SemrushError:
         return []
+    ctr1 = config.CTR_BY_POS[1]
+    lo, hi = config.POS_MIN, config.POS_MAX
     agg = {}
     for row in _parse_csv(text):
         url = row.get("Url") or row.get("URL") or ""
@@ -125,12 +127,19 @@ def top_pages(domain: str, db: str = None, limit: int = 10,
             continue
         pos = _safe_int(row.get("Position"))
         vol = _safe_int(row.get("Search Volume"))
-        a = agg.setdefault(url, {"url": url, "keywords": 0, "traffic": 0.0})
+        a = agg.setdefault(url, {"url": url, "keywords": 0, "q_4_20": 0,
+                                 "traffic": 0.0, "traffic_pot": 0.0})
         a["keywords"] += 1
         a["traffic"] += vol * _ctr(pos)
+        if lo <= pos <= hi:                 # запити в зоні дотиску ТОП 4–20
+            a["q_4_20"] += 1
+            a["traffic_pot"] += vol * ctr1  # припускаємо вихід у ТОП-1
+        else:
+            a["traffic_pot"] += vol * _ctr(pos)
     pages = sorted(agg.values(), key=lambda x: x["traffic"], reverse=True)[:limit]
     for p in pages:
         p["traffic"] = int(round(p["traffic"]))
+        p["traffic_pot"] = int(round(p["traffic_pot"]))
     return pages
 
 

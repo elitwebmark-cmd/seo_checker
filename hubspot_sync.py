@@ -181,6 +181,21 @@ def _dyn_ppc(hist) -> str:
     return _table(["Міс.", "Ключі", "Трафік", "Бюджет"], rows)
 
 
+def _segments_tbl(seg) -> str:
+    seg = seg or {}
+    total = seg.get("total") or 0
+    if not total:
+        return "н/д"
+    s = seg.get("segments") or {}
+    L = seg.get("labels") or {}
+    order = ["top3", "p4_10", "p11_20", "p21_50", "p51_100"]
+    rows = [[L.get(k, k), _fmt(s.get(k, 0)),
+             f"{round(s.get(k, 0) / total * 100)}%"] for k in order]
+    rows.append([f"<b>Всього у ТОП-100{' (зріз)' if seg.get('capped') else ''}</b>",
+                 f"<b>{_fmt(total)}</b>", "100%"])
+    return _table(["Сегмент позицій", "Ключі", "Частка"], rows)
+
+
 def _cases_tbl(cases) -> str:
     rows = []
     for c in (cases or [])[:10]:
@@ -308,6 +323,20 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
     def _lbl(label, value):
         return f"<b>{label}:</b> {value}"
 
+    unit = "продажів" if (bn.get("conv_type") and "Покуп" in bn["conv_type"]) else "лідів"
+    econ_lines = []
+    if bn.get("conv_pct") and bn.get("leads_uplift") is not None:
+        econ_lines = [
+            _lbl(f"Прогноз (+{unit}/міс у ТОП-1)",
+                 f"+{_fmt(bn.get('leads_uplift'))} (конверсія ніші {bn.get('conv_pct')}%)"),
+            _lbl("Прогноз валового доходу/міс",
+                 f"+{_fmt(bn.get('revenue_uplift'))} ₴ (сер. чек {_fmt(bn.get('avg_check'))} ₴)"),
+        ]
+        if bn.get("profit_uplift") and bn.get("avg_margin"):
+            econ_lines.append(
+                _lbl("Прогноз прибутку/міс",
+                     f"+{_fmt(bn.get('profit_uplift'))} ₴ (маржа ніші {bn.get('avg_margin')}%)"))
+
     p = [
         "<b>ЗАГАЛЬНА ІНФОРМАЦІЯ</b>",
         _lbl("Домен", f"<b>{_html.escape(domain)}</b>"),
@@ -319,9 +348,12 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         _lbl("Пошуковий трафік зараз", f"{_fmt(m.get('organic_traffic', 0))}/міс"),
         "<b>Динаміка пошукового (12 міс.):</b>",
         _dyn_seo(hist), "",
+        "<b>Матриця позицій (органіка):</b>",
+        _segments_tbl(res.get("segments")), "",
         _lbl("Комерц. запити ТОП 4–20", f"{m.get('commercial_kw_11_30', 0)} шт"),
         _lbl("Трафік цих запитів", f"~{_fmt(bn.get('traffic_now', 0))} відвідувачів/міс"),
-        _lbl("Потенційний трафік (ТОП-1)", f"~{_fmt(bn.get('traffic_top1', 0))}/міс"), "",
+        _lbl("Потенційний трафік (ТОП-1)", f"~{_fmt(bn.get('traffic_top1', 0))}/міс"),
+        *econ_lines, "",
         "<b>ТОП комерційні сторінки по трафіку:</b>",
         _pages_traffic_tbl(res.get("top_pages_traffic")), "",
         "<b>ТОП сторінки по перспективі SEO:</b>",

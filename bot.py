@@ -85,11 +85,26 @@ def fmt(res: dict) -> str:
         lines.append(f"🧭 <b>Ніша:</b> {html.escape(nz.get('direction_name') or '?')} → "
                      f"{html.escape(nz.get('industry_name') or '?')} → "
                      f"{html.escape(nz.get('subniche'))} <i>({nz.get('confidence')})</i>")
+    seg = res.get("segments") or {}
+    if seg.get("total"):
+        s = seg.get("segments") or {}; L = seg.get("labels") or {}
+        order = ["top3", "p4_10", "p11_20", "p21_50", "p51_100"]
+        parts = " · ".join(f"{L.get(k, k)}: {s.get(k, 0)}" for k in order)
+        lines.append(f"📊 <b>Матриця позицій</b> ({seg['total']} орг. ключів у ТОП-100): {parts}")
     bn = res.get("benefit") or {}
     if bn.get("queries"):
         mul = f" · ×{bn['multiplier']}" if bn.get("multiplier") else ""
-        lines.append(f"💰 <b>Потенціал</b> (топ-{bn['queries']} зап.): зараз ~{bn['traffic_now']}/міс → "
+        lines.append(f"💰 <b>Потенціал</b> (усі {bn['queries']} комерц. запити ТОП 4–20): зараз ~{bn['traffic_now']}/міс → "
                      f"у ТОП-1 ~{bn['traffic_top1']}/міс (+{bn['uplift']}{mul})")
+        if bn.get("conv_pct") and bn.get("leads_uplift") is not None:
+            unit = "продажів" if (bn.get("conv_type") and "Покуп" in bn["conv_type"]) else "лідів"
+            rev = f"{bn['revenue_uplift']:,}".replace(",", " ")
+            chk = f"{bn['avg_check']:,}".replace(",", " ")
+            lines.append(f"    ↳ +{bn['leads_uplift']} {unit}/міс (конв. {bn['conv_pct']}%) · "
+                         f"+{rev} ₴ валового доходу/міс (сер. чек {chk} ₴)")
+            if bn.get("profit_uplift") and bn.get("avg_margin"):
+                prof = f"{bn['profit_uplift']:,}".replace(",", " ")
+                lines.append(f"    ↳ +{prof} ₴ прибутку/міс (маржа ніші {bn['avg_margin']}%)")
     ad = res.get("ads") or {}
     if ad.get("checked"):
         if ad.get("running"):

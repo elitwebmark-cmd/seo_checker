@@ -53,14 +53,25 @@
   </div>
   {% endif %}
   {% if r.benefit and r.benefit.queries %}
+  {% set unit = 'продажів' if r.benefit.conv_type and 'Покуп' in r.benefit.conv_type else 'лідів' %}
   <div class="benefit">
-    <div class="benefit-l">{% if assets.ic_chart %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_chart) }}" alt="">{% else %}💰 {% endif %}Потенціал трафіку · топ-{{ r.benefit.queries }} запитів (якщо вивести у ТОП-1)</div>
+    <div class="benefit-l">{% if assets.ic_chart %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_chart) }}" alt="">{% else %}💰 {% endif %}Потенціал · усі {{ r.benefit.queries }} комерц. запити ТОП 4–20 (якщо вивести у ТОП-1)</div>
     <div class="benefit-row">
-      <div class="ben-cell"><span class="ben-cap">зараз</span><b>{{ "{:,}".format(r.benefit.traffic_now).replace(",", " ") }}</b> /міс</div>
+      <div class="ben-cell"><span class="ben-cap">трафік зараз</span><b>{{ "{:,}".format(r.benefit.traffic_now).replace(",", " ") }}</b> /міс</div>
       <span class="ben-arrow">→</span>
-      <div class="ben-cell"><span class="ben-cap">у ТОП-1</span><b class="ben-hot">{{ "{:,}".format(r.benefit.traffic_top1).replace(",", " ") }}</b> /міс</div>
+      <div class="ben-cell"><span class="ben-cap">трафік у ТОП-1</span><b class="ben-hot">{{ "{:,}".format(r.benefit.traffic_top1).replace(",", " ") }}</b> /міс</div>
       <div class="ben-up">+{{ "{:,}".format(r.benefit.uplift).replace(",", " ") }} візитів{% if r.benefit.multiplier %} · ×{{ r.benefit.multiplier }}{% endif %}</div>
     </div>
+    {% if r.benefit.conv_pct and r.benefit.leads_uplift is not none %}
+    <div class="ben-econ">
+      <div class="ben-econ-c"><span class="ben-cap">+{{ unit }} / міс</span><b class="ben-hot">+{{ "{:,}".format(r.benefit.leads_uplift).replace(",", " ") }}</b><span class="ben-econ-sub">конверсія ніші {{ r.benefit.conv_pct }}%</span></div>
+      <div class="ben-econ-c"><span class="ben-cap">+ валовий дохід / міс</span><b class="ben-rev">+{{ "{:,}".format(r.benefit.revenue_uplift).replace(",", " ") }} ₴</b><span class="ben-econ-sub">сер. чек {{ "{:,}".format(r.benefit.avg_check).replace(",", " ") }} ₴</span></div>
+      {% if r.benefit.profit_uplift is defined and r.benefit.avg_margin %}
+      <div class="ben-econ-c"><span class="ben-cap">+ прибуток / міс</span><b class="ben-rev">+{{ "{:,}".format(r.benefit.profit_uplift).replace(",", " ") }} ₴</b><span class="ben-econ-sub">маржа ніші {{ r.benefit.avg_margin }}%</span></div>
+      {% endif %}
+    </div>
+    <div class="ben-econ-note">Прогноз від приросту трафіку у ТОП-1 · орієнтовні бенчмарки конверсії/чека по ніші</div>
+    {% endif %}
   </div>
   {% endif %}
   {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) %}
@@ -153,6 +164,16 @@
         {% endfor %}
         </tbody>
         <tfoot><tr><td>Разом</td><td></td><td></td><td class="r">{{ "{:,}".format(r.dotisk_queries|sum(attribute='traffic_now')).replace(",", " ") }}</td><td class="r pot">{{ "{:,}".format(r.dotisk_queries|sum(attribute='traffic_top1')).replace(",", " ") }}</td></tr></tfoot>
+      </table></div>
+    </details>{% endif %}
+    {% if r.top_pages_traffic %}<details><summary>ТОП-15 комерційних сторінок по трафіку ({{ r.top_pages_traffic|length }})</summary>
+      <div class="dtbl-wrap"><table class="dtbl">
+        <thead><tr><th>Сторінка</th><th class="r">Запити</th><th class="r">У ТОП 4–20</th><th class="r">Трафік зараз</th><th class="r">Потенц. трафік</th></tr></thead>
+        <tbody>
+        {% for p in r.top_pages_traffic %}
+          <tr><td class="kw">{{ p.url.replace('https://','').replace('http://','') }}</td><td class="r">{{ p.keywords }}</td><td class="r pos">{{ p.q_4_20 }}</td><td class="r">{{ "{:,}".format(p.traffic or 0).replace(",", " ") }}</td><td class="r pot">{{ "{:,}".format(p.traffic_pot or 0).replace(",", " ") }}</td></tr>
+        {% endfor %}
+        </tbody>
       </table></div>
     </details>{% endif %}
     {% if r.cases %}

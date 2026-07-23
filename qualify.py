@@ -51,7 +51,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     except Exception:
         history = []
     try:
-        top_pages_traffic = semrush.top_pages(domain, db=db, limit=10)
+        top_pages_traffic = semrush.top_pages(domain, db=db, limit=15, kw_scan=1000)
     except Exception:
         top_pages_traffic = []
     try:
@@ -73,10 +73,10 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     )[:15]
 
 
-    # --- потенційна вигода: топ-N запитів, трафік зараз vs у ТОП-1 ---
+    # --- потенційна вигода: УСІ комерц. запити в ТОП 4–20, трафік зараз vs у ТОП-1 ---
     def _ctr(p):
         return config.CTR_BY_POS.get(int(p or 99), config.CTR_FLOOR)
-    top_q = sorted(commercial, key=lambda k: k.get("volume") or 0, reverse=True)[:config.BENEFIT_QUERIES]
+    top_q = commercial   # усі комерційні запити в зоні ТОП 4–20
     traf_now = sum((k.get("volume") or 0) * _ctr(k.get("position")) for k in top_q)
     traf_top1 = sum((k.get("volume") or 0) for k in top_q) * config.CTR_BY_POS[1]
     benefit = {
@@ -120,6 +120,29 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         matched_cases = cases.match(niche_info, limit=config.CASES_LIMIT)
     except Exception:
         matched_cases = []
+
+    # --- економіка потенціалу: прогноз лідів/продажів, доходу і прибутку з приросту трафіку ---
+    _conv = niche_info.get("conv_pct")
+    _check = niche_info.get("avg_check")
+    _margin = niche_info.get("avg_margin")
+    if _conv and _check and benefit.get("queries"):
+        _leads_up = benefit["uplift"] * _conv / 100.0
+        _leads_t1 = benefit["traffic_top1"] * _conv / 100.0
+        _rev_up = _leads_up * _check
+        _rev_t1 = _leads_t1 * _check
+        benefit.update({
+            "conv_pct": _conv,
+            "avg_check": _check,
+            "avg_margin": _margin,
+            "conv_type": niche_info.get("conv_type"),
+            "leads_uplift": int(round(_leads_up)),
+            "revenue_uplift": int(round(_rev_up)),
+            "leads_top1": int(round(_leads_t1)),
+            "revenue_top1": int(round(_rev_t1)),
+        })
+        if _margin:
+            benefit["profit_uplift"] = int(round(_rev_up * _margin / 100.0))
+            benefit["profit_top1"] = int(round(_rev_t1 * _margin / 100.0))
 
     # --- контекстна реклама (лише для одного домену; інформаційно) ---
     ads_info = None
