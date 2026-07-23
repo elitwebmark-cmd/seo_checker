@@ -134,6 +134,42 @@ def top_pages(domain: str, db: str = None, limit: int = 10,
     return pages
 
 
+_SEG_BUCKETS = [("top3", 1, 3), ("p4_10", 4, 10), ("p11_20", 11, 20),
+                ("p21_50", 21, 50), ("p51_100", 51, 100)]
+_SEG_LABELS = {"top3": "ТОП 3", "p4_10": "4–10", "p11_20": "11–20",
+               "p21_50": "21–50", "p51_100": "51–100"}
+
+
+def position_segments(domain: str, db: str = None, limit: int = None) -> Dict[str, Any]:
+    """Розподіл органічних ключів по сегментах позицій (зріз на зараз).
+    Тягне позиції 1–100 (сорт. за позицією) і рахує кількість у кожному сегменті."""
+    limit = int(limit or config.SEGMENT_FETCH_LIMIT)
+    seg = {name: 0 for name, _, _ in _SEG_BUCKETS}
+    try:
+        text = _request({
+            "type": "domain_organic",
+            "domain": domain,
+            "database": _db(db),
+            "display_limit": max(1, limit),
+            "display_sort": "po_asc",
+            "display_filter": "+|Po|Lt|101",
+            "export_columns": "Po",
+        })
+    except SemrushError:
+        return {"segments": seg, "labels": _SEG_LABELS, "total": 0, "capped": False}
+    n = 0
+    for row in _parse_csv(text):
+        p = _safe_int(row.get("Position"))
+        if p <= 0:
+            continue
+        n += 1
+        for name, lo, hi in _SEG_BUCKETS:
+            if lo <= p <= hi:
+                seg[name] += 1
+                break
+    return {"segments": seg, "labels": _SEG_LABELS, "total": n, "capped": n >= limit}
+
+
 def organic_keywords(domain: str, pos_min: int, pos_max: int,
                      limit: int = 2000, db: str = None) -> List[Dict[str, Any]]:
     collected: List[Dict[str, Any]] = []

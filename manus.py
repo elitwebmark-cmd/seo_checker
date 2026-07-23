@@ -72,7 +72,7 @@ def _facts(domain: str, res: dict) -> str:
         f"Домен: {domain}",
         f"Ніша (наш класифікатор): {nz.get('direction_name')} → {nz.get('industry_name')} → {nz.get('subniche')}",
         f"Органічний трафік (SemRush): {m.get('organic_traffic')}/міс",
-        f"Комерц. запити у ТОП 11–30: {m.get('commercial_kw_11_30')}",
+        f"Комерц. запити у ТОП 4–20: {m.get('commercial_kw_11_30')}",
         f"Потенціал трафіку у ТОП-1 (топ-20 зап.): {bn.get('traffic_top1')}/міс",
         f"Контекст-бюджет (SemRush): ${pd.get('budget')}/міс, платних запитів: {pd.get('keywords')}",
         f"Контекст активний (Transparency): {'так' if ad.get('running') else 'ні/невідомо'}",
@@ -93,7 +93,7 @@ def _facts(domain: str, res: dict) -> str:
                      + "; ".join(f"{p.get('url')} (~{p.get('traffic')})" for p in tpt[:3]))
     tps = res.get("top_pages_seo") or []
     if tps:
-        lines.append("ТОП-сторінки з потенціалом SEO (11–30): "
+        lines.append("ТОП-сторінки з потенціалом SEO (4–20): "
                      + "; ".join(f"{p.get('url')} (потенціал ~{p.get('traffic_top1')})" for p in tps[:3]))
     return "\n".join(lines)
 

@@ -159,7 +159,7 @@ def _table(header_cells, rows) -> str:
 def _dyn_seo(hist) -> str:
     if not hist:
         return "н/д"
-    data = list(reversed(hist[:10]))   # найстаріші зверху, свіжі знизу
+    data = list(reversed(hist[:12]))   # найстаріші зверху, свіжі знизу
     rows = []
     for i, h in enumerate(data):
         prev = data[i - 1].get("org_traffic", 0) if i > 0 else 0
@@ -171,7 +171,7 @@ def _dyn_seo(hist) -> str:
 def _dyn_ppc(hist) -> str:
     if not hist:
         return "н/д"
-    data = list(reversed(hist[:10]))
+    data = list(reversed(hist[:12]))
     rows = []
     for i, h in enumerate(data):
         prev = data[i - 1].get("ad_traffic", 0) if i > 0 else 0
@@ -200,21 +200,24 @@ def _pages_seo_tbl(pages) -> str:
     rows = [[_url_short(p.get("url")), _fmt(p.get("queries", 0)),
              _fmt(p.get("traffic_now", 0)), _fmt(p.get("traffic_top1", 0))]
             for p in (pages or [])[:10]]
-    return _table(["Сторінка", "Запити 11–30", "Трафік зараз", "Потенціал ТОП-1"], rows)
+    return _table(["Сторінка", "Запити 4–20", "Трафік зараз", "Потенціал ТОП-1"], rows)
 
 
 def _seo_conclusion(res) -> str:
     v = res.get("verdict"); m = res.get("metrics") or {}; nz = res.get("niche") or {}
     pos = m.get("commercial_kw_11_30", 0); traf = m.get("organic_traffic", 0)
+    if res.get("niche_caveat"):
+        return (f"Критерії SEO добрі ({pos} комерц. запитів, трафік {_fmt(traf)}/міс), "
+                f"але ніша не профільна — умовно підходить, зважати на нішу.")
     if nz.get("offer_fit") is False:
         return "Ніша не підходить під офер SEO за ТОП."
     if v in ("ІДЕАЛЬНО", "ДОБРЕ"):
-        return (f"Сильний кандидат: {pos} комерц. запитів у ТОП 11–30, "
+        return (f"Сильний кандидат: {pos} комерц. запитів у ТОП 4–20, "
                 f"трафік {_fmt(traf)}/міс, є потенціал зростання.")
     if traf < config.GROWTH_TRAFFIC_MIN:
         return f"Замало трафіку/потенціалу ({_fmt(traf)}/міс, треба >{_fmt(config.GROWTH_TRAFFIC_MIN)})."
     if pos < config.COMMERCIAL_KW_MIN:
-        return f"Мало комерційних запитів у ТОП 11–30 ({pos}, треба {config.COMMERCIAL_KW_MIN}+)."
+        return f"Мало комерційних запитів у ТОП 4–20 ({pos}, треба {config.COMMERCIAL_KW_MIN}+)."
     return "Не проходить за нашими порогами під офер."
 
 
@@ -314,9 +317,9 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         SEP, "",
         "<b>SEO ІНФОРМАЦІЯ</b>",
         _lbl("Пошуковий трафік зараз", f"{_fmt(m.get('organic_traffic', 0))}/міс"),
-        "<b>Динаміка пошукового (10 міс.):</b>",
+        "<b>Динаміка пошукового (12 міс.):</b>",
         _dyn_seo(hist), "",
-        _lbl("Комерц. запити ТОП 11–30", f"{m.get('commercial_kw_11_30', 0)} шт"),
+        _lbl("Комерц. запити ТОП 4–20", f"{m.get('commercial_kw_11_30', 0)} шт"),
         _lbl("Трафік цих запитів", f"~{_fmt(bn.get('traffic_now', 0))} відвідувачів/міс"),
         _lbl("Потенційний трафік (ТОП-1)", f"~{_fmt(bn.get('traffic_top1', 0))}/міс"), "",
         "<b>ТОП комерційні сторінки по трафіку:</b>",
@@ -328,7 +331,7 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         "<b>PPC ІНФОРМАЦІЯ</b>",
         _lbl("Контекст (Transparency)", ads_line),
         _lbl("Контекст-бюджет (SemRush)", budget_line),
-        "<b>Динаміка PPC (10 міс.):</b>",
+        "<b>Динаміка PPC (12 міс.):</b>",
         _dyn_ppc(hist), "",
         _lbl("Висновок по PPC", _ppc_conclusion(res)),
         SEP, "",

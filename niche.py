@@ -120,14 +120,16 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").lower())
 
 
-# Підніші, що НЕ підходять під офер «SEO за ТОП» (стовпець з таблиці категоризації).
+# Підніші, що НЕ підходять під офер «SEO за ТОП».
+# Джерело: таблиця категоризації Elit-Web, вкладка «3. Довідник піднеш», стовпець
+# «Чи підходе під офер SEO за ТОП» (значення «Ні»). 38 із 86 піднеш.
 OFFER_NO = {
-    "AUTO-01", "AUTO-03", "AUTO-04", "BEAUTY-05", "CONSTR-02", "CONSTR-03", "CONSTR-05",
-    "EDU-02", "EDU-03", "EDU-04", "EDU-05", "FASH-06", "FOOD-01", "FOOD-02", "FOOD-03",
-    "FOOD-04", "FOOD-05", "INDB2B-02", "INDB2B-06", "INDB2B-07", "IT-01", "IT-02", "IT-03",
-    "IT-05", "KIDS-05", "KIDS-06", "MED-03", "MED-04", "MED-06", "OTHER-01", "PERS-01",
-    "PERS-02", "PERS-03", "PERS-04", "PERS-05", "PROF-02", "PROF-04", "PROF-05", "SPEC-02",
-    "SPEC-03", "SPEC-04", "TRAVEL-02", "TRAVEL-03", "TRAVEL-04",
+    "AUTO-03", "AUTO-04", "BEAUTY-05", "CONSTR-02", "CONSTR-03", "EDU-02", "EDU-03",
+    "EDU-04", "FOOD-01", "FOOD-02", "FOOD-03", "FOOD-04", "FOOD-05", "INDB2B-02",
+    "INDB2B-06", "INDB2B-07", "IT-01", "IT-02", "IT-03", "IT-05", "KIDS-05", "KIDS-06",
+    "MED-04", "OTHER-01", "PERS-01", "PERS-02", "PERS-03", "PERS-04", "PERS-05",
+    "PROF-02", "PROF-04", "PROF-05", "SPEC-02", "SPEC-03", "SPEC-04", "TRAVEL-02",
+    "TRAVEL-03", "TRAVEL-04",
 }
 
 

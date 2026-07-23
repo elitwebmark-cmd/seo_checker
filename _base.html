@@ -91,6 +91,7 @@ details{margin-top:2px}summary{cursor:pointer;color:var(--gold);font-size:13px;f
 .rcard-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .rc-domain{font-size:18px;font-weight:800;letter-spacing:-.3px}
 .rc-niche{margin-top:8px;color:var(--mute2);font-size:13px}
+.niche-caveat{margin-top:8px;display:inline-block;background:#2a1408;border:1px solid var(--amber);color:var(--gold);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:800}
 .rc-stats{display:flex;gap:28px;margin:14px 0 6px;flex-wrap:wrap}
 .stat-l{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
 .stat-v{font-size:21px;font-weight:800;margin-top:2px}
@@ -177,6 +178,27 @@ details.cases-acc[open]>summary{margin-bottom:10px}
 .fseg-labels{display:flex;justify-content:space-between;margin-top:5px;color:var(--mute);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
 .fseg-labels .b{color:var(--white)}
 .dtbl-wrap{overflow-x:auto;border:1px solid var(--bord);border-radius:12px;background:var(--bg2);margin-top:8px}
+/* ---------- SEO visualisations (traffic chart + position matrix) ---------- */
+.seoviz{display:grid;grid-template-columns:1fr;gap:12px;margin:14px 0 4px}
+@media(min-width:760px){.seoviz{grid-template-columns:1.35fr 1fr}}
+.viz-card{background:var(--bg2);border:1px solid var(--bord);border-radius:12px;padding:12px 14px}
+.viz-h{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;margin-bottom:10px}
+.viz-note{color:var(--mute);text-transform:none;letter-spacing:0;font-weight:700;font-size:11px}
+.viz-chart{width:100%}
+.viz-chart svg{display:block;width:100%;height:auto}
+.segmx{display:flex;flex-direction:column;gap:9px}
+.seg-row{display:flex;align-items:center;gap:10px}
+.seg-name{min-width:58px;font-size:12px;font-weight:800;color:var(--mute2)}
+.seg-track{flex:1;height:14px;background:var(--card2);border:1px solid var(--bord);border-radius:7px;overflow:hidden}
+.seg-fill{height:100%;border-radius:7px 0 0 7px;min-width:2px}
+.seg-top3{background:linear-gradient(90deg,#3FBF6A,#63d98a)}
+.seg-p4_10{background:linear-gradient(90deg,#8FD14F,#b6e07f)}
+.seg-p11_20{background:linear-gradient(90deg,#FFC85A,#ffd889)}
+.seg-p21_50{background:linear-gradient(90deg,#F5A623,#f7b84e)}
+.seg-p51_100{background:linear-gradient(90deg,#FD3A1F,#ff6a52)}
+.seg-cnt{min-width:48px;text-align:right;font-size:13px;font-weight:800;color:#fff}
+.seg-total{margin-top:5px;color:var(--mute);font-size:12px;font-weight:700}
+.seg-total b{color:#fff}
 /* ---------- footer ---------- */
 .foot{border-top:1px solid var(--bord);margin-top:30px}
 .foot-in{max-width:1200px;margin:0 auto;padding:18px 26px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--mute);font-size:12px;font-weight:600}

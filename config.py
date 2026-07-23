@@ -64,8 +64,8 @@ CASES_SHEET_CSV = os.getenv(
 CASES_LIMIT = int(os.getenv("CASES_LIMIT", "0"))   # 0 = усі кейси з посиланнями
 
 # --- Пороги кваліфікації (з вимог) ---
-POS_MIN = int(os.getenv("POS_MIN", "11"))
-POS_MAX = int(os.getenv("POS_MAX", "30"))
+POS_MIN = int(os.getenv("POS_MIN", "4"))
+POS_MAX = int(os.getenv("POS_MAX", "20"))
 COMMERCIAL_KW_MIN = int(os.getenv("COMMERCIAL_KW_MIN", "300"))
 TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "1000"))
 # Потенціал зростання за трафіком: <MIN — не підходить; MIN..MID — посередньо; >MID — сильний
@@ -74,6 +74,8 @@ GROWTH_TRAFFIC_MID = int(os.getenv("GROWTH_TRAFFIC_MID", "20000"))
 STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
 STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))
 KW_FETCH_LIMIT = int(os.getenv("KW_FETCH_LIMIT", "2000"))
+# Скільки орг. позицій тягнути для матриці сегментів (Top3/4-10/11-20/21-50/51-100)
+SEGMENT_FETCH_LIMIT = int(os.getenv("SEGMENT_FETCH_LIMIT", "5000"))
 
 # Intent-коди SemRush: 0=Commercial, 1=Informational, 2=Navigational, 3=Transactional
 COMMERCIAL_INTENTS = {"0", "3"}
@@ -111,4 +113,4 @@ CTR_BY_POS = {
 }
 CTR_FLOOR = float(os.getenv("CTR_FLOOR", "0.002"))    # для позицій > 20
 BENEFIT_QUERIES = int(os.getenv("BENEFIT_QUERIES", "20"))   # скільки топ-запитів беремо
-HISTORY_MONTHS = int(os.getenv("HISTORY_MONTHS", "10"))     # глибина динаміки SEO/PPC
+HISTORY_MONTHS = int(os.getenv("HISTORY_MONTHS", "12"))     # глибина динаміки SEO/PPC (рік)

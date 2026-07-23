@@ -1,7 +1,7 @@
 """Логіка кваліфікації сайту під офер 'SEO з оплатою за вихід у ТОП'."""
 from __future__ import annotations
 import re
-import config, semrush, onpage, clients, niche, cases, ads, social
+import config, semrush, onpage, clients, niche, cases, ads, social, charts
 
 
 def _brand_token(domain: str) -> str:
@@ -54,6 +54,10 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         top_pages_traffic = semrush.top_pages(domain, db=db, limit=10)
     except Exception:
         top_pages_traffic = []
+    try:
+        segments = semrush.position_segments(domain, db=db)
+    except Exception:
+        segments = {"segments": {}, "labels": {}, "total": 0, "capped": False}
     kws = semrush.organic_keywords(domain, config.POS_MIN, config.POS_MAX,
                                    limit=config.KW_FETCH_LIMIT, db=db)
     commercial = [k for k in kws if _is_commercial(k, brand)]
@@ -62,7 +66,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     def push_score(k):
         pos = k.get("position") or 99
         vol = k.get("volume") or 0
-        return vol / max(pos - 9, 1)
+        return vol / max(pos - 3, 1)
     dotisk = sorted(
         [k for k in commercial if (k.get("position") or 99) <= 20],
         key=push_score, reverse=True,
@@ -83,7 +87,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "multiplier": round(traf_top1 / traf_now, 1) if traf_now > 0 else None,
     }
 
-    # --- ТОП сторінок по перспективі SEO (агрегація комерц. запитів 11-30 по URL) ---
+    # --- ТОП сторінок по перспективі SEO (агрегація комерц. запитів 4-20 по URL) ---
     _page_agg = {}
     for k in commercial:
         u = k.get("url") or ""
@@ -133,7 +137,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             social_info = {"checked": False, "note": "помилка перевірки"}
 
-    pos = commercial_count                       # комерційні запити на 11-30
+    pos = commercial_count                       # комерційні запити на 4-20
     traf = overview["organic_traffic"]
     c1 = pos >= config.COMMERCIAL_KW_MIN
     c2 = traf >= config.TRAFFIC_MIN
@@ -164,10 +168,17 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     niche_note_full = f"{niche_info.get('subniche') or 'не визначено'} — {_niche_note}"
 
     # --- градація (три рівні: Ідеально / Добре / Не підходить) ---
-    # Не підходить: ніша не та, трафік <5000 (growth False), нема позицій/трафіку,
+    # Не підходить: трафік <5000 (growth False), нема позицій/трафіку,
     # або замало комерц. запитів / трафіку під норму.
-    if niche_blocks or growth is False or pos == 0 or traf == 0 or not (c1 and c2):
+    # Ніша сама по собі більше НЕ рубає лід: якщо всі критерії добрі, але ніша
+    # не профільна — ставимо ДОБРЕ (умовно підходить, треба зважати на нішу).
+    niche_caveat = False
+    if growth is False or pos == 0 or traf == 0 or not (c1 and c2):
         verdict, color = "НЕ ПІДХОДИТЬ", "red"
+    elif niche_blocks:
+        # критерії пройдено, але ніша не профільна — умовно підходить
+        verdict, color = "ДОБРЕ", "blue"
+        niche_caveat = True
     elif growth is True and c3 is not False:
         # сильний трафік (>20000) + оптимізація ок/недоступна
         verdict, color = "ІДЕАЛЬНО", "green"
@@ -180,11 +191,11 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     score = min(score, 100)
 
     services = _services(verdict, commercial_count, ads_info, social_info,
-                         overview["organic_keywords"])
+                         overview["organic_keywords"], niche_caveat)
 
     reasons = []
     reasons.append(("Ніша під офер", niche_note_full, niche_ok))
-    reasons.append(("Комерц. запити для просування (11–30)",
+    reasons.append(("Комерц. запити для просування (4–20)",
                     f"{pos} / треба {config.COMMERCIAL_KW_MIN} — пул, з якого клієнт обирає семантику", c1))
     reasons.append(("SEO-трафік/міс",
                     f"{overview['organic_traffic']} / потрібно {config.TRAFFIC_MIN}", c2))
@@ -204,7 +215,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     factors.append({"name": "Ніша під офер", "value": niche_note_full,
                     "ok": niche_ok, "kind": "status"})
     _p, _m = _ratio(pos, config.COMMERCIAL_KW_MIN)
-    factors.append({"name": "Комерційні запити (11–30)", "value": pos,
+    factors.append({"name": "Комерційні запити (4–20)", "value": pos,
                     "target": config.COMMERCIAL_KW_MIN, "ok": c1, "kind": "ratio",
                     "pct": _p, "mult": _m})
     _p, _m = _ratio(traf, config.TRAFFIC_MIN)
@@ -230,6 +241,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "verdict": verdict,
         "color": color,
         "score": score,
+        "niche_caveat": niche_caveat,
         "metrics": {
             "commercial_kw_11_30": commercial_count,
             "organic_traffic": overview["organic_traffic"],
@@ -244,6 +256,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "cases": matched_cases,
         "benefit": benefit,
         "history": history,
+        "segments": segments,
+        "traffic_svg": charts.traffic_svg(history, months=config.HISTORY_MONTHS),
         "top_pages_traffic": top_pages_traffic,
         "top_pages_seo": top_pages_seo,
         "contractor": onp.get("contractor") if do_onpage else None,
@@ -266,12 +280,16 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     }
 
 
-def _services(verdict, commercial_count, ads_info, social_info, organic_keywords=0) -> list:
+def _services(verdict, commercial_count, ads_info, social_info, organic_keywords=0,
+              niche_caveat=False) -> list:
     """Під які послуги потенційно підходить сайт. Евристика (level: yes|maybe|no)."""
     out = []
 
     # 1) SEO з оплатою за ТОП — з вердикту
-    if verdict in ("ІДЕАЛЬНО", "ДОБРЕ"):
+    if niche_caveat:
+        out.append({"name": "SEO за ТОП", "level": "maybe",
+                    "note": "критерії ок, але ніша не профільна — умовно підходить, зважати на нішу"})
+    elif verdict in ("ІДЕАЛЬНО", "ДОБРЕ"):
         out.append({"name": "SEO за ТОП", "level": "yes",
                     "note": "є комерційні позиції, трафік і потенціал під офер"})
     else:
