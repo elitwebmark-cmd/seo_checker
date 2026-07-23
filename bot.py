@@ -96,15 +96,19 @@ def fmt(res: dict) -> str:
         mul = f" · ×{bn['multiplier']}" if bn.get("multiplier") else ""
         lines.append(f"💰 <b>Потенціал</b> (усі {bn['queries']} комерц. запити ТОП 4–20): зараз ~{bn['traffic_now']}/міс → "
                      f"у ТОП-1 ~{bn['traffic_top1']}/міс (+{bn['uplift']}{mul})")
-        if bn.get("conv_pct") and bn.get("leads_uplift") is not None:
-            unit = "продажів" if (bn.get("conv_type") and "Покуп" in bn["conv_type"]) else "лідів"
+        if bn.get("conv_pct") and bn.get("sales_uplift") is not None:
             rev = f"{bn['revenue_uplift']:,}".replace(",", " ")
             chk = f"{bn['avg_check']:,}".replace(",", " ")
-            lines.append(f"    ↳ +{bn['leads_uplift']} {unit}/міс (конв. {bn['conv_pct']}%) · "
-                         f"+{rev} ₴ валового доходу/міс (сер. чек {chk} ₴)")
+            close = f" · заявка→продаж {bn['close_pct']}%" if bn.get("close_pct") else ""
+            q = (f" · комерц. якість {bn['conv_quality_pct']}%"
+                 if bn.get("conv_quality_pct") is not None else "")
+            lines.append(f"    ↳ +{bn['apps_uplift']} заявок/міс (конв. {bn['conv_pct']}%{q}) → "
+                         f"+{bn['sales_uplift']} продажів/міс{close}")
+            prof = ""
             if bn.get("profit_uplift") and bn.get("avg_margin"):
-                prof = f"{bn['profit_uplift']:,}".replace(",", " ")
-                lines.append(f"    ↳ +{prof} ₴ прибутку/міс (маржа ніші {bn['avg_margin']}%)")
+                pv = f"{bn['profit_uplift']:,}".replace(",", " ")
+                prof = f" · +{pv} ₴ прибутку (маржа {bn['avg_margin']}%)"
+            lines.append(f"    ↳ +{rev} ₴ валового доходу/міс (сер. чек {chk} ₴){prof}")
     ad = res.get("ads") or {}
     if ad.get("checked"):
         if ad.get("running"):

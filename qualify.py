@@ -19,6 +19,23 @@ def _looks_category(url: str) -> bool:
     return path.strip("/") != ""
 
 
+# Вага конверсійності запиту (0..1): наскільки трафік з нього реально конвертує.
+# Широкі напівінформаційні запити ("масаж", "диван") не мають задирати прогноз лідів.
+_INTENT_WEIGHT = {"3": 1.0, "0": 0.75, "1": 0.25, "2": 0.15}
+
+
+def _conv_weight(kw: dict) -> float:
+    text = (kw.get("keyword", "") or "").lower().strip()
+    intent = kw.get("intent", "")
+    w = _INTENT_WEIGHT.get(intent, 0.5)
+    has_buy = any(p in text for p in config.COMMERCIAL_PATTERNS)
+    if has_buy:
+        w = max(w, 0.95)
+    elif len(text.split()) <= 1:          # широкий хед-запит без комерц. маркера
+        w *= 0.4
+    return max(0.05, min(w, 1.0))
+
+
 def _is_commercial(kw: dict, brand: str) -> bool:
     text = kw.get("keyword", "").lower()
     intent = kw.get("intent", "")
@@ -126,19 +143,41 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     _check = niche_info.get("avg_check")
     _margin = niche_info.get("avg_margin")
     if _conv and _check and benefit.get("queries"):
-        _leads_up = benefit["uplift"] * _conv / 100.0
-        _leads_t1 = benefit["traffic_top1"] * _conv / 100.0
-        _rev_up = _leads_up * _check
-        _rev_t1 = _leads_t1 * _check
+        # комерційно-зважений трафік: широкі/напівінформаційні запити важать менше
+        _ctr1 = config.CTR_BY_POS[1]
+        w_now = w_t1 = 0.0
+        for k in commercial:
+            vol = k.get("volume") or 0
+            w = _conv_weight(k)
+            w_now += vol * _ctr(k.get("position")) * w
+            w_t1 += vol * _ctr1 * w
+        w_uplift = w_t1 - w_now
+        # воронка: заявки -> продажі (× конверсія заявка->продаж) -> дохід -> прибуток
+        _close = niche_info.get("close_pct")
+        _cf = (_close / 100.0) if _close else 1.0
+        _apps_up = w_uplift * _conv / 100.0          # заявки з приросту трафіку
+        _apps_t1 = w_t1 * _conv / 100.0
+        _sales_up = _apps_up * _cf                    # продажі
+        _sales_t1 = _apps_t1 * _cf
+        _rev_up = _sales_up * _check                  # валовий дохід
+        _rev_t1 = _sales_t1 * _check
+        # комерційна якість трафіку: частка зваженого приросту від «сирого»
+        raw_uplift = benefit.get("uplift") or 0
+        conv_quality = round(w_uplift / raw_uplift * 100) if raw_uplift > 0 else None
         benefit.update({
             "conv_pct": _conv,
             "avg_check": _check,
             "avg_margin": _margin,
+            "close_pct": _close,
             "conv_type": niche_info.get("conv_type"),
-            "leads_uplift": int(round(_leads_up)),
+            "conv_quality_pct": conv_quality,
+            "apps_uplift": int(round(_apps_up)),
+            "apps_top1": int(round(_apps_t1)),
+            "sales_uplift": int(round(_sales_up)),
+            "sales_top1": int(round(_sales_t1)),
             "revenue_uplift": int(round(_rev_up)),
-            "leads_top1": int(round(_leads_t1)),
             "revenue_top1": int(round(_rev_t1)),
+            "leads_uplift": int(round(_apps_up)),   # alias (сумісність)
         })
         if _margin:
             benefit["profit_uplift"] = int(round(_rev_up * _margin / 100.0))

@@ -323,18 +323,22 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
     def _lbl(label, value):
         return f"<b>{label}:</b> {value}"
 
-    unit = "продажів" if (bn.get("conv_type") and "Покуп" in bn["conv_type"]) else "лідів"
     econ_lines = []
-    if bn.get("conv_pct") and bn.get("leads_uplift") is not None:
+    if bn.get("conv_pct") and bn.get("sales_uplift") is not None:
+        q = (f" · комерц. якість трафіку {bn.get('conv_quality_pct')}%"
+             if bn.get("conv_quality_pct") is not None else "")
         econ_lines = [
-            _lbl(f"Прогноз (+{unit}/міс у ТОП-1)",
-                 f"+{_fmt(bn.get('leads_uplift'))} (конверсія ніші {bn.get('conv_pct')}%)"),
-            _lbl("Прогноз валового доходу/міс",
+            "<b>Прогноз воронки з приросту трафіку (у ТОП-1):</b>",
+            _lbl("Заявки/міс", f"+{_fmt(bn.get('apps_uplift'))} (конверсія сайту {bn.get('conv_pct')}%{q})"),
+            _lbl("Продажі/міс",
+                 f"+{_fmt(bn.get('sales_uplift'))}"
+                 + (f" (заявка→продаж {bn.get('close_pct')}%)" if bn.get('close_pct') else "")),
+            _lbl("Валовий дохід/міс",
                  f"+{_fmt(bn.get('revenue_uplift'))} ₴ (сер. чек {_fmt(bn.get('avg_check'))} ₴)"),
         ]
         if bn.get("profit_uplift") and bn.get("avg_margin"):
             econ_lines.append(
-                _lbl("Прогноз прибутку/міс",
+                _lbl("Прибуток/міс",
                      f"+{_fmt(bn.get('profit_uplift'))} ₴ (маржа ніші {bn.get('avg_margin')}%)"))
 
     p = [
