@@ -201,14 +201,18 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
 
     pos = commercial_count                       # комерційні запити на 4-20
     traf = overview["organic_traffic"]
-    c1 = pos >= config.COMMERCIAL_KW_MIN
+    c1_full = pos >= config.COMMERCIAL_KW_MIN     # повна норма (300)
+    c1_soft = pos >= config.COMMERCIAL_KW_SOFT    # умовно прийнятно (100–299)
+    c1 = c1_full
+    kw_caveat = c1_soft and not c1_full           # 100–299: не рубаємо, але не «Ідеально»
+    c1_state = True if c1_full else (None if c1_soft else False)
     c2 = traf >= config.TRAFFIC_MIN
     # c3: True/False лише коли оцінка можлива; інакше None (не враховується)
     c3 = bool(onp.get("optimized")) if assessable else None
     c4 = (overview["organic_keywords"] >= config.STRUCTURE_KW_MIN)   # лише інформаційно
 
     # потенціал зростання за трафіком (True сильний / None середній / False замало)
-    if traf > config.GROWTH_TRAFFIC_MID:
+    if traf >= config.GROWTH_TRAFFIC_MID:
         growth = True
     elif traf < config.GROWTH_TRAFFIC_MIN:
         growth = False
@@ -234,18 +238,19 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     # або замало комерц. запитів / трафіку під норму.
     # Ніша сама по собі більше НЕ рубає лід: якщо всі критерії добрі, але ніша
     # не профільна — ставимо ДОБРЕ (умовно підходить, треба зважати на нішу).
+    # Комерц. запити: <100 рубає; 100–299 умовно прийнятно (максимум ДОБРЕ); ≥300 повна норма.
     niche_caveat = False
-    if growth is False or pos == 0 or traf == 0 or not (c1 and c2):
+    if growth is False or pos == 0 or traf == 0 or not (c1_soft and c2):
         verdict, color = "НЕ ПІДХОДИТЬ", "red"
     elif niche_blocks:
         # критерії пройдено, але ніша не профільна — умовно підходить
         verdict, color = "ДОБРЕ", "blue"
         niche_caveat = True
-    elif growth is True and c3 is not False:
-        # сильний трафік (>20000) + оптимізація ок/недоступна
+    elif growth is True and c3 is not False and c1_full:
+        # сильний трафік (>10000) + оптимізація ок/недоступна + повна норма запитів
         verdict, color = "ІДЕАЛЬНО", "green"
     else:
-        # трафік середній (5–20k) АБО слабка оптимізація
+        # трафік середній (1–10k), слабка оптимізація, або комерц. запити 100–299
         verdict, color = "ДОБРЕ", "blue"
 
     _BASE = {"ІДЕАЛЬНО": 90, "ДОБРЕ": 70, "НЕ ПІДХОДИТЬ": 10}
@@ -258,7 +263,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     reasons = []
     reasons.append(("Ніша під офер", niche_note_full, niche_ok))
     reasons.append(("Комерц. запити для просування (4–20)",
-                    f"{pos} / треба {config.COMMERCIAL_KW_MIN} — пул, з якого клієнт обирає семантику", c1))
+                    f"{pos} / норма {config.COMMERCIAL_KW_MIN} (умовно від {config.COMMERCIAL_KW_SOFT})"
+                    + (" — умовно прийнятно" if kw_caveat else ""), c1_state))
     reasons.append(("SEO-трафік/міс",
                     f"{overview['organic_traffic']} / потрібно {config.TRAFFIC_MIN}", c2))
     reasons.append(("Потенціал зростання (трафік/міс)", f"{traf} — {growth_tier}", growth))
@@ -278,7 +284,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
                     "ok": niche_ok, "kind": "status"})
     _p, _m = _ratio(pos, config.COMMERCIAL_KW_MIN)
     factors.append({"name": "Комерційні запити (4–20)", "value": pos,
-                    "target": config.COMMERCIAL_KW_MIN, "ok": c1, "kind": "ratio",
+                    "target": config.COMMERCIAL_KW_MIN, "ok": c1_state, "kind": "ratio",
                     "pct": _p, "mult": _m})
     _p, _m = _ratio(traf, config.TRAFFIC_MIN)
     factors.append({"name": "SEO-трафік / міс", "value": traf,
@@ -304,6 +310,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "color": color,
         "score": score,
         "niche_caveat": niche_caveat,
+        "kw_caveat": kw_caveat,
         "metrics": {
             "commercial_kw_11_30": commercial_count,
             "organic_traffic": overview["organic_traffic"],

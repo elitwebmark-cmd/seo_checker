@@ -67,10 +67,12 @@ CASES_LIMIT = int(os.getenv("CASES_LIMIT", "0"))   # 0 = усі кейси з п
 POS_MIN = int(os.getenv("POS_MIN", "4"))
 POS_MAX = int(os.getenv("POS_MAX", "20"))
 COMMERCIAL_KW_MIN = int(os.getenv("COMMERCIAL_KW_MIN", "300"))
+# М'який поріг: 100..299 комерц. запитів — умовно прийнятно (не рубаємо, але не «Ідеально»)
+COMMERCIAL_KW_SOFT = int(os.getenv("COMMERCIAL_KW_SOFT", "100"))
 TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "1000"))
-# Потенціал зростання за трафіком: <MIN — не підходить; MIN..MID — посередньо; >MID — сильний
-GROWTH_TRAFFIC_MIN = int(os.getenv("GROWTH_TRAFFIC_MIN", "5000"))
-GROWTH_TRAFFIC_MID = int(os.getenv("GROWTH_TRAFFIC_MID", "20000"))
+# Потенціал зростання за трафіком: <MIN — не підходить; MIN..MID — середній; >MID — сильний
+GROWTH_TRAFFIC_MIN = int(os.getenv("GROWTH_TRAFFIC_MIN", "1000"))
+GROWTH_TRAFFIC_MID = int(os.getenv("GROWTH_TRAFFIC_MID", "10000"))
 STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
 STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))
 KW_FETCH_LIMIT = int(os.getenv("KW_FETCH_LIMIT", "2000"))

@@ -20,6 +20,7 @@
   {% if r.error %}<div class="small" style="margin-top:6px">{{ r.error }}</div>{% endif %}
   {% if r.niche and r.niche.subniche %}<div class="rc-niche">{% if assets.ic_niche %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_niche) }}" alt="">{% else %}🧭 {% endif %}{{ r.niche.direction_name }} → {{ r.niche.industry_name }} → <b>{{ r.niche.subniche }}</b> <span class="small">({{ r.niche.confidence }})</span></div>{% endif %}
   {% if r.niche_caveat %}<div class="niche-caveat">⚠️ Ніша не профільна під офер — умовно підходить, зважати на нішу</div>{% endif %}
+  {% if r.kw_caveat %}<div class="niche-caveat">⚠️ Комерц. запитів 100–299 (нижче норми 300) — умовно прийнятно, не «Ідеально»</div>{% endif %}
   <div class="rc-stats">
     <div class="stat"><div class="stat-l">Комерц. 4–20</div><div class="stat-v">{{ r.metrics.commercial_kw_11_30 if r.metrics else "—" }}</div></div>
     <div class="stat"><div class="stat-l">Трафік</div><div class="stat-v">{{ r.metrics.organic_traffic if r.metrics else "—" }}</div></div>

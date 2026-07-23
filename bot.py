@@ -69,6 +69,50 @@ def extract_domain(text: str) -> str:
     return m.group(0) if m else ""
 
 
+_SPARK = "▁▂▃▄▅▆▇█"
+_BLOCKS = " ▏▎▍▌▋▊▉█"
+
+
+def _fmtk(n) -> str:
+    n = int(n or 0)
+    if n >= 1_000_000:
+        return f"{n/1_000_000:.1f}M".replace(".0M", "M")
+    if n >= 1_000:
+        return f"{n/1000:.1f}k".replace(".0k", "k")
+    return str(n)
+
+
+def _spark(vals) -> str:
+    if not vals:
+        return ""
+    lo, hi = min(vals), max(vals)
+    rng = (hi - lo) or 1
+    return "".join(_SPARK[min(7, int((v - lo) / rng * 7 + 0.5))] for v in vals)
+
+
+def _bar(n, mx, width=13) -> str:
+    if mx <= 0:
+        return ""
+    units = n / mx * width
+    full = int(units)
+    s = "█" * full
+    if full < width:
+        s += _BLOCKS[min(8, int((units - full) * 8 + 0.5))]
+    return s
+
+
+def _matrix_pre(seg: dict) -> str:
+    s = seg.get("segments") or {}
+    L = seg.get("labels") or {}
+    order = ["top3", "p4_10", "p11_20", "p21_50", "p51_100"]
+    mx = max((s.get(k, 0) for k in order), default=0) or 1
+    rows = []
+    for k in order:
+        n = s.get(k, 0)
+        rows.append(f"{L.get(k, k):<6} {_bar(n, mx):<13} {_fmtk(n):>5}")
+    return "<pre>" + html.escape("\n".join(rows)) + "</pre>"
+
+
 def fmt(res: dict) -> str:
     if res.get("error"):
         return f"⚠️ <b>{html.escape(res['domain'])}</b>\nПомилка: {html.escape(res['error'])}"
@@ -85,12 +129,23 @@ def fmt(res: dict) -> str:
         lines.append(f"🧭 <b>Ніша:</b> {html.escape(nz.get('direction_name') or '?')} → "
                      f"{html.escape(nz.get('industry_name') or '?')} → "
                      f"{html.escape(nz.get('subniche'))} <i>({nz.get('confidence')})</i>")
+    if res.get("niche_caveat"):
+        lines.append("⚠️ <i>Ніша не профільна під офер — умовно підходить, зважати на нішу</i>")
+    if res.get("kw_caveat"):
+        lines.append("⚠️ <i>Комерц. запитів 100–299 (нижче норми 300) — умовно прийнятно</i>")
+    # --- динаміка трафіку (sparkline за 12 міс) ---
+    hist = res.get("history") or []
+    if hist:
+        vals = [max(0, int(h.get("org_traffic", 0) or 0)) for h in reversed(hist)][-12:]
+        if len(vals) >= 2 and max(vals) > 0:
+            mult = f" ×{round(vals[-1] / vals[0], 1)}" if vals[0] > 0 else ""
+            lines.append(f"📈 <b>Трафік 12 міс:</b> <code>{_spark(vals)}</code> "
+                         f"{_fmtk(vals[0])}→{_fmtk(vals[-1])}{mult}")
+    # --- матриця позицій (бар-чарт) ---
     seg = res.get("segments") or {}
     if seg.get("total"):
-        s = seg.get("segments") or {}; L = seg.get("labels") or {}
-        order = ["top3", "p4_10", "p11_20", "p21_50", "p51_100"]
-        parts = " · ".join(f"{L.get(k, k)}: {s.get(k, 0)}" for k in order)
-        lines.append(f"📊 <b>Матриця позицій</b> ({seg['total']} орг. ключів у ТОП-100): {parts}")
+        lines.append(f"📊 <b>Матриця позицій</b> ({_fmtk(seg['total'])} орг. ключів у ТОП-100):")
+        lines.append(_matrix_pre(seg))
     bn = res.get("benefit") or {}
     if bn.get("queries"):
         mul = f" · ×{bn['multiplier']}" if bn.get("multiplier") else ""
