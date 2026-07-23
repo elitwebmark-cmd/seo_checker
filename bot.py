@@ -69,7 +69,6 @@ def extract_domain(text: str) -> str:
     return m.group(0) if m else ""
 
 
-_SPARK = "▁▂▃▄▅▆▇█"
 _BLOCKS = " ▏▎▍▌▋▊▉█"
 
 
@@ -80,14 +79,6 @@ def _fmtk(n) -> str:
     if n >= 1_000:
         return f"{n/1000:.1f}k".replace(".0k", "k")
     return str(n)
-
-
-def _spark(vals) -> str:
-    if not vals:
-        return ""
-    lo, hi = min(vals), max(vals)
-    rng = (hi - lo) or 1
-    return "".join(_SPARK[min(7, int((v - lo) / rng * 7 + 0.5))] for v in vals)
 
 
 def _bar(n, mx, width=13) -> str:
