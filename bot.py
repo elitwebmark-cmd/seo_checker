@@ -101,6 +101,21 @@ def _bar(n, mx, width=13) -> str:
     return s
 
 
+def _num(n) -> str:
+    return f"{int(n or 0):,}".replace(",", " ")
+
+
+def _month(ym) -> str:
+    ym = str(ym or "")
+    return f"{ym[4:6]}.{ym[2:4]}" if len(ym) >= 6 else (ym or "—")
+
+
+def _short_url(url) -> str:
+    u = re.sub(r"^https?://", "", url or "").replace("www.", "")
+    i = u.find("/")
+    return (u[i:] if i >= 0 else "/") or "/"
+
+
 def _matrix_pre(seg: dict) -> str:
     s = seg.get("segments") or {}
     L = seg.get("labels") or {}
@@ -111,6 +126,48 @@ def _matrix_pre(seg: dict) -> str:
         n = s.get(k, 0)
         rows.append(f"{L.get(k, k):<6} {_bar(n, mx):<13} {_fmtk(n):>5}")
     return "<pre>" + html.escape("\n".join(rows)) + "</pre>"
+
+
+def _traffic_pre(hist: list) -> str:
+    pts = [h for h in list(reversed(hist))[-12:] if h.get("date")]
+    vals = [max(0, int(h.get("org_traffic", 0) or 0)) for h in pts]
+    if len(vals) < 2 or max(vals) <= 0:
+        return ""
+    mx = max(vals) or 1
+    rows = [f"{_month(h.get('date')):<6} {_bar(v, mx):<13} {_fmtk(v):>6}"
+            for h, v in zip(pts, vals)]
+    mult = f" ×{round(vals[-1] / vals[0], 1)}" if vals[0] > 0 else ""
+    head = f"📈 <b>Трафік 12 міс:</b> {_fmtk(vals[0])}→{_fmtk(vals[-1])}{mult}"
+    return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
+
+
+def _potential_pre(bn: dict) -> str:
+    mul = f" ×{bn['multiplier']}" if bn.get("multiplier") else ""
+    rows = [f"{'Трафік':<9}{_fmtk(bn['traffic_now'])} → {_fmtk(bn['traffic_top1'])}"
+            f"  (+{_fmtk(bn['uplift'])}{mul})"]
+    if bn.get("conv_pct") and bn.get("sales_uplift") is not None:
+        q = f" · якість {bn['conv_quality_pct']}%" if bn.get("conv_quality_pct") is not None else ""
+        close = f" · заявка→продаж {bn['close_pct']}%" if bn.get("close_pct") else ""
+        rows.append(f"{'Заявки':<9}+{_num(bn['apps_uplift'])}/міс   (конв {bn['conv_pct']}%{q})")
+        rows.append(f"{'Продажі':<9}+{_num(bn['sales_uplift'])}/міс{close}")
+        rows.append(f"{'Дохід':<9}+{_num(bn['revenue_uplift'])} ₴   (чек {_num(bn['avg_check'])} ₴)")
+        if bn.get("profit_uplift") and bn.get("avg_margin"):
+            rows.append(f"{'Прибуток':<9}+{_num(bn['profit_uplift'])} ₴   (маржа {bn['avg_margin']}%)")
+    head = f"💰 <b>Потенціал</b> · усі {bn['queries']} комерц. запити ТОП 4–20 → ТОП-1:"
+    return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
+
+
+def _pages_msg(res: dict) -> str:
+    pages = res.get("top_pages_traffic") or []
+    if not pages:
+        return ""
+    rows = [f"{'Сторінка':<24}{'зап':>4}{'4-20':>5}{'тр.':>7}{'потен':>7}"]
+    for p in pages[:15]:
+        rows.append(f"{_short_url(p.get('url'))[:24]:<24}{p.get('keywords', 0):>4}"
+                    f"{p.get('q_4_20', 0):>5}{_fmtk(p.get('traffic', 0)):>7}"
+                    f"{_fmtk(p.get('traffic_pot', 0)):>7}")
+    head = f"📄 <b>ТОП-{min(len(pages), 15)} сторінок по трафіку — {html.escape(res['domain'])}</b>"
+    return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
 def fmt(res: dict) -> str:
@@ -133,37 +190,22 @@ def fmt(res: dict) -> str:
         lines.append("⚠️ <i>Ніша не профільна під офер — умовно підходить, зважати на нішу</i>")
     if res.get("kw_caveat"):
         lines.append("⚠️ <i>Комерц. запитів 100–299 (нижче норми 300) — умовно прийнятно</i>")
-    # --- динаміка трафіку (sparkline за 12 міс) ---
-    hist = res.get("history") or []
-    if hist:
-        vals = [max(0, int(h.get("org_traffic", 0) or 0)) for h in reversed(hist)][-12:]
-        if len(vals) >= 2 and max(vals) > 0:
-            mult = f" ×{round(vals[-1] / vals[0], 1)}" if vals[0] > 0 else ""
-            lines.append(f"📈 <b>Трафік 12 міс:</b> <code>{_spark(vals)}</code> "
-                         f"{_fmtk(vals[0])}→{_fmtk(vals[-1])}{mult}")
+    # --- динаміка трафіку (бар-чарт за 12 міс) ---
+    tp = _traffic_pre(res.get("history") or [])
+    if tp:
+        lines.append("")
+        lines.append(tp)
     # --- матриця позицій (бар-чарт) ---
     seg = res.get("segments") or {}
     if seg.get("total"):
+        lines.append("")
         lines.append(f"📊 <b>Матриця позицій</b> ({_fmtk(seg['total'])} орг. ключів у ТОП-100):")
         lines.append(_matrix_pre(seg))
+    # --- потенціал (воронка) ---
     bn = res.get("benefit") or {}
     if bn.get("queries"):
-        mul = f" · ×{bn['multiplier']}" if bn.get("multiplier") else ""
-        lines.append(f"💰 <b>Потенціал</b> (усі {bn['queries']} комерц. запити ТОП 4–20): зараз ~{bn['traffic_now']}/міс → "
-                     f"у ТОП-1 ~{bn['traffic_top1']}/міс (+{bn['uplift']}{mul})")
-        if bn.get("conv_pct") and bn.get("sales_uplift") is not None:
-            rev = f"{bn['revenue_uplift']:,}".replace(",", " ")
-            chk = f"{bn['avg_check']:,}".replace(",", " ")
-            close = f" · заявка→продаж {bn['close_pct']}%" if bn.get("close_pct") else ""
-            q = (f" · комерц. якість {bn['conv_quality_pct']}%"
-                 if bn.get("conv_quality_pct") is not None else "")
-            lines.append(f"    ↳ +{bn['apps_uplift']} заявок/міс (конв. {bn['conv_pct']}%{q}) → "
-                         f"+{bn['sales_uplift']} продажів/міс{close}")
-            prof = ""
-            if bn.get("profit_uplift") and bn.get("avg_margin"):
-                pv = f"{bn['profit_uplift']:,}".replace(",", " ")
-                prof = f" · +{pv} ₴ прибутку (маржа {bn['avg_margin']}%)"
-            lines.append(f"    ↳ +{rev} ₴ валового доходу/міс (сер. чек {chk} ₴){prof}")
+        lines.append("")
+        lines.append(_potential_pre(bn))
     ad = res.get("ads") or {}
     if ad.get("checked"):
         if ad.get("running"):
@@ -250,6 +292,9 @@ async def run_analysis(msg: Message, domain: str):
         LAST[msg.chat.id] = {"domain": domain, "res": res}
         await wait.edit_text(fmt(res), parse_mode="HTML", disable_web_page_preview=True,
                              reply_markup=result_kb(domain, bool(res.get("dotisk_queries"))))
+        pm = _pages_msg(res)
+        if pm:
+            await msg.answer(pm, parse_mode="HTML", disable_web_page_preview=True)
         for cm in fmt_cases(res):
             await msg.answer(cm, parse_mode="HTML", disable_web_page_preview=True)
     except Exception:
