@@ -8,7 +8,7 @@ SEMRUSH_BASE = "https://api.semrush.com/"
 
 # --- Авторизація веб-інтерфейсу ---
 APP_LOGIN_EMAIL = os.getenv("APP_LOGIN_EMAIL", "marketing@elit-web.ua")
-APP_LOGIN_PASSWORD = os.getenv("APP_LOGIN_PASSWORD", "123456ms")
+APP_LOGIN_PASSWORD = os.getenv("APP_LOGIN_PASSWORD", "123456SM")
 SECRET_KEY = os.getenv("SECRET_KEY", "elitweb-seo-qualifier-change-me-please")
 
 # --- Telegram ---
