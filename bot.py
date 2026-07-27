@@ -144,7 +144,10 @@ def _potential_pre(bn: dict) -> str:
         rows.append(f"{'Дохід':<9}+{_num(bn['revenue_uplift'])} ₴   (чек {_num(bn['avg_check'])} ₴)")
         if bn.get("profit_uplift") and bn.get("avg_margin"):
             rows.append(f"{'Прибуток':<9}+{_num(bn['profit_uplift'])} ₴   (маржа {bn['avg_margin']}%)")
-    head = f"💰 <b>Потенціал</b> · усі {bn['queries']} комерц. запити ТОП 4–20 → ТОП-1:"
+    if bn.get("modeled"):
+        head = f"💰 <b>Потенціал</b> · ~{bn['queries']} комерц. запитів ТОП 4–20 (модель) → ТОП-1:"
+    else:
+        head = f"💰 <b>Потенціал</b> · усі {bn['queries']} комерц. запити ТОП 4–20 → ТОП-1:"
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 

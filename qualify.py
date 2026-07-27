@@ -1,7 +1,27 @@
 """Логіка кваліфікації сайту під офер 'SEO з оплатою за вихід у ТОП'."""
 from __future__ import annotations
-import re
+import re, math
 import config, semrush, onpage, clients, niche, cases, ads, social, charts
+
+
+def _powerlaw_total(vols, target_count) -> float:
+    """Оцінка сумарної частотності target_count запитів за степеневим (Zipf) хвостом,
+    зафітованим по вибірці найчастотніших vols (голова). Повертає голову + хвіст."""
+    vols = sorted([v for v in vols if v and v > 0], reverse=True)
+    n = len(vols)
+    head = float(sum(vols))
+    if n < 5 or target_count <= n:
+        return head
+    v1, vn = vols[0], vols[-1]
+    if v1 <= vn or vn <= 0:
+        return head + (target_count - n) * (vn or 1) * 0.5
+    b = math.log(v1 / vn) / math.log(n)
+    b = min(max(b, 0.7), 3.0)          # тримаємо показник у притомних межах
+    cap = min(int(target_count), n + 20000)
+    tail = 0.0
+    for r in range(n + 1, cap + 1):
+        tail += v1 * (r ** (-b))
+    return head + tail
 
 
 def _brand_token(domain: str) -> str:
@@ -84,7 +104,23 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     top_pages_traffic = semrush.pages_from(allkw, limit=15)
     kws = [k for k in allkw if config.POS_MIN <= (k.get("position") or 0) <= config.POS_MAX]
     commercial = [k for k in kws if _is_commercial(k, brand)]
-    commercial_count = len(commercial)
+
+    # --- модель на всю семантику: тягнемо лише «голову» (найчастотніші запити),
+    # а потенціал екстраполюємо на ПОВНУ к-сть запитів 4–20 (точну й безкоштовну
+    # з розподілу X1+X2) за степеневим хвостом частотностей.
+    _seg = (segments or {}).get("segments") or {}
+    total_4_20 = int(_seg.get("p4_10", 0)) + int(_seg.get("p11_20", 0))
+    n_all, n_comm = len(kws), len(commercial)
+    model_scale, full_comm = 1.0, n_comm
+    if total_4_20 > n_all and n_all >= 5 and n_comm >= 5:
+        comm_frac = n_comm / n_all                     # частка комерційних у вибірці
+        full_comm = max(n_comm, int(round(total_4_20 * comm_frac)))
+        _cvols = [k.get("volume") or 0 for k in commercial]
+        _head_vol = sum(_cvols) or 1
+        model_scale = min(max(_powerlaw_total(_cvols, full_comm) / _head_vol, 1.0),
+                          config.MODEL_SCALE_CAP)
+    commercial_count = full_comm          # оцінка ПОВНОЇ к-сті комерц. запитів 4–20
+    modeled = model_scale > 1.02
 
     def push_score(k):
         pos = k.get("position") or 99
@@ -95,15 +131,16 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         key=push_score, reverse=True,
     )[:15]
 
-
-    # --- потенційна вигода: УСІ комерц. запити в ТОП 4–20, трафік зараз vs у ТОП-1 ---
+    # --- потенційна вигода: голова × модель на всю семантику, трафік зараз vs у ТОП-1 ---
     def _ctr(p):
         return config.CTR_BY_POS.get(int(p or 99), config.CTR_FLOOR)
-    top_q = commercial   # усі комерційні запити в зоні ТОП 4–20
-    traf_now = sum((k.get("volume") or 0) * _ctr(k.get("position")) for k in top_q)
-    traf_top1 = sum((k.get("volume") or 0) for k in top_q) * config.CTR_BY_POS[1]
+    top_q = commercial   # голова; решту семантики додає model_scale
+    traf_now = sum((k.get("volume") or 0) * _ctr(k.get("position")) for k in top_q) * model_scale
+    traf_top1 = sum((k.get("volume") or 0) for k in top_q) * config.CTR_BY_POS[1] * model_scale
     benefit = {
-        "queries": len(top_q),
+        "queries": full_comm,
+        "queries_sampled": n_comm,
+        "modeled": modeled,
         "traffic_now": int(round(traf_now)),
         "traffic_top1": int(round(traf_top1)),
         "uplift": int(round(traf_top1 - traf_now)),
@@ -157,6 +194,9 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
             w = _conv_weight(k)
             w_now += vol * _ctr(k.get("position")) * w
             w_t1 += vol * _ctr1 * w
+        # екстраполяція на всю семантику (та сама модель, що й для трафіку)
+        w_now *= model_scale
+        w_t1 *= model_scale
         w_uplift = w_t1 - w_now
         # воронка: заявки -> продажі (× конверсія заявка->продаж) -> дохід -> прибуток
         _close = niche_info.get("close_pct")

@@ -55,7 +55,7 @@
   {% endif %}
   {% if r.benefit and r.benefit.queries %}
   <div class="benefit">
-    <div class="benefit-l">{% if assets.ic_chart %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_chart) }}" alt="">{% else %}💰 {% endif %}Потенціал · усі {{ r.benefit.queries }} комерц. запити ТОП 4–20 (якщо вивести у ТОП-1)</div>
+    <div class="benefit-l">{% if assets.ic_chart %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_chart) }}" alt="">{% else %}💰 {% endif %}Потенціал · {% if r.benefit.modeled %}~{{ r.benefit.queries }} комерц. запитів ТОП 4–20 (модель на всю семантику){% else %}усі {{ r.benefit.queries }} комерц. запити ТОП 4–20{% endif %} (якщо вивести у ТОП-1)</div>
     <div class="benefit-row">
       <div class="ben-cell"><span class="ben-cap">трафік зараз</span><b>{{ "{:,}".format(r.benefit.traffic_now).replace(",", " ") }}</b> /міс</div>
       <span class="ben-arrow">→</span>

@@ -354,7 +354,9 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         _dyn_seo(hist), "",
         "<b>Матриця позицій (органіка):</b>",
         _segments_tbl(res.get("segments")), "",
-        _lbl("Комерц. запити ТОП 4–20", f"{m.get('commercial_kw_11_30', 0)} шт"),
+        _lbl("Комерц. запити ТОП 4–20",
+             (f"~{m.get('commercial_kw_11_30', 0)} шт (оцінка на всю семантику, вибірка {bn.get('queries_sampled')})"
+              if bn.get("modeled") else f"{m.get('commercial_kw_11_30', 0)} шт")),
         _lbl("Трафік цих запитів", f"~{_fmt(bn.get('traffic_now', 0))} відвідувачів/міс"),
         _lbl("Потенційний трафік (ТОП-1)", f"~{_fmt(bn.get('traffic_top1', 0))}/міс"),
         *econ_lines, "",
