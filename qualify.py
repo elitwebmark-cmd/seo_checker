@@ -67,16 +67,15 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         history = semrush.domain_history(domain, db=db, limit=config.HISTORY_MONTHS)
     except Exception:
         history = []
+    # ОДИН витяг domain_organic (1–100) — з нього рахуємо матрицю сегментів,
+    # ТОП-сторінки і комерц. запити 4–20 (замість трьох окремих важких запитів).
     try:
-        top_pages_traffic = semrush.top_pages(domain, db=db, limit=15, kw_scan=1000)
+        allkw = semrush.organic_all(domain, db=db)
     except Exception:
-        top_pages_traffic = []
-    try:
-        segments = semrush.position_segments(domain, db=db)
-    except Exception:
-        segments = {"segments": {}, "labels": {}, "total": 0, "capped": False}
-    kws = semrush.organic_keywords(domain, config.POS_MIN, config.POS_MAX,
-                                   limit=config.KW_FETCH_LIMIT, db=db)
+        allkw = []
+    segments = semrush.segments_from(allkw, limit=config.ORGANIC_FETCH_LIMIT)
+    top_pages_traffic = semrush.pages_from(allkw, limit=15)
+    kws = [k for k in allkw if config.POS_MIN <= (k.get("position") or 0) <= config.POS_MAX]
     commercial = [k for k in kws if _is_commercial(k, brand)]
     commercial_count = len(commercial)
 

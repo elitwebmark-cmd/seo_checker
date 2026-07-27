@@ -1,6 +1,7 @@
 """Клієнт SemRush Analytics API (v3, api.semrush.com).
 Використовує ключ SEMRUSH_API_KEY. База за замовч. — google.com.ua (ua)."""
 from __future__ import annotations
+import time
 import requests
 from typing import List, Dict, Any
 import config
@@ -8,6 +9,20 @@ import config
 
 class SemrushError(Exception):
     pass
+
+
+# --- Кеш по домену: не палити ліміти на повторних перевірках того самого сайту ---
+_CACHE: Dict[str, Any] = {}
+
+
+def _cached(key: str, producer):
+    now = time.time()
+    hit = _CACHE.get(key)
+    if hit and (now - hit[0]) < config.SEMRUSH_CACHE_TTL:
+        return hit[1]
+    val = producer()
+    _CACHE[key] = (now, val)
+    return val
 
 
 def _db(db):
@@ -43,6 +58,10 @@ def _parse_csv(text: str) -> List[Dict[str, str]]:
 
 
 def domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
+    return _cached(f"ov:{_db(db)}:{domain}", lambda: _domain_overview(domain, db))
+
+
+def _domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
     # Ad/At/Ac — платні (AdWords) ключі, трафік і приблизний місячний бюджет
     text = _request({
         "type": "domain_ranks",
@@ -74,6 +93,10 @@ def domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
 
 
 def domain_history(domain: str, db: str = None, limit: int = 10) -> List[Dict[str, Any]]:
+    return _cached(f"hist:{_db(db)}:{domain}:{limit}", lambda: _domain_history(domain, db, limit))
+
+
+def _domain_history(domain: str, db: str = None, limit: int = 10) -> List[Dict[str, Any]]:
     """Історія по місяцях: орг. ключі/трафік + платні ключі/трафік/бюджет."""
     try:
         text = _request({
@@ -177,6 +200,85 @@ def position_segments(domain: str, db: str = None, limit: int = None) -> Dict[st
                 seg[name] += 1
                 break
     return {"segments": seg, "labels": _SEG_LABELS, "total": n, "capped": n >= limit}
+
+
+def organic_all(domain: str, db: str = None, limit: int = None) -> List[Dict[str, Any]]:
+    """ОДИН витяг domain_organic (позиції 1–100, сорт. за позицією) — з нього рахуємо
+    матрицю сегментів, ТОП-сторінки і комерц. запити 4–20. Кешується по домену."""
+    lim = int(limit or config.ORGANIC_FETCH_LIMIT)
+    return _cached(f"org:{_db(db)}:{domain}:{lim}", lambda: _organic_all(domain, db, lim))
+
+
+def _organic_all(domain: str, db: str, lim: int) -> List[Dict[str, Any]]:
+    try:
+        text = _request({
+            "type": "domain_organic",
+            "domain": domain,
+            "database": _db(db),
+            "display_limit": max(1, lim),
+            "display_sort": "po_asc",
+            "display_filter": "+|Po|Lt|101",
+            "export_columns": "Ph,Po,Nq,Cp,Co,Kd,In,Ur",
+        })
+    except SemrushError:
+        return []
+    out = []
+    for row in _parse_csv(text):
+        out.append({
+            "keyword": row.get("Keyword", ""),
+            "position": _safe_int(row.get("Position")),
+            "volume": _safe_int(row.get("Search Volume")),
+            "cpc": _safe_float(row.get("CPC")),
+            "competition": _safe_float(row.get("Competition")),
+            "kd": _safe_float(row.get("Keyword Difficulty")),
+            "intent": (row.get("Intents", "") or "").split(",")[0].strip(),
+            "url": row.get("Url", ""),
+        })
+    return out
+
+
+def segments_from(rows: List[Dict[str, Any]], limit: int = None) -> Dict[str, Any]:
+    """Матриця сегментів позицій з уже витягнутих рядків (без нового запиту)."""
+    seg = {name: 0 for name, _, _ in _SEG_BUCKETS}
+    n = 0
+    for r in rows:
+        p = r.get("position") or 0
+        if p <= 0:
+            continue
+        n += 1
+        for name, lo, hi in _SEG_BUCKETS:
+            if lo <= p <= hi:
+                seg[name] += 1
+                break
+    capped = bool(limit and len(rows) >= limit)
+    return {"segments": seg, "labels": _SEG_LABELS, "total": n, "capped": capped}
+
+
+def pages_from(rows: List[Dict[str, Any]], limit: int = 15) -> List[Dict[str, Any]]:
+    """ТОП-сторінки по трафіку з уже витягнутих рядків (без нового запиту)."""
+    ctr1 = config.CTR_BY_POS[1]
+    lo, hi = config.POS_MIN, config.POS_MAX
+    agg = {}
+    for r in rows:
+        url = r.get("url") or ""
+        if not url:
+            continue
+        pos = r.get("position") or 99
+        vol = r.get("volume") or 0
+        a = agg.setdefault(url, {"url": url, "keywords": 0, "q_4_20": 0,
+                                 "traffic": 0.0, "traffic_pot": 0.0})
+        a["keywords"] += 1
+        a["traffic"] += vol * _ctr(pos)
+        if lo <= pos <= hi:
+            a["q_4_20"] += 1
+            a["traffic_pot"] += vol * ctr1
+        else:
+            a["traffic_pot"] += vol * _ctr(pos)
+    pages = sorted(agg.values(), key=lambda x: x["traffic"], reverse=True)[:limit]
+    for p in pages:
+        p["traffic"] = int(round(p["traffic"]))
+        p["traffic_pot"] = int(round(p["traffic_pot"]))
+    return pages
 
 
 def organic_keywords(domain: str, pos_min: int, pos_max: int,
