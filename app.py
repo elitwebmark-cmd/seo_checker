@@ -318,6 +318,28 @@ def traffic():
     return jsonify({"ok": True, "results": out})
 
 
+@app.route("/debug/overview")
+def debug_overview():
+    # Діагностика: сира відповідь SemRush overview із колонками розподілу X0..XA.
+    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    domain = (request.args.get("domain") or "").strip().lower().replace("https://", "").replace("http://", "").strip("/")
+    db = request.args.get("db") or config.SEMRUSH_DB
+    cols = "Dn,Rk,Or,Ot,Oc,Ad,At,Ac,X0,X1,X2,X3,X4,X5,X6,X7,X8,X9,XA"
+    out = {"domain": domain, "db": db, "cols_requested": cols}
+    for rtype in ("domain_ranks", "domain_rank"):
+        try:
+            raw = semrush._request({"type": rtype, "domain": domain,
+                                    "database": db, "export_columns": cols})
+            lines = raw.splitlines()
+            out[rtype] = {"raw": raw[:600],
+                          "header_fields": len(lines[0].split(";")) if lines else 0,
+                          "value_fields": len(lines[1].split(";")) if len(lines) > 1 else 0}
+        except Exception as e:
+            out[rtype] = {"error": repr(e)[:300]}
+    return jsonify(out)
+
+
 @app.route("/healthz")
 def healthz():
     return {"ok": True, "has_key": bool(config.SEMRUSH_API_KEY),

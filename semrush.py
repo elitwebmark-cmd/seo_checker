@@ -217,9 +217,9 @@ def position_segments(domain: str, db: str = None, limit: int = None) -> Dict[st
 
 
 def organic_all(domain: str, db: str = None, limit: int = None) -> List[Dict[str, Any]]:
-    """ОДИН витяг domain_organic (позиції 1–20) — для комерц. запитів 4–20,
-    потенціалу і ТОП-сторінок. Матриця сегментів береться з overview (X0..XA),
-    тож глибші позиції тут не потрібні. Кешується по домену."""
+    """ОДИН витяг domain_organic (позиції 1–100) — для комерц. запитів 4–20,
+    потенціалу, ТОП-сторінок і фолбек-матриці. Кешується по домену.
+    Матрицю за наявності беремо з overview (X0..XA), тут — резервний розрахунок."""
     lim = int(limit or config.ORGANIC_FETCH_LIMIT)
     return _cached(f"org:{_db(db)}:{domain}:{lim}", lambda: _organic_all(domain, db, lim))
 
@@ -232,7 +232,7 @@ def _organic_all(domain: str, db: str, lim: int) -> List[Dict[str, Any]]:
             "database": _db(db),
             "display_limit": max(1, lim),
             "display_sort": "po_asc",
-            "display_filter": "+|Po|Lt|21",
+            "display_filter": "+|Po|Lt|101",
             "export_columns": "Ph,Po,Nq,Cp,Co,Kd,In,Ur",
         })
     except SemrushError:
