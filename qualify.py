@@ -73,9 +73,12 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         allkw = semrush.organic_all(domain, db=db)
     except Exception:
         allkw = []
-    # Матриця сегментів: спершу з overview (точний розподіл X0..XA, якщо API його віддав),
-    # інакше рахуємо з витягу ключів (надійний фолбек).
-    segments = overview.get("distribution")
+    # Матриця сегментів — окремим дешевим запитом domain_rank (точний розподіл X0..XA).
+    # Фолбек на розрахунок із витягу ключів, якщо розподіл недоступний.
+    try:
+        segments = semrush.position_distribution(domain, db=db)
+    except Exception:
+        segments = None
     if not (isinstance(segments, dict) and segments.get("total")):
         segments = semrush.segments_from(allkw, limit=config.ORGANIC_FETCH_LIMIT)
     top_pages_traffic = semrush.pages_from(allkw, limit=15)

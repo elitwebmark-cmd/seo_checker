@@ -62,14 +62,10 @@ def domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
 
 
 def _domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
-    # X0..XA — готовий розподіл орг. ключів по позиціях (Organic Position Distribution):
-    # X0:1-3, X1:4-10, X2:11-20, X3:21-30, X4:31-40, X5:41-50, X6:51-60 ... XA:91-100.
-    # Тягнемо його прямо тут (той самий overview-запит), без перебору ключів.
-    cols = ["Dn", "Rk", "Or", "Ot", "Oc", "Ad", "At", "Ac",
-            "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "XA"]
+    # Ad/At/Ac — платні (AdWords) ключі, трафік і приблизний місячний бюджет.
+    cols = ["Dn", "Rk", "Or", "Ot", "Oc", "Ad", "At", "Ac"]
     empty = {"organic_keywords": 0, "organic_traffic": 0, "rank": None,
-             "adwords_keywords": 0, "adwords_traffic": 0, "adwords_cost": 0,
-             "distribution": None}
+             "adwords_keywords": 0, "adwords_traffic": 0, "adwords_cost": 0}
     try:
         text = _request({
             "type": "domain_ranks",
@@ -82,19 +78,11 @@ def _domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
     lines = [ln for ln in text.splitlines() if ln.strip()]
     if len(lines) < 2:
         return empty
-    # Значення повертаються у порядку запитаних колонок → мапимо по коду.
     row = dict(zip(cols, lines[1].split(";")))
 
     def gi(code):
         return _safe_int(row.get(code))
 
-    x = [gi(f"X{n}") for n in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A")]
-    total = sum(x)
-    distribution = None
-    if total > 0:
-        seg = {"top3": x[0], "p4_10": x[1], "p11_20": x[2],
-               "p21_50": x[3] + x[4] + x[5], "p51_100": x[6] + x[7] + x[8] + x[9] + x[10]}
-        distribution = {"segments": seg, "labels": _SEG_LABELS, "total": total, "capped": False}
     return {
         "organic_keywords": gi("Or"),
         "organic_traffic": gi("Ot"),
@@ -102,8 +90,38 @@ def _domain_overview(domain: str, db: str = None) -> Dict[str, Any]:
         "adwords_keywords": gi("Ad"),
         "adwords_traffic": gi("At"),
         "adwords_cost": gi("Ac"),
-        "distribution": distribution,
     }
+
+
+def position_distribution(domain: str, db: str = None) -> Dict[str, Any]:
+    """Матриця сегментів позицій із готового розподілу SemRush (колонки X0..XA
+    у звіті domain_rank). ОДИН дешевий запит (~10 одиниць), точний і повний.
+    Кешується по домену."""
+    return _cached(f"dist:{_db(db)}:{domain}", lambda: _position_distribution(domain, db))
+
+
+def _position_distribution(domain: str, db: str = None):
+    cols = ["Dn", "Or", "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "XA"]
+    try:
+        text = _request({
+            "type": "domain_rank",              # «всі бази» — лише тут віддаються X0..XA
+            "domain": domain,
+            "database": _db(db),
+            "export_columns": ",".join(cols),
+        })
+    except SemrushError:
+        return None
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return None
+    row = dict(zip(cols, lines[1].split(";")))   # database=... фільтрує до потрібного рядка
+    x = [_safe_int(row.get(f"X{n}")) for n in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A")]
+    total = sum(x)
+    if total <= 0:
+        return None
+    seg = {"top3": x[0], "p4_10": x[1], "p11_20": x[2],
+           "p21_50": x[3] + x[4] + x[5], "p51_100": x[6] + x[7] + x[8] + x[9] + x[10]}
+    return {"segments": seg, "labels": _SEG_LABELS, "total": total, "capped": False}
 
 
 def domain_history(domain: str, db: str = None, limit: int = 10) -> List[Dict[str, Any]]:
@@ -217,9 +235,9 @@ def position_segments(domain: str, db: str = None, limit: int = None) -> Dict[st
 
 
 def organic_all(domain: str, db: str = None, limit: int = None) -> List[Dict[str, Any]]:
-    """ОДИН витяг domain_organic (позиції 1–100) — для комерц. запитів 4–20,
-    потенціалу, ТОП-сторінок і фолбек-матриці. Кешується по домену.
-    Матрицю за наявності беремо з overview (X0..XA), тут — резервний розрахунок."""
+    """ОДИН витяг domain_organic (позиції 1–20, найтрафіковіші першими) — для
+    комерц. запитів 4–20, потенціалу і ТОП-сторінок. Матриця береться окремо з
+    domain_rank (X0..XA), тож глибші позиції тут не потрібні. Кешується по домену."""
     lim = int(limit or config.ORGANIC_FETCH_LIMIT)
     return _cached(f"org:{_db(db)}:{domain}:{lim}", lambda: _organic_all(domain, db, lim))
 
@@ -231,8 +249,8 @@ def _organic_all(domain: str, db: str, lim: int) -> List[Dict[str, Any]]:
             "domain": domain,
             "database": _db(db),
             "display_limit": max(1, lim),
-            "display_sort": "po_asc",
-            "display_filter": "+|Po|Lt|101",
+            "display_sort": "nq_desc",          # найчастотніші першими (важливі для потенціалу)
+            "display_filter": "+|Po|Lt|21",     # позиції 1–20
             "export_columns": "Ph,Po,Nq,Cp,Co,Kd,In,Ur",
         })
     except SemrushError:
