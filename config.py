@@ -32,7 +32,7 @@ APIFY_META_INPUT = os.getenv(
     '{"startUrls":[{"url":"{url}"}],"count":{count},"activeStatus":"active"}')
 APIFY_TIMEOUT = int(os.getenv("APIFY_TIMEOUT", "120"))       # синхронний запуск актора може тривати довше
 META_ADS_LIMIT = int(os.getenv("META_ADS_LIMIT", "30"))      # скільки оголошень тягнути
-META_ADS_COUNTRY = os.getenv("META_ADS_COUNTRY", "UA")
+META_ADS_COUNTRY = os.getenv("META_ADS_COUNTRY", "ALL")   # ALL = усі країни (не відсікати таргет на інші гео)
 
 # --- Соцмережі (Instagram через SerpApi) ---
 # Поріг аудиторії, з якого SMM/таргет вважаємо доречним
