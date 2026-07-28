@@ -40,13 +40,15 @@ def _logo_data_uri() -> str:
 
 def render_html(res: dict) -> str:
     import charts
-    chart_svg = charts.traffic_svg(
-        res.get("history") or [], theme="light",
-        forecast_target=(res.get("benefit") or {}).get("traffic_top1"))
+    hist = res.get("history") or []
+    chart_svg = charts.traffic_svg(hist, theme="light")
+    forecast_svg = charts.forecast_svg(
+        hist, (res.get("benefit") or {}).get("traffic_top1"), theme="light")
     return _env.get_template("report.html").render(
         r=res,
         logo=_logo_data_uri(),
         chart_svg=chart_svg,
+        forecast_svg=forecast_svg,
         today=datetime.date.today().strftime("%d.%m.%Y"),
     )
 

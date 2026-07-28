@@ -179,3 +179,105 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "d
         + "".join(dots) + fc_svg + "".join(xlabels) + val_lbl
         + "</svg>"
     )
+
+
+def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark",
+                 actual_months: int = 3, gradient_id: str = "fgrad") -> str:
+    """Компактний графік прогнозу зростання: останні `actual_months` фактичних
+    місяців + 4 прогнозовані (крива FORECAST_CURVE) до цільового трафіку `target`.
+    Для правої колонки блоку «Потенціал». Порожньо, якщо ціль не вища за поточний."""
+    if not history:
+        return ""
+    T = _THEMES.get(theme, _THEMES["dark"])
+    pts = list(reversed(history))[-actual_months:]
+    pts = [p for p in pts if p.get("date")]
+    vals = [max(0, int(p.get("org_traffic", 0) or 0)) for p in pts]
+    if len(vals) < 1 or max(vals) <= 0:
+        return ""
+    tgt = int(target or 0)
+    last_v = vals[-1]
+    if not tgt or tgt <= last_v:
+        return ""
+
+    base, gap = last_v, tgt - last_v
+    last_date = pts[-1].get("date")
+    fvals = [int(round(base + gap * cf)) for cf in FORECAST_CURVE]
+    flabels = [_add_months(last_date, j) for j in range(1, len(FORECAST_CURVE) + 1)]
+
+    na = len(vals)
+    total = na + len(fvals)
+    W, H = 360, 210
+    padL, padR, padT, padB = 42, 10, 22, 34
+    plotW, plotH = W - padL - padR, H - padT - padB
+    vmax = max(max(vals), tgt)
+    import math
+    step = 10 ** max(0, len(str(int(vmax))) - 2)
+    top = math.ceil(vmax / step) * step if step else vmax
+    top = max(top, 1)
+
+    def X(i): return padL + (plotW * i / (total - 1))
+    def Y(v): return padT + plotH * (1 - v / top)
+
+    parts = [
+        f'<defs><linearGradient id="{gradient_id}" x1="0" y1="0" x2="0" y2="1">'
+        f'<stop offset="0" stop-color="{T["fc"]}" stop-opacity="0.20"/>'
+        f'<stop offset="1" stop-color="{T["fc"]}" stop-opacity="0"/></linearGradient></defs>'
+    ]
+    for gv in (0, top / 2, top):
+        y = Y(gv)
+        parts.append(f'<line x1="{padL}" y1="{y:.1f}" x2="{W-padR}" y2="{y:.1f}" '
+                     f'stroke="{T["grid"]}" stroke-width="1"/>')
+        parts.append(f'<text x="{padL-6}" y="{y+3.5:.1f}" text-anchor="end" '
+                     f'fill="{T["axis"]}" font-size="10" font-weight="700">{_fmt(gv)}</text>')
+    # роздільник факт|прогноз
+    divx = (X(na - 1) + X(na)) / 2
+    parts.append(f'<line x1="{divx:.1f}" y1="{padT}" x2="{divx:.1f}" y2="{padT+plotH:.1f}" '
+                 f'stroke="{T["grid"]}" stroke-width="1" stroke-dasharray="2 3"/>')
+    # фактична лінія
+    act_poly = " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(vals))
+    parts.append(f'<polyline points="{act_poly}" fill="none" stroke="{T["line"]}" '
+                 f'stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>')
+    for i, v in enumerate(vals):
+        last = (i == na - 1)
+        parts.append(f'<circle cx="{X(i):.1f}" cy="{Y(v):.1f}" r="{4 if last else 3}" '
+                     f'fill="{T["last"] if last else T["dot"]}" '
+                     f'stroke="{T["dotstroke"]}" stroke-width="1.5"/>')
+    ly = Y(last_v)
+    parts.append(f'<text x="{X(na-1):.1f}" y="{(ly-8 if ly>padT+14 else ly+15):.1f}" '
+                 f'text-anchor="middle" fill="{T["val"]}" font-size="11" '
+                 f'font-weight="800">{_fmt(last_v)}</text>')
+    # прогнозна область + пунктирна лінія
+    fc_pts = [(X(na - 1), Y(last_v))] + [(X(na + j), Y(fv)) for j, fv in enumerate(fvals)]
+    fc_poly = " ".join(f"{x:.1f},{y:.1f}" for x, y in fc_pts)
+    area = (f"M {fc_pts[0][0]:.1f},{Y(0):.1f} "
+            + " ".join(f"L {x:.1f},{y:.1f}" for x, y in fc_pts)
+            + f" L {fc_pts[-1][0]:.1f},{Y(0):.1f} Z")
+    parts.append(f'<path d="{area}" fill="url(#{gradient_id})"/>')
+    parts.append(f'<polyline points="{fc_poly}" fill="none" stroke="{T["fc"]}" '
+                 f'stroke-width="2.6" stroke-dasharray="6 4" '
+                 f'stroke-linejoin="round" stroke-linecap="round"/>')
+    for j, fv in enumerate(fvals):
+        last = (j == len(fvals) - 1)
+        parts.append(f'<circle cx="{X(na+j):.1f}" cy="{Y(fv):.1f}" r="{5 if last else 3}" '
+                     f'fill="{T["fc"] if last else T["dotstroke"]}" '
+                     f'stroke="{T["fc"]}" stroke-width="1.8"/>')
+    ty = Y(fvals[-1])
+    parts.append(f'<text x="{X(total-1):.1f}" y="{(ty-8 if ty>padT+14 else ty+15):.1f}" '
+                 f'text-anchor="end" fill="{T["fcval"]}" font-size="11.5" '
+                 f'font-weight="800">{_fmt(fvals[-1])}</text>')
+    parts.append(f'<text x="{X(na):.1f}" y="{padT-8:.1f}" text-anchor="start" '
+                 f'fill="{T["fc"]}" font-size="9" font-weight="800" '
+                 f'letter-spacing="0.5">ПРОГНОЗ · 4 МІС</text>')
+    # підписи X
+    for i, p in enumerate(pts):
+        parts.append(f'<text x="{X(i):.1f}" y="{H-12}" text-anchor="middle" '
+                     f'fill="{T["axis"]}" font-size="9.5" font-weight="700">'
+                     f'{_month_label(p.get("date"))}</text>')
+    for j, lb in enumerate(flabels):
+        mm = str(lb)[4:6] if len(str(lb)) >= 6 else str(lb)
+        parts.append(f'<text x="{X(na+j):.1f}" y="{H-12}" text-anchor="middle" '
+                     f'fill="{T["fc"]}" font-size="9.5" font-weight="700">{mm}</text>')
+
+    return (f'<svg viewBox="0 0 {W} {H}" width="100%" preserveAspectRatio="xMidYMid meet" '
+            f'role="img" aria-label="Прогноз зростання трафіку">'
+            + "".join(parts) + "</svg>")

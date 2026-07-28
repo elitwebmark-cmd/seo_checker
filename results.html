@@ -57,31 +57,45 @@
   {% if r.benefit and r.benefit.queries %}
   <div class="benefit">
     <div class="benefit-l">{% if assets.ic_chart %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_chart) }}" alt="">{% else %}💰 {% endif %}Потенціал · {% if r.benefit.modeled %}~{{ r.benefit.queries }} комерц. запитів ТОП 4–20 (модель на всю семантику){% else %}усі {{ r.benefit.queries }} комерц. запити ТОП 4–20{% endif %} (якщо вивести у ТОП-1)</div>
-    <div class="benefit-row">
-      <div class="ben-cell"><span class="ben-cap">трафік зараз</span><b>{{ "{:,}".format(r.benefit.traffic_now).replace(",", " ") }}</b> /міс</div>
-      <span class="ben-arrow">→</span>
-      <div class="ben-cell"><span class="ben-cap">трафік у ТОП-1</span><b class="ben-hot">{{ "{:,}".format(r.benefit.traffic_top1).replace(",", " ") }}</b> /міс</div>
-      <div class="ben-up">+{{ "{:,}".format(r.benefit.uplift).replace(",", " ") }} візитів{% if r.benefit.multiplier %} · ×{{ r.benefit.multiplier }}{% endif %}</div>
+    <div class="ben-cols">
+      <div class="ben-colL">
+        <div class="benefit-row">
+          <div class="ben-cell"><span class="ben-cap">трафік зараз</span><b>{{ "{:,}".format(r.benefit.traffic_now).replace(",", " ") }}</b> /міс</div>
+          <span class="ben-arrow">→</span>
+          <div class="ben-cell"><span class="ben-cap">трафік у ТОП-1</span><b class="ben-hot">{{ "{:,}".format(r.benefit.traffic_top1).replace(",", " ") }}</b> /міс</div>
+          <div class="ben-up">+{{ "{:,}".format(r.benefit.uplift).replace(",", " ") }} візитів{% if r.benefit.multiplier %} · ×{{ r.benefit.multiplier }}{% endif %}</div>
+        </div>
+        {% if r.benefit.conv_pct and r.benefit.sales_uplift is not none %}
+        <div class="ben-econ" data-wuplift="{{ r.benefit.w_uplift or 0 }}" data-wt1="{{ r.benefit.w_t1 or 0 }}">
+          <div class="ben-econ-c"><span class="ben-cap">+ заявок / міс</span><b class="ben-hot js-apps">+{{ "{:,}".format(r.benefit.apps_uplift).replace(",", " ") }}</b><span class="ben-econ-sub js-sub-conv">конверсія сайту {{ r.benefit.conv_pct }}%</span></div>
+          <div class="ben-econ-c"><span class="ben-cap">+ продажів / міс</span><b class="ben-hot js-sales">+{{ "{:,}".format(r.benefit.sales_uplift).replace(",", " ") }}</b><span class="ben-econ-sub js-sub-close">{% if r.benefit.close_pct %}заявка→продаж {{ r.benefit.close_pct }}%{% else %}—{% endif %}</span></div>
+          <div class="ben-econ-c"><span class="ben-cap">+ валовий дохід / міс</span><b class="ben-rev js-rev">+{{ "{:,}".format(r.benefit.revenue_uplift).replace(",", " ") }} ₴</b><span class="ben-econ-sub js-sub-check">сер. чек {{ "{:,}".format(r.benefit.avg_check).replace(",", " ") }} ₴</span></div>
+          <div class="ben-econ-c js-profit-cell"{% if not (r.benefit.profit_uplift is defined and r.benefit.avg_margin) %} style="display:none"{% endif %}><span class="ben-cap">+ прибуток / міс</span><b class="ben-rev js-profit">+{{ "{:,}".format(r.benefit.profit_uplift).replace(",", " ") if r.benefit.profit_uplift is defined else "—" }} ₴</b><span class="ben-econ-sub js-sub-margin">маржа ніші {{ r.benefit.avg_margin }}%</span></div>
+        </div>
+        <div class="ben-custom">
+          <button type="button" class="btn-sm ben-edit">✏️ Ввести свої дані</button>
+          <span class="ben-custom-flag" style="display:none">● за вашими даними</span>
+          <div class="ben-form" style="display:none">
+            <label>Конверсія сайту, %<input type="number" step="0.1" min="0" class="cf cf-conv" value="{{ r.benefit.conv_pct }}"></label>
+            <label>Сер. чек, ₴<input type="number" step="1" min="0" class="cf cf-check" value="{{ r.benefit.avg_check }}"></label>
+            <label>Маржа, %<input type="number" step="1" min="0" class="cf cf-margin" value="{{ r.benefit.avg_margin }}"></label>
+            <label>Заявка→продаж, %<input type="number" step="1" min="0" class="cf cf-close" value="{{ r.benefit.close_pct }}"></label>
+            <button type="button" class="btn-sm cf-apply">Перерахувати</button>
+            <button type="button" class="btn-sm cf-reset">Скинути до нішевих</button>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% if r.forecast_svg %}
+      <div class="ben-colR">
+        <div class="ben-fc-title">📈 Прогноз зростання трафіку</div>
+        <div class="ben-fc-sub">3 останні міс + 4 прогнозовані (вихід у ТОП-1)</div>
+        <div class="ben-fc-chart">{{ r.forecast_svg|safe }}</div>
+        <div class="ben-fc-legend"><span class="fc-lg"><i class="fc-sw"></i>факт</span><span class="fc-lg"><i class="fc-sw fc"></i>прогноз</span></div>
+      </div>
+      {% endif %}
     </div>
     {% if r.benefit.conv_pct and r.benefit.sales_uplift is not none %}
-    <div class="ben-econ" data-wuplift="{{ r.benefit.w_uplift or 0 }}" data-wt1="{{ r.benefit.w_t1 or 0 }}">
-      <div class="ben-econ-c"><span class="ben-cap">+ заявок / міс</span><b class="ben-hot js-apps">+{{ "{:,}".format(r.benefit.apps_uplift).replace(",", " ") }}</b><span class="ben-econ-sub js-sub-conv">конверсія сайту {{ r.benefit.conv_pct }}%</span></div>
-      <div class="ben-econ-c"><span class="ben-cap">+ продажів / міс</span><b class="ben-hot js-sales">+{{ "{:,}".format(r.benefit.sales_uplift).replace(",", " ") }}</b><span class="ben-econ-sub js-sub-close">{% if r.benefit.close_pct %}заявка→продаж {{ r.benefit.close_pct }}%{% else %}—{% endif %}</span></div>
-      <div class="ben-econ-c"><span class="ben-cap">+ валовий дохід / міс</span><b class="ben-rev js-rev">+{{ "{:,}".format(r.benefit.revenue_uplift).replace(",", " ") }} ₴</b><span class="ben-econ-sub js-sub-check">сер. чек {{ "{:,}".format(r.benefit.avg_check).replace(",", " ") }} ₴</span></div>
-      <div class="ben-econ-c js-profit-cell"{% if not (r.benefit.profit_uplift is defined and r.benefit.avg_margin) %} style="display:none"{% endif %}><span class="ben-cap">+ прибуток / міс</span><b class="ben-rev js-profit">+{{ "{:,}".format(r.benefit.profit_uplift).replace(",", " ") if r.benefit.profit_uplift is defined else "—" }} ₴</b><span class="ben-econ-sub js-sub-margin">маржа ніші {{ r.benefit.avg_margin }}%</span></div>
-    </div>
-    <div class="ben-custom">
-      <button type="button" class="btn-sm ben-edit">✏️ Ввести свої дані</button>
-      <span class="ben-custom-flag" style="display:none">● за вашими даними</span>
-      <div class="ben-form" style="display:none">
-        <label>Конверсія сайту, %<input type="number" step="0.1" min="0" class="cf cf-conv" value="{{ r.benefit.conv_pct }}"></label>
-        <label>Сер. чек, ₴<input type="number" step="1" min="0" class="cf cf-check" value="{{ r.benefit.avg_check }}"></label>
-        <label>Маржа, %<input type="number" step="1" min="0" class="cf cf-margin" value="{{ r.benefit.avg_margin }}"></label>
-        <label>Заявка→продаж, %<input type="number" step="1" min="0" class="cf cf-close" value="{{ r.benefit.close_pct }}"></label>
-        <button type="button" class="btn-sm cf-apply">Перерахувати</button>
-        <button type="button" class="btn-sm cf-reset">Скинути до нішевих</button>
-      </div>
-    </div>
     <div class="ben-econ-note">Прогноз від приросту трафіку у ТОП-1{% if r.benefit.conv_quality_pct is not none %} · комерційна якість трафіку {{ r.benefit.conv_quality_pct }}% (широкі/інформаційні запити важать менше){% endif %} · <span class="js-note-src">орієнтовні бенчмарки по ніші</span></div>
     {% endif %}
   </div>

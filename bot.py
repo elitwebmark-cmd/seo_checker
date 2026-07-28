@@ -120,32 +120,38 @@ def _matrix_pre(seg: dict) -> str:
     return "<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
-def _traffic_pre(hist: list, forecast_target=None) -> str:
-    import charts
+def _traffic_pre(hist: list) -> str:
     pts = [h for h in list(reversed(hist))[-12:] if h.get("date")]
     vals = [max(0, int(h.get("org_traffic", 0) or 0)) for h in pts]
     if len(vals) < 2 or max(vals) <= 0:
         return ""
-    # прогнозні місяці
-    fvals, flabels = [], []
-    tgt = int(forecast_target or 0)
-    if tgt and tgt > vals[-1]:
-        base, gap = vals[-1], tgt - vals[-1]
-        last_date = pts[-1].get("date")
-        for j, cf in enumerate(charts.FORECAST_CURVE, start=1):
-            fvals.append(int(round(base + gap * cf)))
-            flabels.append(charts._add_months(last_date, j))
+    mx = max(vals) or 1
+    rows = [f"{_month(h.get('date')):<6} {_bar(v, mx):<13} {_fmtk(v):>6}"
+            for h, v in zip(pts, vals)]
+    mult = f" ×{round(vals[-1] / vals[0], 1)}" if vals[0] > 0 else ""
+    head = f"📈 <b>Трафік 12 міс:</b> {_fmtk(vals[0])}→{_fmtk(vals[-1])}{mult}"
+    return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
+
+
+def _forecast_pre(hist: list, target) -> str:
+    """Прогноз зростання: 3 останні фактичні міс + 4 прогнозовані до цілі."""
+    import charts
+    pts = [h for h in list(reversed(hist))[-3:] if h.get("date")]
+    vals = [max(0, int(h.get("org_traffic", 0) or 0)) for h in pts]
+    tgt = int(target or 0)
+    if not vals or tgt <= vals[-1]:
+        return ""
+    base, gap = vals[-1], tgt - vals[-1]
+    fvals = [int(round(base + gap * cf)) for cf in charts.FORECAST_CURVE]
+    flabels = [charts._add_months(pts[-1].get("date"), j)
+               for j in range(1, len(charts.FORECAST_CURVE) + 1)]
     mx = max(vals + fvals) or 1
     rows = [f"{_month(h.get('date')):<6} {_bar(v, mx):<13} {_fmtk(v):>6}"
             for h, v in zip(pts, vals)]
-    if fvals:
-        rows.append("─ прогноз ─")
-        rows += [f"{_month(d):<6} {_bar(v, mx):<13} {_fmtk(v):>6}»"
-                 for d, v in zip(flabels, fvals)]
-    mult = f" ×{round(vals[-1] / vals[0], 1)}" if vals[0] > 0 else ""
-    head = f"📈 <b>Трафік 12 міс:</b> {_fmtk(vals[0])}→{_fmtk(vals[-1])}{mult}"
-    if fvals:
-        head += f"\n🎯 <b>Ціль (4 міс):</b> {_fmtk(fvals[-1])}/міс"
+    rows.append("── прогноз ──")
+    rows += [f"{_month(d):<6} {_bar(v, mx):<13} {_fmtk(v):>6}»"
+             for d, v in zip(flabels, fvals)]
+    head = f"📈 <b>Прогноз зростання трафіку</b> (ціль 4 міс: {_fmtk(fvals[-1])}/міс)"
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
@@ -202,8 +208,7 @@ def fmt(res: dict) -> str:
     if res.get("kw_caveat"):
         lines.append("⚠️ <i>Комерц. запитів 100–299 (нижче норми 300) — умовно прийнятно</i>")
     # --- динаміка трафіку (бар-чарт за 12 міс) ---
-    tp = _traffic_pre(res.get("history") or [],
-                      (res.get("benefit") or {}).get("traffic_top1"))
+    tp = _traffic_pre(res.get("history") or [])
     if tp:
         lines.append("")
         lines.append(tp)
@@ -218,6 +223,10 @@ def fmt(res: dict) -> str:
     if bn.get("queries"):
         lines.append("")
         lines.append(_potential_pre(bn))
+        fp = _forecast_pre(res.get("history") or [], bn.get("traffic_top1"))
+        if fp:
+            lines.append("")
+            lines.append(fp)
     ad = res.get("ads") or {}
     if ad.get("checked"):
         if ad.get("running"):

@@ -101,6 +101,8 @@ body { font-family: 'Montserrat', Arial, sans-serif; color: var(--ink); font-siz
     padding: 6px 13px; border-radius: 20px; border: 1px solid #CBE7D6; }
 .funnel { width: 100%; border-collapse: separate; border-spacing: 10px 0; margin: 0 -10px; }
 .funnel td { border: 1px solid var(--line); background: #FAFAFB; border-radius: 10px; padding: 14px 8px; text-align: center; width: 25%; }
+.funnel-2 { border-spacing: 10px 10px; }
+.funnel-2 td { width: 50%; }
 .fn-cap { color: var(--mut); font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: .3px; }
 .fn-v { font-size: 23px; font-weight: 800; margin: 7px 0 4px; letter-spacing: -.4px; }
 .fn-v.red { color: var(--red); }
@@ -247,16 +249,31 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
     <td><div class="flow-cap">трафік у ТОП-1</div><div class="flow-v" style="color:var(--red)">{{ r.benefit.traffic_top1|sp }} <span class="seg-pct">/міс</span></div></td>
     <td class="flow-up"><span>+{{ r.benefit.uplift|sp }} візитів{% if r.benefit.multiplier %} · ×{{ r.benefit.multiplier }}{% endif %}</span></td>
   </tr></table>
-  {% if r.benefit.conv_pct and r.benefit.sales_uplift is not none %}
-  <table class="funnel"><tr>
-    <td><div class="fn-cap">+ заявок / міс</div><div class="fn-v">+{{ r.benefit.apps_uplift|sp }}</div><div class="fn-sub">конверсія {{ r.benefit.conv_pct }}%</div></td>
-    <td><div class="fn-cap">+ продажів / міс</div><div class="fn-v">+{{ r.benefit.sales_uplift|sp }}</div><div class="fn-sub">{% if r.benefit.close_pct %}заявка → продаж {{ r.benefit.close_pct }}%{% else %}&nbsp;{% endif %}</div></td>
-    <td><div class="fn-cap">+ дохід / міс</div><div class="fn-v red">+{{ r.benefit.revenue_uplift|sp }} ₴</div><div class="fn-sub">сер. чек {{ r.benefit.avg_check|sp }} ₴</div></td>
-    {% if r.benefit.profit_uplift is defined and r.benefit.avg_margin %}
-    <td><div class="fn-cap">+ прибуток / міс</div><div class="fn-v red">+{{ r.benefit.profit_uplift|sp }} ₴</div><div class="fn-sub">маржа {{ r.benefit.avg_margin }}%</div></td>
+  <table style="width:100%;border-collapse:collapse"><tr>
+    <td style="vertical-align:top;{% if forecast_svg %}width:60%;padding-right:18px{% endif %}">
+      {% if r.benefit.conv_pct and r.benefit.sales_uplift is not none %}
+      <table class="funnel funnel-2"><tr>
+        <td><div class="fn-cap">+ заявок / міс</div><div class="fn-v">+{{ r.benefit.apps_uplift|sp }}</div><div class="fn-sub">конверсія {{ r.benefit.conv_pct }}%</div></td>
+        <td><div class="fn-cap">+ продажів / міс</div><div class="fn-v">+{{ r.benefit.sales_uplift|sp }}</div><div class="fn-sub">{% if r.benefit.close_pct %}заявка → продаж {{ r.benefit.close_pct }}%{% else %}&nbsp;{% endif %}</div></td>
+      </tr><tr>
+        <td><div class="fn-cap">+ дохід / міс</div><div class="fn-v red">+{{ r.benefit.revenue_uplift|sp }} ₴</div><div class="fn-sub">сер. чек {{ r.benefit.avg_check|sp }} ₴</div></td>
+        {% if r.benefit.profit_uplift is defined and r.benefit.avg_margin %}
+        <td><div class="fn-cap">+ прибуток / міс</div><div class="fn-v red">+{{ r.benefit.profit_uplift|sp }} ₴</div><div class="fn-sub">маржа {{ r.benefit.avg_margin }}%</div></td>
+        {% else %}<td style="border:none;background:none"></td>{% endif %}
+      </tr></table>
+      {% endif %}
+    </td>
+    {% if forecast_svg %}
+    <td style="vertical-align:top;width:40%;border-left:1px solid var(--line);padding-left:18px">
+      <div style="font-size:12px;font-weight:800;color:var(--ink)">Прогноз зростання трафіку</div>
+      <div style="font-size:10px;font-weight:700;color:var(--mut);margin:2px 0 4px">3 останні міс + 4 прогнозовані</div>
+      {{ forecast_svg|safe }}
+      <div style="font-size:9.5px;font-weight:700;color:var(--mut);margin-top:3px">
+        <span style="color:var(--red)">━</span> факт &nbsp; <span style="color:var(--good)">╌╌</span> прогноз
+      </div>
+    </td>
     {% endif %}
   </tr></table>
-  {% endif %}
 </div>
 {% endif %}
 
