@@ -102,6 +102,13 @@
     {% endif %}
   </div>
   {% endif %}
+  {% if r.trend_svg %}
+  <div class="viz-card" style="margin-top:14px">
+    <div class="viz-h">📊 Тренд попиту в ніші · Google Trends · 12 міс · Україна{% if r.niche_trend and r.niche_trend.change_pct is not none %} <span class="trend-chg {{ 'up' if r.niche_trend.change_pct >= 0 else 'down' }}">{{ '+' if r.niche_trend.change_pct >= 0 else '' }}{{ r.niche_trend.change_pct }}%</span>{% endif %}</div>
+    <div class="viz-chart">{{ r.trend_svg|safe }}</div>
+    {% if r.niche_trend and r.niche_trend.keywords %}<div class="trend-kw">за запитами: {{ r.niche_trend.keywords|join(' · ') }}</div>{% endif %}
+  </div>
+  {% endif %}
   </div>{# /rc-sect seo #}
   {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) or r.media_plan %}
   <div class="rc-sect ppc">

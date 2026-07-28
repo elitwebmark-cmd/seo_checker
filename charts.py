@@ -181,6 +181,80 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "d
     )
 
 
+def _ts_label(ts) -> str:
+    try:
+        import datetime
+        dt = datetime.datetime.utcfromtimestamp(int(ts))
+        return f"{dt.month:02d}.{str(dt.year)[2:]}"
+    except (TypeError, ValueError, OverflowError, OSError):
+        return ""
+
+
+def trend_svg(points: List[Dict[str, Any]], theme: str = "dark") -> str:
+    """Графік тренду попиту по ніші (індекс Google Trends 0..100) за 12 міс."""
+    if not points or len(points) < 3:
+        return ""
+    T = _THEMES.get(theme, _THEMES["dark"])
+    vals = [max(0.0, float(p.get("value") or 0)) for p in points]
+    n = len(vals)
+    W, H = 760, 210
+    padL, padR, padT, padB = 40, 14, 16, 30
+    plotW, plotH = W - padL - padR, H - padT - padB
+    top = 100.0
+
+    def X(i): return padL + (plotW * i / (n - 1))
+    def Y(v): return padT + plotH * (1 - v / top)
+
+    grid = []
+    for gv in (0, 50, 100):
+        y = Y(gv)
+        grid.append(f'<line x1="{padL}" y1="{y:.1f}" x2="{W-padR}" y2="{y:.1f}" '
+                    f'stroke="{T["grid"]}" stroke-width="1"/>')
+        grid.append(f'<text x="{padL-6}" y="{y+3.5:.1f}" text-anchor="end" '
+                    f'fill="{T["axis"]}" font-size="10" font-weight="700">{int(gv)}</text>')
+
+    line_pts = " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(vals))
+    area = (f"M {X(0):.1f},{Y(0):.1f} "
+            + " ".join(f"L {X(i):.1f},{Y(v):.1f}" for i, v in enumerate(vals))
+            + f" L {X(n-1):.1f},{Y(0):.1f} Z")
+
+    # підписи X — ~6 рівномірних міток за timestamp
+    step = max(1, n // 6)
+    xlabels = []
+    for i in range(0, n, step):
+        lb = _ts_label(points[i].get("ts")) or _short_lbl(points[i].get("label"))
+        if lb:
+            xlabels.append(f'<text x="{X(i):.1f}" y="{H-10}" text-anchor="middle" '
+                           f'fill="{T["axis"]}" font-size="10" font-weight="700">{lb}</text>')
+
+    lx, lv = X(n - 1), vals[-1]
+    ly = Y(lv)
+    val_lbl = (f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="4" fill="{T["last"]}" '
+               f'stroke="{T["dotstroke"]}" stroke-width="1.5"/>'
+               f'<text x="{lx-6:.1f}" y="{(ly-8 if ly>padT+14 else ly+16):.1f}" '
+               f'text-anchor="end" fill="{T["val"]}" font-size="12" font-weight="800">'
+               f'{int(round(lv))}</text>')
+
+    return (
+        f'<svg viewBox="0 0 {W} {H}" width="100%" preserveAspectRatio="xMidYMid meet" '
+        f'role="img" aria-label="Тренд попиту в ніші">'
+        f'<defs><linearGradient id="trgrad" x1="0" y1="0" x2="0" y2="1">'
+        f'<stop offset="0" stop-color="{T["area"]}" stop-opacity="0.20"/>'
+        f'<stop offset="1" stop-color="{T["area"]}" stop-opacity="0"/></linearGradient></defs>'
+        + "".join(grid)
+        + f'<path d="{area}" fill="url(#trgrad)"/>'
+        + f'<polyline points="{line_pts}" fill="none" stroke="{T["line"]}" '
+          f'stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'
+        + "".join(xlabels) + val_lbl
+        + "</svg>"
+    )
+
+
+def _short_lbl(label) -> str:
+    s = str(label or "")
+    return s.split()[0][:3] if s else ""
+
+
 def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark",
                  actual_months: int = 3, gradient_id: str = "fgrad") -> str:
     """Компактний графік прогнозу зростання: останні `actual_months` фактичних

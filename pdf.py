@@ -44,11 +44,14 @@ def render_html(res: dict) -> str:
     chart_svg = charts.traffic_svg(hist, theme="light")
     forecast_svg = charts.forecast_svg(
         hist, (res.get("benefit") or {}).get("traffic_top1"), theme="light")
+    nt = res.get("niche_trend") or {}
+    trend_svg = charts.trend_svg(nt.get("points"), theme="light") if nt.get("points") else ""
     return _env.get_template("report.html").render(
         r=res,
         logo=_logo_data_uri(),
         chart_svg=chart_svg,
         forecast_svg=forecast_svg,
+        trend_svg=trend_svg,
         today=datetime.date.today().strftime("%d.%m.%Y"),
     )
 

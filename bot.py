@@ -133,6 +133,31 @@ def _traffic_pre(hist: list) -> str:
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
+_SPARK = "▁▂▃▄▅▆▇█"
+
+
+def _sparkline(vals, mx) -> str:
+    if not vals or mx <= 0:
+        return ""
+    return "".join(_SPARK[min(7, int(v / mx * 7))] for v in vals)
+
+
+def _trend_pre(nt: dict) -> str:
+    if not nt or not nt.get("points"):
+        return ""
+    pts = [p.get("value", 0) for p in nt["points"]]
+    n = len(pts)
+    step = max(1, n // 24)
+    samp = [pts[i] for i in range(0, n, step)]
+    mx = max(samp) or 1
+    chg = nt.get("change_pct")
+    chg_s = f" ({'+' if chg >= 0 else ''}{chg}%)" if chg is not None else ""
+    kw = " · ".join(nt.get("keywords") or [])
+    return (f"📊 <b>Тренд попиту</b> (Google Trends · 12 міс · UA):{chg_s}"
+            f"\n<pre>{html.escape(_sparkline(samp, mx))}</pre>"
+            f"<i>за запитами: {html.escape(kw)}</i>")
+
+
 def _forecast_pre(hist: list, target) -> str:
     """Прогноз зростання: 3 останні фактичні міс + 4 прогнозовані до цілі."""
     import charts
@@ -242,6 +267,10 @@ def fmt(res: dict) -> str:
     if tp:
         lines.append("")
         lines.append(tp)
+    trp = _trend_pre(res.get("niche_trend"))
+    if trp:
+        lines.append("")
+        lines.append(trp)
     # --- матриця позицій (бар-чарт) ---
     seg = res.get("segments") or {}
     if seg.get("total"):

@@ -254,6 +254,24 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             shopping_info = {"checked": False}
 
+    # --- тренд попиту по ніші (Google Trends, топ-5 комерц. запитів; deep-чек) ---
+    niche_trend = None
+    if do_ads:
+        _trend_kws, _seen = [], set()
+        for k in sorted(commercial, key=lambda x: -(x.get("volume") or 0)):
+            kw = (k.get("keyword") or "").strip()
+            if kw and kw.lower() not in _seen:
+                _seen.add(kw.lower())
+                _trend_kws.append(kw)
+            if len(_trend_kws) >= 5:
+                break
+        if _trend_kws:
+            try:
+                import trends
+                niche_trend = trends.niche_trend(_trend_kws, geo="UA")
+            except Exception:
+                niche_trend = None
+
     # --- соцмережі (Instagram; лише для одного домену; інформаційно) ---
     social_info = None
     if do_social:
@@ -398,6 +416,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "ads": ads_info,
         "shopping": shopping_info,
         "media_plan": media_plan,
+        "niche_trend": niche_trend,
+        "trend_svg": charts.trend_svg(niche_trend["points"], theme="dark") if niche_trend else "",
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),
                  "budget": overview.get("adwords_cost", 0)},

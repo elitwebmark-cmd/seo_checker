@@ -5,8 +5,24 @@
 (формати+платформи+креативи), Shopping, соцмережі, ТОП сторінки, послуги, кейси."""
 from __future__ import annotations
 import base64
+import datetime
 import charts
 import qualify
+
+
+def _trend_points():
+    vals = [54, 57, 55, 60, 63, 61, 66, 70, 68, 74, 79, 82]
+    today = datetime.date.today()
+    pts = []
+    for i, v in enumerate(vals):
+        m = today.month - (len(vals) - 1 - i)
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        ts = int(datetime.datetime(y, m, 1).timestamp())
+        pts.append({"value": v, "ts": ts, "label": f"{m:02d}.{y}"})
+    return pts
 
 DEMO_DOMAIN = "demo-klinika.ua"
 
@@ -150,6 +166,11 @@ def demo_result() -> dict:
         "top_pages_traffic": top_pages_traffic,
         "top_pages_seo": [],
         "dotisk_queries": dotisk,
+        "niche_trend": {"points": _trend_points(),
+                        "keywords": ["лазерна епіляція", "косметологія київ", "ботокс",
+                                     "чистка обличчя", "мезотерапія"],
+                        "geo": "UA", "change_pct": 40, "avg": 65.7, "peak": 82},
+        "trend_svg": charts.trend_svg(_trend_points(), theme="dark"),
         "ads": ads, "shopping": shopping, "paid": paid, "social": social,
         "services": services, "factors": factors, "cases": cases,
         "reasons": [],

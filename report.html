@@ -222,6 +222,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
+{% if trend_svg %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Тренд попиту в ніші</h3> <span class="cnt">· Google Trends · 12 міс · Україна{% if r.niche_trend and r.niche_trend.change_pct is not none %} · {% if r.niche_trend.change_pct >= 0 %}<span style="color:var(--good);font-weight:800">+{{ r.niche_trend.change_pct }}%</span>{% else %}<span style="color:var(--red);font-weight:800">{{ r.niche_trend.change_pct }}%</span>{% endif %}{% endif %}</span></div>
+  <div class="chart-wrap">{{ trend_svg|safe }}</div>
+  {% if r.niche_trend and r.niche_trend.keywords %}<div style="font-size:10px;font-weight:700;color:var(--mut);margin-top:4px">за запитами: {{ r.niche_trend.keywords|join(' · ') }}</div>{% endif %}
+</div>
+{% endif %}
+
 {% if r.segments and r.segments.total %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Розподіл позицій в органіці</h3> <span class="cnt">· {{ r.segments.total|sp }} ключів у ТОП-100</span></div>
