@@ -179,6 +179,29 @@ NICHE_ECON = {
 }
 
 
+# Середня ціна кліку (грн) по підніші — для медіаплану контекстної реклами.
+NICHE_CPC = {
+    "FASH-01": 4.5, "FASH-02": 4.34, "FASH-03": 3.87, "FASH-04": 4.6, "FASH-05": 3.78,
+    "FASH-06": 5.68, "HOME-01": 5.93, "HOME-02": 4.56, "HOME-03": 4.23, "HOME-04": 5.61,
+    "HOME-05": 6.5, "HOME-06": 5.32, "ELEC-01": 6.61, "ELEC-02": 5.46, "ELEC-03": 5.23,
+    "ELEC-04": 8.0, "ELEC-05": 6.64, "AUTO-01": 12.0, "AUTO-02": 5.43, "AUTO-03": 5.56,
+    "AUTO-04": 9.12, "AUTO-05": 6.34, "CONSTR-01": 5.45, "CONSTR-02": 78.0, "CONSTR-03": 7.0,
+    "CONSTR-04": 8.34, "CONSTR-05": 12.34, "BEAUTY-01": 4.63, "BEAUTY-02": 3.98,
+    "BEAUTY-03": 6.49, "BEAUTY-04": 3.47, "BEAUTY-05": 3.67, "MED-01": 7.0, "MED-02": 11.0,
+    "MED-03": 9.45, "MED-04": 1.89, "MED-05": 5.16, "MED-06": 4.45, "FOOD-01": 7.0,
+    "FOOD-02": 7.66, "FOOD-03": 4.0, "FOOD-04": 4.9, "FOOD-05": 3.0, "KIDS-01": 3.43,
+    "KIDS-02": 3.67, "KIDS-03": 4.21, "KIDS-04": 3.88, "KIDS-05": 3.38, "KIDS-06": 3.31,
+    "INDB2B-01": 8.97, "INDB2B-02": 7.76, "INDB2B-03": 7.67, "INDB2B-04": 4.86,
+    "INDB2B-05": 5.11, "INDB2B-06": 3.87, "INDB2B-07": 5.34, "PROF-01": 8.3, "PROF-02": 37.0,
+    "PROF-03": 6.54, "PROF-04": 4.54, "PROF-05": 25.0, "PROF-06": 12.0, "IT-01": 14.0,
+    "IT-02": 13.3, "IT-03": 8.98, "IT-04": 12.0, "IT-05": 13.0, "EDU-01": 9.24, "EDU-02": 11.0,
+    "EDU-03": 13.0, "EDU-04": 4.0, "EDU-05": 5.0, "PERS-01": 6.34, "PERS-02": 15.81,
+    "PERS-03": 4.5, "PERS-04": 5.0, "PERS-05": 4.0, "TRAVEL-01": 3.5, "TRAVEL-02": 6.4,
+    "TRAVEL-03": 5.54, "TRAVEL-04": 9.0, "SPEC-01": 12.0, "SPEC-02": 5.6, "SPEC-03": 7.0,
+    "SPEC-04": 16.0,
+}
+
+
 # --- Мапінг у поля-списки HubSpot (industria/nisa/podnisa) ---
 # Значення, де наше формулювання відрізняється від опції в HubSpot.
 NISA_ALIAS = {
@@ -250,4 +273,5 @@ def classify(blob: str, onp: dict = None) -> dict:
         "avg_margin": econ[2] if econ else None,
         "close_pct": econ[3] if econ else None,
         "conv_type": econ[4] if econ else None,
+        "cpc": NICHE_CPC.get(code),
     }

@@ -317,6 +317,32 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
+{% if r.media_plan %}
+{% set mp = r.media_plan %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Медіаплан контекстної реклами</h3> <span class="cnt">· базовий бюджет {{ mp.budget|sp }} ₴/міс</span></div>
+  <table class="flow"><tr>
+    <td><div class="flow-cap">бюджет / міс</div><div class="flow-v">{{ mp.budget|sp }} <span class="seg-pct">₴</span></div></td>
+    <td style="width:34px;text-align:center;color:var(--red)"><b style="font-size:26px">&#8594;</b></td>
+    <td><div class="flow-cap">кліки</div><div class="flow-v">{{ mp.clicks|sp }}</div><div class="fn-sub">CPC {{ mp.cpc }} ₴</div></td>
+    <td style="width:26px;text-align:center;color:var(--red)"><b style="font-size:22px">&#8594;</b></td>
+    <td><div class="flow-cap">заявки</div><div class="flow-v">{{ mp.leads|sp }}</div><div class="fn-sub">конв. {{ mp.conv_pct }}%</div></td>
+    <td style="width:26px;text-align:center;color:var(--red)"><b style="font-size:22px">&#8594;</b></td>
+    <td><div class="flow-cap">дохід / міс</div><div class="flow-v" style="color:var(--red)">{{ mp.revenue|sp }} <span class="seg-pct">₴</span></div><div class="fn-sub">чек {{ mp.avg_check|sp }} ₴</div></td>
+  </tr></table>
+  <table class="funnel funnel-2"><tr>
+    <td><div class="fn-cap">прибуток після реклами</div><div class="fn-v red">{% if mp.net_profit is not none %}{{ mp.net_profit|sp }} ₴{% else %}—{% endif %}</div><div class="fn-sub">маржа {{ mp.avg_margin }}%</div></td>
+    <td><div class="fn-cap">ROMI</div><div class="fn-v">{% if mp.romi is not none %}{{ mp.romi }}%{% else %}—{% endif %}</div><div class="fn-sub">окупність інвестицій</div></td>
+    <td><div class="fn-cap">ROAS</div><div class="fn-v">{{ mp.roas }}×</div><div class="fn-sub">дохід / витрати</div></td>
+  </tr><tr>
+    <td><div class="fn-cap">CPL · ціна заявки</div><div class="fn-v">{% if mp.cpl %}{{ mp.cpl|sp }} ₴{% else %}—{% endif %}</div></td>
+    <td><div class="fn-cap">CPA · ціна продажу</div><div class="fn-v">{% if mp.cpa %}{{ mp.cpa|sp }} ₴{% else %}—{% endif %}</div></td>
+    <td><div class="fn-cap">ДРР · частка витрат</div><div class="fn-v">{% if mp.drr is not none %}{{ mp.drr }}%{% else %}—{% endif %}</div></td>
+  </tr></table>
+  <div style="font-size:9.5px;font-weight:600;color:var(--mut);margin-top:8px;font-style:italic">Прогноз від бюджету й середньої ціни кліку по ніші · конверсія / чек / маржа — орієнтовні бенчмарки · фактичний результат залежить від якості кампаній і посадкових.</div>
+</div>
+{% endif %}
+
 {% if r.top_pages_traffic %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>ТОП сторінки за трафіком</h3></div>

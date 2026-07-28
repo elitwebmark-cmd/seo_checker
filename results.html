@@ -175,6 +175,46 @@
     {% endif %}
   </div>
   {% endif %}
+  {% if r.media_plan %}
+  {% set mp = r.media_plan %}
+  <div class="mplan">
+    <div class="mplan-h">💸 Медіаплан контекстної реклами · базовий бюджет <b class="js-mp-budget-h">{{ "{:,}".format(mp.budget).replace(",", " ") }}</b> ₴/міс</div>
+    <div class="mplan-flow">
+      <div class="mp-cell"><span class="mp-cap">бюджет / міс</span><b>{{ "{:,}".format(mp.budget).replace(",", " ") }} ₴</b></div>
+      <span class="mp-arr">→</span>
+      <div class="mp-cell"><span class="mp-cap">кліки</span><b class="js-mp-clicks">{{ "{:,}".format(mp.clicks).replace(",", " ") }}</b><span class="mp-sub">CPC {{ mp.cpc }} ₴</span></div>
+      <span class="mp-arr">→</span>
+      <div class="mp-cell"><span class="mp-cap">заявки</span><b class="js-mp-leads">{{ "{:,}".format(mp.leads).replace(",", " ") }}</b><span class="mp-sub js-mp-conv-sub">конв. {{ mp.conv_pct }}%</span></div>
+      <span class="mp-arr">→</span>
+      <div class="mp-cell"><span class="mp-cap">продажі</span><b class="js-mp-sales">{{ "{:,}".format(mp.sales).replace(",", " ") }}</b><span class="mp-sub js-mp-close-sub">{% if mp.close_pct %}заявка→продаж {{ mp.close_pct }}%{% else %}—{% endif %}</span></div>
+      <span class="mp-arr">→</span>
+      <div class="mp-cell"><span class="mp-cap">дохід / міс</span><b class="ben-hot js-mp-rev">{{ "{:,}".format(mp.revenue).replace(",", " ") }} ₴</b><span class="mp-sub js-mp-check-sub">чек {{ "{:,}".format(mp.avg_check).replace(",", " ") }} ₴</span></div>
+    </div>
+    <div class="mplan-kpis">
+      <div class="mp-kpi{% if not mp.net_profit %} js-mp-profit-cell" style="display:none{% endif %}"><span class="mp-cap">прибуток після реклами</span><b class="mp-rev js-mp-net">{% if mp.net_profit is not none %}{{ "{:,}".format(mp.net_profit).replace(",", " ") }} ₴{% else %}—{% endif %}</b><span class="mp-sub js-mp-margin-sub">маржа {{ mp.avg_margin }}%</span></div>
+      <div class="mp-kpi"><span class="mp-cap">ROMI</span><b class="js-mp-romi">{% if mp.romi is not none %}{{ mp.romi }}%{% else %}—{% endif %}</b></div>
+      <div class="mp-kpi"><span class="mp-cap">ROAS</span><b class="js-mp-roas">{{ mp.roas }}×</b></div>
+      <div class="mp-kpi"><span class="mp-cap">CPL (ціна заявки)</span><b class="js-mp-cpl">{{ "{:,}".format(mp.cpl).replace(",", " ") if mp.cpl else "—" }} ₴</b></div>
+      <div class="mp-kpi"><span class="mp-cap">CPA (ціна продажу)</span><b class="js-mp-cpa">{{ "{:,}".format(mp.cpa).replace(",", " ") if mp.cpa else "—" }} ₴</b></div>
+      <div class="mp-kpi"><span class="mp-cap">ДРР</span><b class="js-mp-drr">{% if mp.drr is not none %}{{ mp.drr }}%{% else %}—{% endif %}</b></div>
+    </div>
+    <div class="mplan-custom">
+      <button type="button" class="btn-sm mp-edit">✏️ Ввести свої дані</button>
+      <span class="mp-flag" style="display:none">● за вашими даними</span>
+      <div class="mp-form" style="display:none">
+        <label>Бюджет, ₴/міс<input type="number" step="1000" min="0" class="cf mpf-budget" value="{{ mp.budget }}"></label>
+        <label>Ціна кліку, ₴<input type="number" step="0.1" min="0" class="cf mpf-cpc" value="{{ mp.cpc }}"></label>
+        <label>Конверсія сайту, %<input type="number" step="0.1" min="0" class="cf mpf-conv" value="{{ mp.conv_pct }}"></label>
+        <label>Сер. чек, ₴<input type="number" step="1" min="0" class="cf mpf-check" value="{{ mp.avg_check }}"></label>
+        <label>Маржа, %<input type="number" step="1" min="0" class="cf mpf-margin" value="{{ mp.avg_margin }}"></label>
+        <label>Заявка→продаж, %<input type="number" step="1" min="0" class="cf mpf-close" value="{{ mp.close_pct }}"></label>
+        <button type="button" class="btn-sm mp-apply">Перерахувати</button>
+        <button type="button" class="btn-sm mp-reset">Скинути</button>
+      </div>
+    </div>
+    <div class="mplan-note">Прогноз від бюджету й середньої ціни кліку по ніші · конверсія/чек/маржа — орієнтовні бенчмарки · фактичний результат залежить від якості кампаній і посадкових</div>
+  </div>
+  {% endif %}
   {% if r.ads and r.ads.creatives %}
   <details class="creatives-acc">
     <summary class="creatives-summary">🖼️ Креативи реклами ({{ r.ads.creatives|length }})</summary>
@@ -329,6 +369,68 @@
     resetBtn.addEventListener('click', function(){
       q('.cf-conv').value=defaults.conv; q('.cf-check').value=defaults.check;
       q('.cf-margin').value=defaults.margin; q('.cf-close').value=defaults.close;
+      apply(false);
+    });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  function fmt(n){ n=Math.round(n||0); return n.toLocaleString('en-US').replace(/,/g,' '); }
+  document.querySelectorAll('.mplan').forEach(function(box){
+    var card = box.closest('.rcard');
+    var form = box.querySelector('.mp-form');
+    var flag = box.querySelector('.mp-flag');
+    var q = function(s){ return form.querySelector(s); };
+    var defaults = {b:q('.mpf-budget').value, cpc:q('.mpf-cpc').value, conv:q('.mpf-conv').value,
+                    check:q('.mpf-check').value, margin:q('.mpf-margin').value, close:q('.mpf-close').value};
+    var pdfLink = card ? card.querySelector('a[href*="report.pdf"]') : null;
+    function setText(sel,t){ var e=box.querySelector(sel); if(e) e.textContent=t; }
+    box.querySelector('.mp-edit').addEventListener('click', function(){
+      form.style.display = form.style.display==='none' ? 'flex' : 'none';
+    });
+    function apply(cust){
+      var b=parseFloat(q('.mpf-budget').value)||0, cpc=parseFloat(q('.mpf-cpc').value)||0,
+          conv=parseFloat(q('.mpf-conv').value)||0, check=parseFloat(q('.mpf-check').value)||0,
+          margin=parseFloat(q('.mpf-margin').value)||0, close=parseFloat(q('.mpf-close').value)||0;
+      if(!b||!cpc||!conv||!check){ alert('Вкажіть бюджет, ціну кліку, конверсію і чек'); return; }
+      var clicks=b/cpc, leads=clicks*conv/100, sales=leads*(close>0?close/100:1),
+          revenue=sales*check, gross=margin>0?revenue*margin/100:null,
+          net=gross!==null?gross-b:null;
+      setText('.js-mp-budget-h', fmt(b));
+      setText('.js-mp-clicks', fmt(clicks));
+      setText('.js-mp-leads', fmt(leads));
+      setText('.js-mp-sales', fmt(sales));
+      setText('.js-mp-rev', fmt(revenue)+' ₴');
+      setText('.js-mp-conv-sub', 'конв. '+conv+'%');
+      setText('.js-mp-close-sub', close>0?('заявка→продаж '+close+'%'):'—');
+      setText('.js-mp-check-sub', 'чек '+fmt(check)+' ₴');
+      setText('.js-mp-roas', (revenue/b).toFixed(2)+'×');
+      setText('.js-mp-cpl', leads>0?fmt(b/leads)+' ₴':'—');
+      setText('.js-mp-cpa', sales>0?fmt(b/sales)+' ₴':'—');
+      setText('.js-mp-drr', revenue>0?(b/revenue*100).toFixed(1)+'%':'—');
+      var pc=box.querySelector('.js-mp-profit-cell');
+      if(margin>0){
+        setText('.js-mp-net', fmt(net)+' ₴');
+        setText('.js-mp-margin-sub','маржа '+margin+'%');
+        setText('.js-mp-romi', Math.round((gross-b)/b*100)+'%');
+        if(pc) pc.style.display='';
+      } else { setText('.js-mp-romi','—'); if(pc) pc.style.display='none'; }
+      if(pdfLink){
+        var u=new URL(pdfLink.href, window.location.origin);
+        if(cust){ u.searchParams.set('mp_budget',b); u.searchParams.set('mp_cpc',cpc);
+          u.searchParams.set('mp_conv',conv); u.searchParams.set('mp_check',check);
+          u.searchParams.set('mp_margin',margin); u.searchParams.set('mp_close',close); }
+        else { ['mp_budget','mp_cpc','mp_conv','mp_check','mp_margin','mp_close'].forEach(function(k){u.searchParams.delete(k);}); }
+        pdfLink.href=u.pathname+u.search;
+      }
+      flag.style.display = cust ? '' : 'none';
+    }
+    box.querySelector('.mp-apply').addEventListener('click', function(){ apply(true); });
+    box.querySelector('.mp-reset').addEventListener('click', function(){
+      q('.mpf-budget').value=defaults.b; q('.mpf-cpc').value=defaults.cpc; q('.mpf-conv').value=defaults.conv;
+      q('.mpf-check').value=defaults.check; q('.mpf-margin').value=defaults.margin; q('.mpf-close').value=defaults.close;
       apply(false);
     });
   });

@@ -240,6 +240,12 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             ads_info = {"checked": False, "note": "помилка перевірки"}
 
+    # --- медіаплан контекстної реклами (без API-витрат: CPC+економіка ніші) ---
+    media_plan = build_media_plan(
+        config.PPC_BUDGET_DEFAULT, niche_info.get("cpc"),
+        niche_info.get("conv_pct"), niche_info.get("avg_check"),
+        niche_info.get("avg_margin"), niche_info.get("close_pct"))
+
     # --- Google Shopping / PLA (лише для одного домену; той самий deep-чек, що й контекст) ---
     shopping_info = None
     if do_ads:
@@ -391,6 +397,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "contractor": onp.get("contractor") if do_onpage else None,
         "ads": ads_info,
         "shopping": shopping_info,
+        "media_plan": media_plan,
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),
                  "budget": overview.get("adwords_cost", 0)},
@@ -406,6 +413,42 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
             for k in dotisk
         ],
         "onpage": onp if do_onpage else None,
+    }
+
+
+def build_media_plan(budget, cpc, conv, check, margin=None, close=None) -> dict:
+    """Прогноз медіаплану контекстної реклами.
+    budget — бюджет/міс (грн), cpc — сер. ціна кліку, conv — конверсія сайту %,
+    check — сер. чек, margin — маржа %, close — конверсія заявка→продаж %."""
+    def _f(v, d=None):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return d
+    budget = _f(budget); cpc = _f(cpc); conv = _f(conv); check = _f(check)
+    margin = _f(margin, 0.0); close = _f(close, 100.0)
+    if not budget or not cpc or not conv or not check or budget <= 0 or cpc <= 0:
+        return None
+    clicks = budget / cpc
+    leads = clicks * conv / 100.0
+    sales = leads * (close / 100.0 if close else 1.0)
+    revenue = sales * check
+    gross = revenue * margin / 100.0 if margin else None
+    net = (gross - budget) if gross is not None else None
+    return {
+        "budget": int(round(budget)), "cpc": round(cpc, 2), "conv_pct": round(conv, 2),
+        "avg_check": int(round(check)),
+        "avg_margin": (round(margin, 1) if margin else None),
+        "close_pct": (round(close, 1) if close else None),
+        "clicks": int(round(clicks)), "leads": int(round(leads)), "sales": int(round(sales)),
+        "revenue": int(round(revenue)),
+        "gross_profit": (int(round(gross)) if gross is not None else None),
+        "net_profit": (int(round(net)) if net is not None else None),
+        "cpl": (int(round(budget / leads)) if leads > 0 else None),
+        "cpa": (int(round(budget / sales)) if sales > 0 else None),
+        "drr": (round(budget / revenue * 100, 1) if revenue > 0 else None),
+        "roas": (round(revenue / budget, 2) if budget > 0 else None),
+        "romi": (int(round((gross - budget) / budget * 100)) if (gross is not None and budget > 0) else None),
     }
 
 

@@ -266,6 +266,24 @@ def report_pdf():
         res["benefit"] = dict(res["benefit"])
         qualify.apply_custom_econ(res["benefit"], cust["conv"], cust["check"],
                                   cust["margin"], cust["close"])
+    # кастомний медіаплан контексту
+    mpc = {k: request.args.get(k) for k in ("mp_budget", "mp_cpc", "mp_conv",
+                                            "mp_check", "mp_margin", "mp_close")}
+    if any(mpc.values()) and res.get("media_plan"):
+        res = dict(res)
+        base = res.get("media_plan") or {}
+
+        def _pick(v, cur):
+            return v if v not in (None, "") else cur
+        rebuilt = qualify.build_media_plan(
+            _pick(mpc["mp_budget"], base.get("budget")),
+            _pick(mpc["mp_cpc"], base.get("cpc")),
+            _pick(mpc["mp_conv"], base.get("conv_pct")),
+            _pick(mpc["mp_check"], base.get("avg_check")),
+            _pick(mpc["mp_margin"], base.get("avg_margin")),
+            _pick(mpc["mp_close"], base.get("close_pct")))
+        if rebuilt:
+            res["media_plan"] = rebuilt
     try:
         import pdf
         data = pdf.build(res)

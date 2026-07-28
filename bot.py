@@ -174,6 +174,36 @@ def _potential_pre(bn: dict) -> str:
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
+def _mediaplan_pre(mp: dict) -> str:
+    if not mp:
+        return ""
+    rows = [
+        f"{'Бюджет':<9}{_fmtk(mp['budget'])} ₴/міс",
+        f"{'Кліки':<9}{_fmtk(mp['clicks'])}   (CPC {mp['cpc']} ₴)",
+        f"{'Заявки':<9}{_fmtk(mp['leads'])}   (конв {mp['conv_pct']}%)",
+        f"{'Продажі':<9}{_fmtk(mp['sales'])}" + (f"   (→продаж {mp['close_pct']}%)" if mp.get('close_pct') else ""),
+        f"{'Дохід':<9}{_fmtk(mp['revenue'])} ₴/міс",
+    ]
+    kpi = []
+    if mp.get("net_profit") is not None:
+        kpi.append(f"прибуток {_fmtk(mp['net_profit'])} ₴")
+    if mp.get("romi") is not None:
+        kpi.append(f"ROMI {mp['romi']}%")
+    if mp.get("roas") is not None:
+        kpi.append(f"ROAS {mp['roas']}×")
+    if mp.get("cpl"):
+        kpi.append(f"CPL {_fmtk(mp['cpl'])} ₴")
+    if mp.get("cpa"):
+        kpi.append(f"CPA {_fmtk(mp['cpa'])} ₴")
+    if mp.get("drr") is not None:
+        kpi.append(f"ДРР {mp['drr']}%")
+    head = f"💸 <b>Медіаплан контексту</b> (бюджет {_fmtk(mp['budget'])} ₴):"
+    out = head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
+    if kpi:
+        out += "<b>" + " · ".join(kpi) + "</b>"
+    return out
+
+
 def _pages_msg(res: dict) -> str:
     pages = res.get("top_pages_traffic") or []
     if not pages:
@@ -267,6 +297,10 @@ def fmt(res: dict) -> str:
         b = f"~${pd['budget']}/міс" if pd.get("budget") else "н/д"
         lines.append(f"💵 <b>Бюджет контексту</b> (SemRush, оцінка): {b} · "
                      f"{pd.get('keywords', 0)} платних запитів")
+    mp = res.get("media_plan")
+    if mp:
+        lines.append("")
+        lines.append(_mediaplan_pre(mp))
     sc = res.get("social") or {}
     if sc.get("checked") and sc.get("found"):
         foll = sc.get("followers")

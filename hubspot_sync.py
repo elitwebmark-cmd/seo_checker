@@ -329,6 +329,29 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
     budget_line = (f"~${_fmt(pd.get('budget'))}/міс · {pd.get('keywords', 0)} платних запитів"
                    if (pd.get("budget") or pd.get("keywords")) else "н/д")
 
+    mp = res.get("media_plan") or {}
+    if mp:
+        mp_line = (f"бюджет {_fmt(mp['budget'])} ₴/міс → {_fmt(mp['clicks'])} кліків → "
+                   f"{_fmt(mp['leads'])} заявок → {_fmt(mp['sales'])} продажів → "
+                   f"{_fmt(mp['revenue'])} ₴ дохід (CPC {mp['cpc']} ₴)")
+        _k = []
+        if mp.get("net_profit") is not None:
+            _k.append(f"прибуток {_fmt(mp['net_profit'])} ₴")
+        if mp.get("romi") is not None:
+            _k.append(f"ROMI {mp['romi']}%")
+        if mp.get("roas") is not None:
+            _k.append(f"ROAS {mp['roas']}×")
+        if mp.get("cpl"):
+            _k.append(f"CPL {_fmt(mp['cpl'])} ₴")
+        if mp.get("cpa"):
+            _k.append(f"CPA {_fmt(mp['cpa'])} ₴")
+        if mp.get("drr") is not None:
+            _k.append(f"ДРР {mp['drr']}%")
+        mp_kpi_line = " · ".join(_k) if _k else "—"
+    else:
+        mp_line = "—"
+        mp_kpi_line = "—"
+
     if sc.get("checked") and sc.get("found"):
         ig_line = f"@{_html.escape(sc.get('handle', ''))} · ~{_fmt(sc.get('followers') or 0)} підписн."
         reg_line = (f"залученість ~{sc.get('avg_engagement', 0)}/пост · "
@@ -398,6 +421,8 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         _lbl("Оголошення по платформах", platforms_line),
         _lbl("Google Shopping / PLA", shopping_line),
         _lbl("Контекст-бюджет (SemRush)", budget_line),
+        _lbl("Медіаплан контексту (прогноз)", mp_line),
+        _lbl("Юніт-метрики PPC", mp_kpi_line),
         "<b>Динаміка PPC (12 міс.):</b>",
         _dyn_ppc(hist), "",
         _lbl("Висновок по PPC", _ppc_conclusion(res)),
