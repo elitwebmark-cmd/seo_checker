@@ -134,29 +134,28 @@ def check(domain: str) -> dict:
             })
     running = count > 0 or bool(creatives)
 
-    # матриця + креативи по платформах (+5 запитів SerpApi) — лише коли реклама активна.
-    # Тягнемо крео окремо по кожній платформі й тегуємо, щоб у звіті ділились.
+    # матриця + теги платформ (+5 запитів SerpApi) — лише коли реклама активна.
+    # Крео беремо з основного запиту (нормальні прев'ю), а платформи ДОТЕГУЄМО
+    # зіставленням за ідентифікатором крео (link/image) з per-platform вибірок.
     platforms = None
-    creatives_out = [dict(it, platforms=[]) for it in items[:12]]
+    creatives_out = [dict(it, platforms=[]) for it in items[:15]]
     if running:
         platforms = {}
-        merged = {}
+        plat_sets = {}
         for key, code, _lbl in _PLATFORMS:
             total, cres = _platform_query(host, days, code, num=12)
             platforms[key] = total
+            ids = set()
             for c in cres:
-                cr = _creative_from(c)
-                idk = cr["image"] or cr["link"] or (cr["text"][:40] if cr["text"] else "")
-                if not idk:
-                    continue
-                if idk in merged:
-                    if key not in merged[idk]["platforms"]:
-                        merged[idk]["platforms"].append(key)
-                else:
-                    cr["platforms"] = [key]
-                    merged[idk] = cr
-        if merged:
-            creatives_out = list(merged.values())[:15]
+                cid = (c.get("link") or c.get("details_link") or c.get("image") or "").strip()
+                if cid:
+                    ids.add(cid)
+            plat_sets[key] = ids
+        creatives_out = []
+        for it in items[:15]:
+            cid = it.get("link") or it.get("image") or ""
+            plats = [k for k in plat_sets if cid and cid in plat_sets[k]]
+            creatives_out.append(dict(it, platforms=plats))
 
     return {
         "checked": True,
