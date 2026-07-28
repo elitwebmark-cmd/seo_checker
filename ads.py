@@ -6,6 +6,7 @@
 перелік рекламодавців і діплінк у Transparency Center."""
 from __future__ import annotations
 import re
+import datetime
 import requests
 import config
 
@@ -28,11 +29,16 @@ def check(domain: str) -> dict:
     if not config.SERPAPI_KEY:
         return {"checked": False, "note": "SERPAPI_KEY не заданий", "link": link}
 
+    days = getattr(config, "ADS_ACTIVE_DAYS", 30)
+    today = datetime.date.today()
     params = {
         "engine": "google_ads_transparency_center",
         "text": host,
         "region": config.ADS_REGION,   # 2804 = Україна
         "num": 40,
+        # вікно «крутить зараз»: лише оголошення, показані за останні N днів
+        "start_date": (today - datetime.timedelta(days=days)).strftime("%Y%m%d"),
+        "end_date": today.strftime("%Y%m%d"),
         "api_key": config.SERPAPI_KEY,
     }
     try:
@@ -48,7 +54,7 @@ def check(domain: str) -> dict:
         low = err.lower()
         if "hasn't returned any results" in low or "no results" in low or "didn't return" in low:
             return {"checked": True, "running": False, "count": 0,
-                    "advertisers": [], "link": link}
+                    "advertisers": [], "period_days": days, "link": link}
         return {"checked": False, "note": str(err)[:160], "link": link}
 
     creatives = data.get("ad_creatives") or []
@@ -92,5 +98,6 @@ def check(domain: str) -> dict:
         "formats": fmt,                       # к-сть по форматах у вибірці
         "formats_sampled": len(creatives),    # скільки креативів проаналізовано
         "creatives": items[:12],              # прев'ю креативів (лише веб)
+        "period_days": days,                  # вікно, за яке взято дані
         "link": link,
     }

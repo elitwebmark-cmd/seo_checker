@@ -19,6 +19,7 @@ TELEGRAM_BOT_URL = os.getenv("TELEGRAM_BOT_URL", "")   # напр. https://t.me/
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 ADS_REGION = os.getenv("ADS_REGION", "2804")           # 2804 = Україна
 ADS_TIMEOUT = int(os.getenv("ADS_TIMEOUT", "25"))
+ADS_ACTIVE_DAYS = int(os.getenv("ADS_ACTIVE_DAYS", "30"))   # вікно «крутить рекламу зараз» у Transparency Center
 
 # --- Соцмережі (Instagram через SerpApi) ---
 # Поріг аудиторії, з якого SMM/таргет вважаємо доречним

@@ -233,7 +233,8 @@ def fmt(res: dict) -> str:
             adv = ""
             if ad.get("advertisers"):
                 adv = " · " + html.escape(", ".join(ad["advertisers"]))
-            lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош.{adv} — "
+            per = ad.get("period_days", 30)
+            lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош. за {per} дн.{adv} — "
                          f"<a href=\"{ad['link']}\">перевірити</a>")
             f = ad.get("formats") or {}
             if f:
@@ -244,7 +245,8 @@ def fmt(res: dict) -> str:
                                            _fm("банери", f.get("image", 0)),
                                            _fm("відео", f.get("video", 0))]))
         else:
-            lines.append(f"📣 <b>Контекст:</b> не знайдено — <a href=\"{ad['link']}\">перевірити</a>")
+            lines.append(f"📣 <b>Контекст:</b> не крутиться за {ad.get('period_days', 30)} дн. — "
+                         f"<a href=\"{ad['link']}\">перевірити</a>")
     sh = res.get("shopping") or {}
     if sh.get("checked"):
         if sh.get("uses"):
