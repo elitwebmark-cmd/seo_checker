@@ -13,6 +13,7 @@ import urllib.parse
 import requests
 import config
 
+_FB_ID_RE = re.compile(r"facebook\.com/(?:profile\.php\?id=|pages/[^/]+/)(\d{5,})", re.I)
 _FB_RE = re.compile(r"facebook\.com/([A-Za-z0-9_.\-]{2,60})", re.I)
 _FB_RESERVED = {"sharer", "plugins", "tr", "dialog", "events", "groups", "profile.php",
                 "people", "pages", "watch", "story.php", "permalink.php", "help",
@@ -26,7 +27,7 @@ def _host(domain: str) -> str:
 
 
 def find_facebook_page(domain: str):
-    """Slug FB-сторінки з головної сайту (або None)."""
+    """FB-сторінка з головної сайту: ('id', '153...') або ('slug', 'turbowebua') або None."""
     host = _host(domain)
     headers = {"User-Agent": config.USER_AGENT, "Accept-Language": config.ACCEPT_LANGUAGE}
     for url in (f"https://{host}", f"http://{host}"):
@@ -34,10 +35,13 @@ def find_facebook_page(domain: str):
             r = requests.get(url, headers=headers, timeout=config.HTTP_TIMEOUT, allow_redirects=True)
             if r.status_code >= 400 or not r.text:
                 continue
+            m = _FB_ID_RE.search(r.text)
+            if m:
+                return ("id", m.group(1))
             for m in _FB_RE.finditer(r.text):
                 slug = m.group(1).strip("/.").lower()
                 if slug and slug not in _FB_RESERVED and not slug.endswith(".php"):
-                    return slug
+                    return ("slug", slug)
             return None
         except requests.RequestException:
             continue
@@ -118,13 +122,25 @@ def _images_of(item: dict):
 def check(domain: str) -> dict:
     if not config.APIFY_TOKEN:
         return {"checked": False, "note": "APIFY_TOKEN не заданий"}
-    # keyword-пошук за брендом у всіх країнах (як у веб-бібліотеці Meta) — надійніше,
-    # ніж URL сторінки: не залежить від того, чи є лінк на FB на сайті і на яке гео таргет.
-    page = find_facebook_page(domain)
-    query = _host(domain).split(".")[0]
-    lib_url = _library_url(query)
+    # Пріоритет — точний пошук за FB-сторінкою бренду (як view_all_page_id у веб-бібліотеці).
+    # Якщо сторінку на сайті не знайдено — відкат на keyword-пошук за брендом.
+    fb = find_facebook_page(domain)
+    page = None
+    if fb and fb[0] == "id":
+        page = fb[1]
+        target_url = (f"https://www.facebook.com/ads/library/?active_status=active&ad_type=all"
+                      f"&country=ALL&search_type=page&view_all_page_id={fb[1]}")
+        lib_url = target_url
+    elif fb and fb[0] == "slug":
+        page = fb[1]
+        target_url = f"https://www.facebook.com/{fb[1]}"
+        lib_url = _library_url(fb[1])
+    else:
+        query = _host(domain).split(".")[0]
+        target_url = _library_url(query)
+        lib_url = target_url
     try:
-        items = _run_apify(lib_url, config.META_ADS_LIMIT)
+        items = _run_apify(target_url, config.META_ADS_LIMIT)
     except Exception as e:
         return {"checked": False, "note": f"помилка Apify: {str(e)[:140]}", "link": lib_url}
 
