@@ -305,9 +305,11 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
                        + ", ".join([f"пошук {f.get('text', 0)}",
                                     f"банери {f.get('image', 0)}",
                                     f"відео {f.get('video', 0)}"]))
-        ads_line = f"працює, ~{ad.get('count')} оголош. за {ad.get('period_days', 30)} дн.{fmt_txt}"
+        _per = f" за {ad['period_days']} дн." if ad.get("period_days") else ""
+        ads_line = f"працює, ~{ad.get('count')} оголош.{_per}{fmt_txt}"
     elif ad.get("checked"):
-        ads_line = f"не крутиться за {ad.get('period_days', 30)} дн."
+        _per = f" за {ad['period_days']} дн." if ad.get("period_days") else ""
+        ads_line = f"не крутиться{_per}"
     else:
         ads_line = "не перевірялось"
     pm = ad.get("platforms") or {}

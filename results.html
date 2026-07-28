@@ -120,19 +120,19 @@
       <span class="sig-l"><span class="sig-ico">📣</span>Контекст</span>
       {% if r.ads.running %}
       <span class="dot dot-red"></span>
-      <span class="sig-v">Працює · <span class="u">~{{ r.ads.count }}</span> оголош. <span class="sig-per">за {{ r.ads.period_days or 30 }} дн.</span></span>
+      <span class="sig-v">Працює · <span class="u">~{{ r.ads.count }}</span> оголош.{% if r.ads.period_days %} <span class="sig-per">за {{ r.ads.period_days }} дн.</span>{% endif %}</span>
       {% if r.ads.advertisers %}<span class="sig-sub">{{ r.ads.advertisers|join(", ") }}</span>{% endif %}
       {% if r.ads.formats %}<span class="sig-sub">формати: {% if r.ads.formats.text %}<b class="fmt-on">пошук {{ r.ads.formats.text }}</b>{% else %}<span class="fmt-off">пошук —</span>{% endif %} · {% if r.ads.formats.image %}<b class="fmt-on">банери {{ r.ads.formats.image }}</b>{% else %}<span class="fmt-off">банери —</span>{% endif %} · {% if r.ads.formats.video %}<b class="fmt-on">відео {{ r.ads.formats.video }}</b>{% else %}<span class="fmt-off">відео —</span>{% endif %}</span>{% endif %}
       {% else %}
       <span class="dot dot-off"></span>
-      <span class="sig-v">Не крутиться <span class="sig-per">за {{ r.ads.period_days or 30 }} дн.</span></span>
+      <span class="sig-v">Не крутиться{% if r.ads.period_days %} <span class="sig-per">за {{ r.ads.period_days }} дн.</span>{% endif %}</span>
       {% endif %}
       <a class="btn-sm" href="{{ r.ads.link }}" target="_blank" rel="noopener">Transparency Center</a>
     </div>
     {% endif %}
     {% if r.ads and r.ads.running and r.ads.platforms %}
     <div class="sig sig-col">
-      <span class="sig-l"><span class="sig-ico">📊</span>Оголошення по платформах <span class="sig-per">за {{ r.ads.period_days or 30 }} дн.</span></span>
+      <span class="sig-l"><span class="sig-ico">📊</span>Оголошення по платформах{% if r.ads.period_days %} <span class="sig-per">за {{ r.ads.period_days }} дн.</span>{% endif %}</span>
       <div class="plat-matrix">
         {% set pmax = (r.ads.platforms.values()|max) or 1 %}
         {% for key in ['search','youtube','shopping','maps','play'] %}

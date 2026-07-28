@@ -292,8 +292,8 @@ def fmt(res: dict) -> str:
             adv = ""
             if ad.get("advertisers"):
                 adv = " · " + html.escape(", ".join(ad["advertisers"]))
-            per = ad.get("period_days", 30)
-            lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош. за {per} дн.{adv} — "
+            per = f" за {ad['period_days']} дн." if ad.get("period_days") else ""
+            lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош.{per}{adv} — "
                          f"<a href=\"{ad['link']}\">перевірити</a>")
             f = ad.get("formats") or {}
             if f:
@@ -312,7 +312,8 @@ def fmt(res: dict) -> str:
                          for k in ("search", "youtube", "shopping", "maps", "play")]
                 lines.append("📊 <b>Платформи:</b>\n<pre>" + html.escape("\n".join(prows)) + "</pre>")
         else:
-            lines.append(f"📣 <b>Контекст:</b> не крутиться за {ad.get('period_days', 30)} дн. — "
+            per = f" за {ad['period_days']} дн." if ad.get("period_days") else ""
+            lines.append(f"📣 <b>Контекст:</b> не крутиться{per} — "
                          f"<a href=\"{ad['link']}\">перевірити</a>")
     sh = res.get("shopping") or {}
     if sh.get("checked"):

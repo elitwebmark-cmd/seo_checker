@@ -19,7 +19,8 @@ TELEGRAM_BOT_URL = os.getenv("TELEGRAM_BOT_URL", "")   # напр. https://t.me/
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 ADS_REGION = os.getenv("ADS_REGION", "2804")           # 2804 = Україна
 ADS_TIMEOUT = int(os.getenv("ADS_TIMEOUT", "25"))
-ADS_ACTIVE_DAYS = int(os.getenv("ADS_ACTIVE_DAYS", "30"))   # вікно «крутить рекламу зараз» у Transparency Center
+ADS_ACTIVE_DAYS = int(os.getenv("ADS_ACTIVE_DAYS", "0"))   # 0 = без фільтра дати (як у Transparency Center, за весь час)
+ADS_CREATIVES_LIMIT = int(os.getenv("ADS_CREATIVES_LIMIT", "50"))  # скільки крео виводити
 
 # --- Meta (Facebook/Instagram) реклама через Apify Ad Library Scraper ---
 # Deep-чек (1 домен). Актор і вхідні дані — через env, щоб міняти без коду.

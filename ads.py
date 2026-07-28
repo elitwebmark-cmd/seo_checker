@@ -35,15 +35,17 @@ _PLATFORM_LABELS = {k: lbl for k, _code, lbl in _PLATFORMS}
 
 
 def _base_params(host: str, days: int) -> dict:
-    today = datetime.date.today()
-    return {
+    p = {
         "engine": "google_ads_transparency_center",
         "text": host,
         "region": config.ADS_REGION,   # 2804 = Україна
-        "start_date": (today - datetime.timedelta(days=days)).strftime("%Y%m%d"),
-        "end_date": today.strftime("%Y%m%d"),
         "api_key": config.SERPAPI_KEY,
     }
+    if days and days > 0:   # 0 = без фільтра дати (за весь час, як у Transparency Center)
+        today = datetime.date.today()
+        p["start_date"] = (today - datetime.timedelta(days=days)).strftime("%Y%m%d")
+        p["end_date"] = today.strftime("%Y%m%d")
+    return p
 
 
 def _creative_from(c: dict) -> dict:
@@ -82,8 +84,9 @@ def check(domain: str) -> dict:
     if not config.SERPAPI_KEY:
         return {"checked": False, "note": "SERPAPI_KEY не заданий", "link": link}
 
-    days = getattr(config, "ADS_ACTIVE_DAYS", 30)
-    params = dict(_base_params(host, days), num=40)
+    days = getattr(config, "ADS_ACTIVE_DAYS", 0)
+    lim = getattr(config, "ADS_CREATIVES_LIMIT", 50)
+    params = dict(_base_params(host, days), num=lim)
     try:
         r = requests.get(SERPAPI_URL, params=params, timeout=config.ADS_TIMEOUT)
         data = r.json()
@@ -97,7 +100,7 @@ def check(domain: str) -> dict:
         low = err.lower()
         if "hasn't returned any results" in low or "no results" in low or "didn't return" in low:
             return {"checked": True, "running": False, "count": 0,
-                    "advertisers": [], "period_days": days, "link": link}
+                    "advertisers": [], "period_days": days or None, "link": link}
         return {"checked": False, "note": str(err)[:160], "link": link}
 
     creatives = data.get("ad_creatives") or []
@@ -134,28 +137,30 @@ def check(domain: str) -> dict:
             })
     running = count > 0 or bool(creatives)
 
-    # матриця + теги платформ (+5 запитів SerpApi) — лише коли реклама активна.
-    # Крео беремо з основного запиту (нормальні прев'ю), а платформи ДОТЕГУЄМО
-    # зіставленням за ідентифікатором крео (link/image) з per-platform вибірок.
+    # матриця + креативи по платформах (+5 запитів SerpApi) — лише коли реклама активна.
+    # Крео збираємо прямо з per-platform вибірок (реальні теги платформ), показуємо
+    # лише ті, що мають прев'ю-картинку (щоб не було порожніх карток).
     platforms = None
-    creatives_out = [dict(it, platforms=[]) for it in items[:15]]
+    creatives_out = [dict(it, platforms=[]) for it in items[:lim] if it.get("image")]
     if running:
         platforms = {}
-        plat_sets = {}
+        merged = {}
         for key, code, _lbl in _PLATFORMS:
-            total, cres = _platform_query(host, days, code, num=12)
+            total, cres = _platform_query(host, days, code, num=lim)
             platforms[key] = total
-            ids = set()
             for c in cres:
-                cid = (c.get("link") or c.get("details_link") or c.get("image") or "").strip()
-                if cid:
-                    ids.add(cid)
-            plat_sets[key] = ids
-        creatives_out = []
-        for it in items[:15]:
-            cid = it.get("link") or it.get("image") or ""
-            plats = [k for k in plat_sets if cid and cid in plat_sets[k]]
-            creatives_out.append(dict(it, platforms=plats))
+                cr = _creative_from(c)
+                if not cr["image"]:
+                    continue
+                idk = cr["image"]
+                if idk in merged:
+                    if key not in merged[idk]["platforms"]:
+                        merged[idk]["platforms"].append(key)
+                else:
+                    cr["platforms"] = [key]
+                    merged[idk] = cr
+        if merged:
+            creatives_out = list(merged.values())[:lim]
 
     return {
         "checked": True,
@@ -167,6 +172,6 @@ def check(domain: str) -> dict:
         "creatives": creatives_out,           # прев'ю креативів з тегами платформ (лише веб)
         "platforms": platforms,               # к-сть оголошень по платформах
         "platform_labels": _PLATFORM_LABELS if running else None,
-        "period_days": days,                  # вікно, за яке взято дані
+        "period_days": days or None,          # None = за весь час (без фільтра дати)
         "link": link,
     }
