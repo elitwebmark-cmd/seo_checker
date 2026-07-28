@@ -249,13 +249,17 @@
   </details>
   {% endif %}
   </details>{% endif %}{# /rc-sect ppc #}
-  {% if r.meta_ads and r.meta_ads.checked %}
+  {% if r.meta_ads %}
   <details class="rc-sect meta">
   <summary class="rc-sect-h"><span class="rc-sect-badge s-meta">Meta</span>Реклама у Facebook / Instagram · Ad Library</summary>
   <div class="sigs">
     <div class="sig">
       <span class="sig-l"><span class="sig-ico">📘</span>Статус</span>
-      {% if r.meta_ads.running %}
+      {% if not r.meta_ads.checked %}
+      <span class="dot dot-off"></span>
+      <span class="sig-v">Не перевірено</span>
+      {% if r.meta_ads.note %}<span class="sig-sub">{{ r.meta_ads.note }}</span>{% endif %}
+      {% elif r.meta_ads.running %}
       <span class="dot dot-red"></span>
       <span class="sig-v">Працює · <span class="u">{{ r.meta_ads.count }}</span> активних крео</span>
       {% if r.meta_ads.page %}<span class="sig-sub">сторінка: {{ r.meta_ads.page }}</span>{% endif %}
@@ -264,7 +268,7 @@
       <span class="dot dot-off"></span>
       <span class="sig-v">Активних оголошень не знайдено</span>
       {% endif %}
-      <a class="btn-sm" href="{{ r.meta_ads.link }}" target="_blank" rel="noopener">Ad Library</a>
+      {% if r.meta_ads.link %}<a class="btn-sm" href="{{ r.meta_ads.link }}" target="_blank" rel="noopener">Ad Library</a>{% endif %}
     </div>
   </div>
   {% if r.meta_ads.creatives %}
