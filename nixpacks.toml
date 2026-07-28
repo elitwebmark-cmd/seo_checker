@@ -1,6 +1,7 @@
 # Системні бібліотеки для WeasyPrint (рендер PDF) + шрифти з кирилицею.
 [phases.setup]
 aptPkgs = [
+  "libglib2.0-0",
   "libpangocairo-1.0-0",
   "libpango-1.0-0",
   "libpangoft2-1.0-0",
@@ -8,6 +9,8 @@ aptPkgs = [
   "libcairo2",
   "libgdk-pixbuf-2.0-0",
   "libffi8",
+  "libfontconfig1",
+  "fontconfig",
   "shared-mime-info",
   "fonts-dejavu-core",
 ]

@@ -250,6 +250,10 @@ def report_pdf():
         data = pdf.build(res)
     except Exception:
         log.exception("pdf build failed for %s", domain)
+        if request.args.get("debug"):
+            import traceback
+            return Response("PDF build failed:\n\n" + traceback.format_exc(),
+                            mimetype="text/plain", status=500)
         return "Помилка генерації PDF", 500
     fname = (domain or "seo").replace("/", "_") + "-elitweb-seo.pdf"
     return Response(data, mimetype="application/pdf",
