@@ -22,6 +22,8 @@
   {% if r.niche and r.niche.subniche %}<div class="rc-niche">{% if assets.ic_niche %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_niche) }}" alt="">{% else %}🧭 {% endif %}{{ r.niche.direction_name }} → {{ r.niche.industry_name }} → <b>{{ r.niche.subniche }}</b> <span class="small">({{ r.niche.confidence }})</span></div>{% endif %}
   {% if r.niche_caveat %}<div class="niche-caveat">⚠️ Ніша не профільна під офер — умовно підходить, зважати на нішу</div>{% endif %}
   {% if r.kw_caveat %}<div class="niche-caveat">⚠️ Комерц. запитів 100–299 (нижче норми 300) — умовно прийнятно, не «Ідеально»</div>{% endif %}
+  <div class="rc-sect seo">
+  <div class="rc-sect-h"><span class="rc-sect-badge s-seo">SEO</span>Органічний пошук — трафік, позиції, потенціал</div>
   <div class="rc-stats">
     <div class="stat"><div class="stat-l">Комерц. 4–20</div><div class="stat-v">{{ r.metrics.commercial_kw_11_30 if r.metrics else "—" }}</div></div>
     <div class="stat"><div class="stat-l">Трафік</div><div class="stat-v">{{ r.metrics.organic_traffic if r.metrics else "—" }}</div></div>
@@ -100,6 +102,10 @@
     {% endif %}
   </div>
   {% endif %}
+  </div>{# /rc-sect seo #}
+  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) or r.media_plan %}
+  <div class="rc-sect ppc">
+  <div class="rc-sect-h"><span class="rc-sect-badge s-ppc">PPC</span>Контекстна реклама — присутність, медіаплан, креативи</div>
   {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) %}
   <div class="sigs">
     {% if r.ads and r.ads.checked %}
@@ -235,9 +241,11 @@
     </div>
   </details>
   {% endif %}
+  </div>{% endif %}{# /rc-sect ppc #}
   {% if r.services %}
+  <div class="rc-sect serv">
+  <div class="rc-sect-h"><span class="rc-sect-badge s-serv">Послуги</span>Під які послуги підходить</div>
   <div class="svc">
-    <div class="svc-h">🧩 Підходить під послуги</div>
     {% for s in r.services %}
     <div class="svc-row">
       <span class="badge b-{{ 'green' if s.level=='yes' else 'amber' if s.level=='maybe' else 'red' }}">{{ s.name }}</span>
@@ -245,7 +253,10 @@
     </div>
     {% endfor %}
   </div>
-  {% endif %}
+  </div>
+  {% endif %}{# /rc-sect serv #}
+  <div class="rc-sect mat">
+  <div class="rc-sect-h"><span class="rc-sect-badge s-mat">Матеріали</span>Корисні матеріали та деталі</div>
   <div class="rc-acc">
     {% if r.factors %}<details><summary>критерії</summary>
       <div class="facts">
@@ -311,6 +322,7 @@
     </details>
     {% else %}<span class="small">📁 Кейси: немає релевантних для цієї ніші</span>{% endif %}
   </div>
+  </div>{# /rc-sect mat #}
 </div>
 {% endfor %}
 
