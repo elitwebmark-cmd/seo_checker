@@ -61,10 +61,10 @@ body { font-family: 'Montserrat', Arial, sans-serif; color: var(--ink); font-siz
 .circ svg { margin-top: 16px; }
 .klab .t { font-size: 12px; font-weight: 700; }
 .kpis { width: 100%; border-collapse: collapse; }
-.kpis td { padding: 10px 14px; text-align: center; border-left: 1px solid var(--line); vertical-align: top; }
+.kpis td { padding: 10px 10px; text-align: center; border-left: 1px solid var(--line); vertical-align: top; }
 .kpis td:first-child { border-left: none; }
 .kpi-l { font-size: 12px; color: var(--mut); font-weight: 600; margin-bottom: 9px; }
-.kpi-v { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -.5px; }
+.kpi-v { font-size: 23px; font-weight: 800; line-height: 1.05; letter-spacing: -.6px; white-space: nowrap; }
 .kpi-v.red { color: var(--red); }
 .kpi-d { font-size: 11px; font-weight: 700; margin-top: 9px; color: var(--good); }
 
@@ -97,8 +97,8 @@ body { font-family: 'Montserrat', Arial, sans-serif; color: var(--ink); font-siz
 .flow-cap { color: var(--mut); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: .3px; }
 .flow-v { font-size: 28px; font-weight: 800; letter-spacing: -.5px; }
 .flow-up { text-align: right; }
-.flow-up span { display: inline-block; background: #EAF6EF; color: var(--good); font-weight: 800; font-size: 11px;
-    padding: 6px 13px; border-radius: 20px; border: 1px solid #CBE7D6; }
+.flow-up span { display: inline-block; background: #EAF6EF; color: var(--good); font-weight: 800; font-size: 16px;
+    padding: 12px 20px; border-radius: 26px; border: 1px solid #CBE7D6; white-space: nowrap; }
 .funnel { width: 100%; border-collapse: separate; border-spacing: 10px 0; margin: 0 -10px; }
 .funnel td { border: 1px solid var(--line); background: #FAFAFB; border-radius: 10px; padding: 14px 8px; text-align: center; width: 25%; }
 .funnel-2 { border-spacing: 10px 10px; }
@@ -245,7 +245,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
   <div class="ph"><span class="dt"></span><h3>Модель зростання</h3> <span class="cnt">· вивід комерц. запитів ТОП 4–20 у ТОП-1</span></div>
   <table class="flow"><tr>
     <td><div class="flow-cap">трафік зараз</div><div class="flow-v">{{ r.benefit.traffic_now|sp }} <span class="seg-pct">/міс</span></div></td>
-    <td style="width:26px;text-align:center;color:var(--red)"><b>&#8594;</b></td>
+    <td style="width:40px;text-align:center;color:var(--red)"><b style="font-size:30px">&#8594;</b></td>
     <td><div class="flow-cap">трафік у ТОП-1</div><div class="flow-v" style="color:var(--red)">{{ r.benefit.traffic_top1|sp }} <span class="seg-pct">/міс</span></div></td>
     <td class="flow-up"><span>+{{ r.benefit.uplift|sp }} візитів{% if r.benefit.multiplier %} · ×{{ r.benefit.multiplier }}{% endif %}</span></td>
   </tr></table>
