@@ -277,13 +277,17 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
-{% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) %}
+{% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Присутність у платних каналах і соцмережах</h3></div>
   <table class="info">
     {% if r.ads and r.ads.checked %}
     <tr><td class="l">Контекстна реклама (Google)</td>
-        <td class="v">{% if r.ads.running %}<span class="on">працює</span> · ~{{ r.ads.count }} оголошень{% if r.ads.advertisers %} ({{ r.ads.advertisers|join(', ') }}){% endif %}{% else %}<span class="off">не виявлено</span>{% endif %}</td></tr>
+        <td class="v">{% if r.ads.running %}<span class="on">працює</span> · ~{{ r.ads.count }} оголошень{% if r.ads.advertisers %} ({{ r.ads.advertisers|join(', ') }}){% endif %}{% if r.ads.formats %}<div class="svc-note" style="margin-top:2px">формати: {% if r.ads.formats.text %}<span style="color:var(--good)">пошук {{ r.ads.formats.text }}</span>{% else %}пошук —{% endif %} · {% if r.ads.formats.image %}<span style="color:var(--good)">банери {{ r.ads.formats.image }}</span>{% else %}банери —{% endif %} · {% if r.ads.formats.video %}<span style="color:var(--good)">відео {{ r.ads.formats.video }}</span>{% else %}відео —{% endif %}</div>{% endif %}{% else %}<span class="off">не виявлено</span>{% endif %}</td></tr>
+    {% endif %}
+    {% if r.shopping and r.shopping.checked %}
+    <tr><td class="l">Google Shopping (PLA)</td>
+        <td class="v">{% if r.shopping.uses %}<span class="on">працює</span> · ≥{{ r.shopping.pla_keywords }} товарних запитів{% if r.shopping.shop_name %} · магазин «{{ r.shopping.shop_name }}»{% endif %}{% else %}<span class="off">товарна реклама не виявлена</span>{% endif %}</td></tr>
     {% endif %}
     {% if r.paid and (r.paid.budget or r.paid.keywords) %}
     <tr><td class="l">Оцінка бюджету контексту</td>

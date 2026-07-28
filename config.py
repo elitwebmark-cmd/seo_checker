@@ -81,6 +81,7 @@ SEGMENT_FETCH_LIMIT = int(os.getenv("SEGMENT_FETCH_LIMIT", "5000"))
 # Один об'єднаний витяг domain_organic (1–100) — з нього рахуємо матрицю,
 # топ-сторінки і комерц. запити 4–20. Головний важіль вартості SemRush.
 ORGANIC_FETCH_LIMIT = int(os.getenv("ORGANIC_FETCH_LIMIT", "200"))
+SHOPPING_FETCH_LIMIT = int(os.getenv("SHOPPING_FETCH_LIMIT", "10"))   # PLA/Shopping-чек (30 юнітів/рядок)
 # Стеля коефіцієнта екстраполяції потенціалу на повну семантику (захист від «вибухів»)
 MODEL_SCALE_CAP = float(os.getenv("MODEL_SCALE_CAP", "12"))
 # Кеш даних SemRush по домену (сек). Повторний аналіз не робить нових запитів.

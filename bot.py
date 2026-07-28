@@ -235,8 +235,23 @@ def fmt(res: dict) -> str:
                 adv = " · " + html.escape(", ".join(ad["advertisers"]))
             lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош.{adv} — "
                          f"<a href=\"{ad['link']}\">перевірити</a>")
+            f = ad.get("formats") or {}
+            if f:
+                def _fm(name, n):
+                    return f"{name} {n}" if n else f"{name} —"
+                lines.append("   формати: "
+                             + " · ".join([_fm("пошук", f.get("text", 0)),
+                                           _fm("банери", f.get("image", 0)),
+                                           _fm("відео", f.get("video", 0))]))
         else:
             lines.append(f"📣 <b>Контекст:</b> не знайдено — <a href=\"{ad['link']}\">перевірити</a>")
+    sh = res.get("shopping") or {}
+    if sh.get("checked"):
+        if sh.get("uses"):
+            shop = f" · магазин «{html.escape(sh.get('shop_name',''))}»" if sh.get("shop_name") else ""
+            lines.append(f"🛒 <b>Google Shopping:</b> працює · ≥{sh.get('pla_keywords', 0)} товарних запитів{shop}")
+        else:
+            lines.append("🛒 <b>Google Shopping:</b> товарна реклама не крутиться")
     pd = res.get("paid") or {}
     if pd.get("budget") or pd.get("keywords"):
         b = f"~${pd['budget']}/міс" if pd.get("budget") else "н/д"

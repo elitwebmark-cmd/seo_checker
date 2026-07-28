@@ -55,15 +55,24 @@ def check(domain: str) -> dict:
     total = (data.get("search_information") or {}).get("total_results")
     count = int(total) if isinstance(total, (int, float)) and total else len(creatives)
     advertisers = []
+    # розподіл форматів по вибірці креативів (text = пошук, image = медійка/банери, video = YouTube)
+    fmt = {"text": 0, "image": 0, "video": 0, "other": 0}
     for c in creatives:
         a = (c.get("advertiser") or "").strip()
         if a and a not in advertisers:
             advertisers.append(a)
+        f = (c.get("format") or "").strip().lower()
+        if f in ("text", "image", "video"):
+            fmt[f] += 1
+        elif f:
+            fmt["other"] += 1
     running = count > 0 or bool(creatives)
     return {
         "checked": True,
         "running": running,
         "count": count,
         "advertisers": advertisers[:5],
+        "formats": fmt,                       # к-сть по форматах у вибірці
+        "formats_sampled": len(creatives),    # скільки креативів проаналізовано
         "link": link,
     }

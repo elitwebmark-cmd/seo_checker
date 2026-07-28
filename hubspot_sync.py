@@ -297,8 +297,27 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
     else:
         dup_txt = f"знайдено {len(dups)} угод(и) з цим доменом"
 
-    ads_line = ((f"працює, ~{ad.get('count')} оголош." if ad.get("running") else "не знайдено")
-                if ad.get("checked") else "не перевірялось")
+    if ad.get("checked") and ad.get("running"):
+        f = ad.get("formats") or {}
+        fmt_txt = ""
+        if f:
+            fmt_txt = (" · формати: "
+                       + ", ".join([f"пошук {f.get('text', 0)}",
+                                    f"банери {f.get('image', 0)}",
+                                    f"відео {f.get('video', 0)}"]))
+        ads_line = f"працює, ~{ad.get('count')} оголош.{fmt_txt}"
+    elif ad.get("checked"):
+        ads_line = "не знайдено"
+    else:
+        ads_line = "не перевірялось"
+    sh = res.get("shopping") or {}
+    if sh.get("checked") and sh.get("uses"):
+        shop = f" · магазин «{sh.get('shop_name')}»" if sh.get("shop_name") else ""
+        shopping_line = f"працює, ≥{sh.get('pla_keywords', 0)} товарних запитів{shop}"
+    elif sh.get("checked"):
+        shopping_line = "не знайдено"
+    else:
+        shopping_line = "не перевірялось"
     budget_line = (f"~${_fmt(pd.get('budget'))}/міс · {pd.get('keywords', 0)} платних запитів"
                    if (pd.get("budget") or pd.get("keywords")) else "н/д")
 
@@ -368,6 +387,7 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         SEP, "",
         "<b>PPC ІНФОРМАЦІЯ</b>",
         _lbl("Контекст (Transparency)", ads_line),
+        _lbl("Google Shopping / PLA", shopping_line),
         _lbl("Контекст-бюджет (SemRush)", budget_line),
         "<b>Динаміка PPC (12 міс.):</b>",
         _dyn_ppc(hist), "",

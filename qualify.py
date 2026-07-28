@@ -240,6 +240,14 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             ads_info = {"checked": False, "note": "помилка перевірки"}
 
+    # --- Google Shopping / PLA (лише для одного домену; той самий deep-чек, що й контекст) ---
+    shopping_info = None
+    if do_ads:
+        try:
+            shopping_info = semrush.domain_shopping(domain, db)
+        except Exception:
+            shopping_info = {"checked": False}
+
     # --- соцмережі (Instagram; лише для одного домену; інформаційно) ---
     social_info = None
     if do_social:
@@ -382,6 +390,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "top_pages_seo": top_pages_seo,
         "contractor": onp.get("contractor") if do_onpage else None,
         "ads": ads_info,
+        "shopping": shopping_info,
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),
                  "budget": overview.get("adwords_cost", 0)},

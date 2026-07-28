@@ -124,6 +124,51 @@ def _position_distribution(domain: str, db: str = None):
     return {"segments": seg, "labels": _SEG_LABELS, "total": total, "capped": False}
 
 
+def domain_shopping(domain: str, db: str = None) -> Dict[str, Any]:
+    """Чи використовує домен Google Shopping / PLA (товарну рекламу).
+    Звіт domain_shopping (PLA Positions). Кешується по домену."""
+    lim = getattr(config, "SHOPPING_FETCH_LIMIT", 10)
+    return _cached(f"shop:{_db(db)}:{domain}:{lim}", lambda: _domain_shopping(domain, db, lim))
+
+
+def _domain_shopping(domain: str, db: str, lim: int) -> Dict[str, Any]:
+    cols = ["Ph", "Po", "Nq", "Sn", "Ur", "Tt", "Pr"]
+    try:
+        text = _request({
+            "type": "domain_shopping",
+            "domain": domain,
+            "database": _db(db),
+            "display_limit": lim,
+            "display_sort": "nq_desc",
+            "export_columns": ",".join(cols),
+        })
+    except SemrushError:
+        return {"checked": False}
+    rows = _parse_csv(text)
+    if not rows:
+        return {"checked": True, "uses": False, "pla_keywords": 0, "products": []}
+    shops, products, seen = {}, [], set()
+    for r in rows:
+        sn = (r.get("Sn") or "").strip()
+        if sn:
+            shops[sn] = shops.get(sn, 0) + 1
+        tt = (r.get("Tt") or "").strip()
+        if tt and tt not in seen:
+            seen.add(tt)
+            products.append({"title": tt, "price": _safe_float(r.get("Pr")),
+                             "url": (r.get("Ur") or "").strip(),
+                             "keyword": (r.get("Ph") or "").strip()})
+    shop_name = max(shops, key=shops.get) if shops else ""
+    return {
+        "checked": True,
+        "uses": True,
+        "pla_keywords": len(rows),   # у вибірці (фактично «≥ стільки»)
+        "sampled": lim,
+        "shop_name": shop_name,
+        "products": products[:5],
+    }
+
+
 def domain_history(domain: str, db: str = None, limit: int = 10) -> List[Dict[str, Any]]:
     return _cached(f"hist:{_db(db)}:{domain}:{limit}", lambda: _domain_history(domain, db, limit))
 

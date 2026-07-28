@@ -100,7 +100,7 @@
     {% endif %}
   </div>
   {% endif %}
-  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) %}
+  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) %}
   <div class="sigs">
     {% if r.ads and r.ads.checked %}
     <div class="sig">
@@ -109,11 +109,25 @@
       <span class="dot dot-red"></span>
       <span class="sig-v">Працює · <span class="u">~{{ r.ads.count }}</span> оголош.</span>
       {% if r.ads.advertisers %}<span class="sig-sub">{{ r.ads.advertisers|join(", ") }}</span>{% endif %}
+      {% if r.ads.formats %}<span class="sig-sub">формати: {% if r.ads.formats.text %}<b class="fmt-on">пошук {{ r.ads.formats.text }}</b>{% else %}<span class="fmt-off">пошук —</span>{% endif %} · {% if r.ads.formats.image %}<b class="fmt-on">банери {{ r.ads.formats.image }}</b>{% else %}<span class="fmt-off">банери —</span>{% endif %} · {% if r.ads.formats.video %}<b class="fmt-on">відео {{ r.ads.formats.video }}</b>{% else %}<span class="fmt-off">відео —</span>{% endif %}</span>{% endif %}
       {% else %}
       <span class="dot dot-off"></span>
       <span class="sig-v">Не знайдено</span>
       {% endif %}
       <a class="btn-sm" href="{{ r.ads.link }}" target="_blank" rel="noopener">Transparency Center</a>
+    </div>
+    {% endif %}
+    {% if r.shopping and r.shopping.checked %}
+    <div class="sig">
+      <span class="sig-l"><span class="sig-ico">🛒</span>Google Shopping</span>
+      {% if r.shopping.uses %}
+      <span class="dot dot-red"></span>
+      <span class="sig-v">Працює · <span class="u">≥{{ r.shopping.pla_keywords }}</span> PLA-запитів</span>
+      {% if r.shopping.shop_name %}<span class="sig-sub">магазин: {{ r.shopping.shop_name }}</span>{% endif %}
+      {% else %}
+      <span class="dot dot-off"></span>
+      <span class="sig-v">Товарна реклама не крутиться</span>
+      {% endif %}
     </div>
     {% endif %}
     {% if r.paid and (r.paid.budget or r.paid.keywords) %}
