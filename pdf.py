@@ -40,7 +40,9 @@ def _logo_data_uri() -> str:
 
 def render_html(res: dict) -> str:
     import charts
-    chart_svg = charts.traffic_svg(res.get("history") or [], theme="light")
+    chart_svg = charts.traffic_svg(
+        res.get("history") or [], theme="light",
+        forecast_target=(res.get("benefit") or {}).get("traffic_top1"))
     return _env.get_template("report.html").render(
         r=res,
         logo=_logo_data_uri(),

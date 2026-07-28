@@ -217,6 +217,9 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
             "close_pct": _close,
             "conv_type": niche_info.get("conv_type"),
             "conv_quality_pct": conv_quality,
+            # інваріанти для онлайн-перерахунку воронки (зважений приріст трафіку)
+            "w_uplift": int(round(w_uplift)),
+            "w_t1": int(round(w_t1)),
             "apps_uplift": int(round(_apps_up)),
             "apps_top1": int(round(_apps_t1)),
             "sales_uplift": int(round(_sales_up)),
@@ -372,7 +375,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "benefit": benefit,
         "history": history,
         "segments": segments,
-        "traffic_svg": charts.traffic_svg(history, months=config.HISTORY_MONTHS),
+        "traffic_svg": charts.traffic_svg(history, months=config.HISTORY_MONTHS,
+                                          forecast_target=benefit.get("traffic_top1")),
         "top_pages_traffic": top_pages_traffic,
         "top_pages_seo": top_pages_seo,
         "contractor": onp.get("contractor") if do_onpage else None,
@@ -393,6 +397,60 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         ],
         "onpage": onp if do_onpage else None,
     }
+
+
+def apply_custom_econ(benefit: dict, conv=None, check=None, margin=None, close=None) -> dict:
+    """Перерахунок воронки за кастомними даними користувача.
+    Спирається на збережені інваріанти w_uplift/w_t1 (зважений приріст трафіку).
+    Порожні/None параметри беруться з поточних (нішевих) значень."""
+    if not benefit:
+        return benefit
+    w_up = benefit.get("w_uplift")
+    w_t1 = benefit.get("w_t1")
+    if w_up is None or w_t1 is None:
+        return benefit
+
+    def _num(v, cur):
+        try:
+            return float(v) if v not in (None, "") else cur
+        except (TypeError, ValueError):
+            return cur
+
+    conv = _num(conv, benefit.get("conv_pct"))
+    check = _num(check, benefit.get("avg_check"))
+    margin = _num(margin, benefit.get("avg_margin"))
+    close = _num(close, benefit.get("close_pct"))
+    if not conv or not check:
+        return benefit
+
+    cf = (close / 100.0) if close else 1.0
+    apps_up = w_up * conv / 100.0
+    apps_t1 = w_t1 * conv / 100.0
+    sales_up = apps_up * cf
+    sales_t1 = apps_t1 * cf
+    rev_up = sales_up * check
+    rev_t1 = sales_t1 * check
+    benefit.update({
+        "conv_pct": round(conv, 2),
+        "avg_check": int(round(check)),
+        "avg_margin": (round(margin, 1) if margin else margin),
+        "close_pct": (round(close, 1) if close else close),
+        "apps_uplift": int(round(apps_up)),
+        "apps_top1": int(round(apps_t1)),
+        "sales_uplift": int(round(sales_up)),
+        "sales_top1": int(round(sales_t1)),
+        "revenue_uplift": int(round(rev_up)),
+        "revenue_top1": int(round(rev_t1)),
+        "leads_uplift": int(round(apps_up)),
+        "custom": True,
+    })
+    if margin:
+        benefit["profit_uplift"] = int(round(rev_up * margin / 100.0))
+        benefit["profit_top1"] = int(round(rev_t1 * margin / 100.0))
+    else:
+        benefit.pop("profit_uplift", None)
+        benefit.pop("profit_top1", None)
+    return benefit
 
 
 def _services(verdict, commercial_count, ads_info, social_info, organic_keywords=0,

@@ -64,15 +64,25 @@
       <div class="ben-up">+{{ "{:,}".format(r.benefit.uplift).replace(",", " ") }} візитів{% if r.benefit.multiplier %} · ×{{ r.benefit.multiplier }}{% endif %}</div>
     </div>
     {% if r.benefit.conv_pct and r.benefit.sales_uplift is not none %}
-    <div class="ben-econ">
-      <div class="ben-econ-c"><span class="ben-cap">+ заявок / міс</span><b class="ben-hot">+{{ "{:,}".format(r.benefit.apps_uplift).replace(",", " ") }}</b><span class="ben-econ-sub">конверсія сайту {{ r.benefit.conv_pct }}%</span></div>
-      <div class="ben-econ-c"><span class="ben-cap">+ продажів / міс</span><b class="ben-hot">+{{ "{:,}".format(r.benefit.sales_uplift).replace(",", " ") }}</b><span class="ben-econ-sub">{% if r.benefit.close_pct %}заявка→продаж {{ r.benefit.close_pct }}%{% else %}—{% endif %}</span></div>
-      <div class="ben-econ-c"><span class="ben-cap">+ валовий дохід / міс</span><b class="ben-rev">+{{ "{:,}".format(r.benefit.revenue_uplift).replace(",", " ") }} ₴</b><span class="ben-econ-sub">сер. чек {{ "{:,}".format(r.benefit.avg_check).replace(",", " ") }} ₴</span></div>
-      {% if r.benefit.profit_uplift is defined and r.benefit.avg_margin %}
-      <div class="ben-econ-c"><span class="ben-cap">+ прибуток / міс</span><b class="ben-rev">+{{ "{:,}".format(r.benefit.profit_uplift).replace(",", " ") }} ₴</b><span class="ben-econ-sub">маржа ніші {{ r.benefit.avg_margin }}%</span></div>
-      {% endif %}
+    <div class="ben-econ" data-wuplift="{{ r.benefit.w_uplift or 0 }}" data-wt1="{{ r.benefit.w_t1 or 0 }}">
+      <div class="ben-econ-c"><span class="ben-cap">+ заявок / міс</span><b class="ben-hot js-apps">+{{ "{:,}".format(r.benefit.apps_uplift).replace(",", " ") }}</b><span class="ben-econ-sub js-sub-conv">конверсія сайту {{ r.benefit.conv_pct }}%</span></div>
+      <div class="ben-econ-c"><span class="ben-cap">+ продажів / міс</span><b class="ben-hot js-sales">+{{ "{:,}".format(r.benefit.sales_uplift).replace(",", " ") }}</b><span class="ben-econ-sub js-sub-close">{% if r.benefit.close_pct %}заявка→продаж {{ r.benefit.close_pct }}%{% else %}—{% endif %}</span></div>
+      <div class="ben-econ-c"><span class="ben-cap">+ валовий дохід / міс</span><b class="ben-rev js-rev">+{{ "{:,}".format(r.benefit.revenue_uplift).replace(",", " ") }} ₴</b><span class="ben-econ-sub js-sub-check">сер. чек {{ "{:,}".format(r.benefit.avg_check).replace(",", " ") }} ₴</span></div>
+      <div class="ben-econ-c js-profit-cell"{% if not (r.benefit.profit_uplift is defined and r.benefit.avg_margin) %} style="display:none"{% endif %}><span class="ben-cap">+ прибуток / міс</span><b class="ben-rev js-profit">+{{ "{:,}".format(r.benefit.profit_uplift).replace(",", " ") if r.benefit.profit_uplift is defined else "—" }} ₴</b><span class="ben-econ-sub js-sub-margin">маржа ніші {{ r.benefit.avg_margin }}%</span></div>
     </div>
-    <div class="ben-econ-note">Прогноз від приросту трафіку у ТОП-1{% if r.benefit.conv_quality_pct is not none %} · комерційна якість трафіку {{ r.benefit.conv_quality_pct }}% (широкі/інформаційні запити важать менше){% endif %} · орієнтовні бенчмарки по ніші</div>
+    <div class="ben-custom">
+      <button type="button" class="btn-sm ben-edit">✏️ Ввести свої дані</button>
+      <span class="ben-custom-flag" style="display:none">● за вашими даними</span>
+      <div class="ben-form" style="display:none">
+        <label>Конверсія сайту, %<input type="number" step="0.1" min="0" class="cf cf-conv" value="{{ r.benefit.conv_pct }}"></label>
+        <label>Сер. чек, ₴<input type="number" step="1" min="0" class="cf cf-check" value="{{ r.benefit.avg_check }}"></label>
+        <label>Маржа, %<input type="number" step="1" min="0" class="cf cf-margin" value="{{ r.benefit.avg_margin }}"></label>
+        <label>Заявка→продаж, %<input type="number" step="1" min="0" class="cf cf-close" value="{{ r.benefit.close_pct }}"></label>
+        <button type="button" class="btn-sm cf-apply">Перерахувати</button>
+        <button type="button" class="btn-sm cf-reset">Скинути до нішевих</button>
+      </div>
+    </div>
+    <div class="ben-econ-note">Прогноз від приросту трафіку у ТОП-1{% if r.benefit.conv_quality_pct is not none %} · комерційна якість трафіку {{ r.benefit.conv_quality_pct }}% (широкі/інформаційні запити важать менше){% endif %} · <span class="js-note-src">орієнтовні бенчмарки по ніші</span></div>
     {% endif %}
   </div>
   {% endif %}
@@ -199,4 +209,65 @@
   </div>
 </div>
 {% endfor %}
+
+<script>
+(function(){
+  function fmt(n){ n = Math.round(n||0); return n.toLocaleString('en-US').replace(/,/g,' '); }
+  document.querySelectorAll('.ben-econ[data-wuplift]').forEach(function(econ){
+    var card = econ.closest('.rcard');
+    var wrap = econ.parentNode;                 // .benefit
+    var custom = wrap.querySelector('.ben-custom');
+    if(!custom) return;
+    var wUp = parseFloat(econ.dataset.wuplift)||0;
+    var form = custom.querySelector('.ben-form');
+    var flag = custom.querySelector('.ben-custom-flag');
+    var editBtn = custom.querySelector('.ben-edit');
+    var applyBtn = custom.querySelector('.cf-apply');
+    var resetBtn = custom.querySelector('.cf-reset');
+    var noteSrc = wrap.querySelector('.js-note-src');
+    var pdfLink = card ? card.querySelector('a[href*="report.pdf"]') : null;
+    var q = function(s){ return form.querySelector(s); };
+    var defaults = { conv:q('.cf-conv').value, check:q('.cf-check').value,
+                     margin:q('.cf-margin').value, close:q('.cf-close').value };
+    function setText(sel, txt){ var el = wrap.querySelector(sel); if(el) el.textContent = txt; }
+    editBtn.addEventListener('click', function(){
+      form.style.display = form.style.display==='none' ? 'flex' : 'none';
+    });
+    function apply(custMode){
+      var conv=parseFloat(q('.cf-conv').value)||0, check=parseFloat(q('.cf-check').value)||0,
+          margin=parseFloat(q('.cf-margin').value)||0, close=parseFloat(q('.cf-close').value)||0;
+      if(!conv || !check){ alert('Вкажіть конверсію сайту і середній чек'); return; }
+      var cf = close>0 ? close/100 : 1;
+      var apps=wUp*conv/100, sales=apps*cf, rev=sales*check;
+      setText('.js-apps','+'+fmt(apps));
+      setText('.js-sales','+'+fmt(sales));
+      setText('.js-rev','+'+fmt(rev)+' ₴');
+      setText('.js-sub-conv','конверсія сайту '+conv+'%');
+      setText('.js-sub-close', close>0 ? ('заявка→продаж '+close+'%') : '—');
+      setText('.js-sub-check','сер. чек '+fmt(check)+' ₴');
+      var profCell = wrap.querySelector('.js-profit-cell');
+      if(margin>0){
+        setText('.js-profit','+'+fmt(rev*margin/100)+' ₴');
+        setText('.js-sub-margin','маржа '+margin+'%');
+        if(profCell) profCell.style.display='';
+      } else if(profCell){ profCell.style.display='none'; }
+      if(pdfLink){
+        var u = new URL(pdfLink.href, window.location.origin);
+        if(custMode){ u.searchParams.set('conv',conv); u.searchParams.set('check',check);
+                      u.searchParams.set('margin',margin); u.searchParams.set('close',close); }
+        else { ['conv','check','margin','close'].forEach(function(k){u.searchParams.delete(k);}); }
+        pdfLink.href = u.pathname + u.search;
+      }
+      flag.style.display = custMode ? '' : 'none';
+      if(noteSrc) noteSrc.textContent = custMode ? 'за вашими даними' : 'орієнтовні бенчмарки по ніші';
+    }
+    applyBtn.addEventListener('click', function(){ apply(true); });
+    resetBtn.addEventListener('click', function(){
+      q('.cf-conv').value=defaults.conv; q('.cf-check').value=defaults.check;
+      q('.cf-margin').value=defaults.margin; q('.cf-close').value=defaults.close;
+      apply(false);
+    });
+  });
+})();
+</script>
 {% endblock %}

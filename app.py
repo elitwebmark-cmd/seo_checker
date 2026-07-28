@@ -259,6 +259,13 @@ def report_pdf():
             return Response("No result for domain=%r job=%r" % (domain, job_id),
                             mimetype="text/plain", status=404)
         return redirect(url_for("index"))
+    # кастомні дані економіки з форми (щоб не мутувати збережений job — копіюємо)
+    cust = {k: request.args.get(k) for k in ("conv", "check", "margin", "close")}
+    if any(cust.values()) and res.get("benefit"):
+        res = dict(res)
+        res["benefit"] = dict(res["benefit"])
+        qualify.apply_custom_econ(res["benefit"], cust["conv"], cust["check"],
+                                  cust["margin"], cust["close"])
     try:
         import pdf
         data = pdf.build(res)

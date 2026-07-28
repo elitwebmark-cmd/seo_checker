@@ -30,15 +30,34 @@ def _month_label(ym: str) -> str:
 
 _THEMES = {
     "dark":  {"line": RED, "area": RED, "grid": GRID, "axis": MUTE,
-              "dot": RED, "last": GOLD, "dotstroke": BG, "val": GOLD},
+              "dot": RED, "last": GOLD, "dotstroke": BG, "val": GOLD,
+              "fc": "#28C76F", "fcval": "#28C76F"},
     "light": {"line": "#FD3A1F", "area": "#FD3A1F", "grid": "#E6E6EA", "axis": "#9A9AA2",
-              "dot": "#FD3A1F", "last": "#C12814", "dotstroke": "#FFFFFF", "val": "#C12814"},
+              "dot": "#FD3A1F", "last": "#C12814", "dotstroke": "#FFFFFF", "val": "#C12814",
+              "fc": "#159A4B", "fcval": "#159A4B"},
 }
 
+# Крива виходу трафіку в ціль по місяцях (кумулятивна частка приросту).
+FORECAST_CURVE = [0.10, 0.30, 0.80, 1.00]
 
-def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "dark") -> str:
+
+def _add_months(ym: str, k: int) -> str:
+    ym = str(ym or "")
+    if len(ym) < 6:
+        return ym
+    y, m = int(ym[:4]), int(ym[4:6])
+    m += k
+    y += (m - 1) // 12
+    m = (m - 1) % 12 + 1
+    return f"{y:04d}{m:02d}"
+
+
+def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "dark",
+                forecast_target: int = None) -> str:
     """Лінійний графік органічного трафіку по місяцях (найстаріший ліворуч).
-    history — список dict {date:'YYYYMM', org_traffic, ...} (свіжі першими)."""
+    history — список dict {date:'YYYYMM', org_traffic, ...} (свіжі першими).
+    forecast_target — якщо задано і > поточного, домальовує пунктирне продовження
+    на 4 майбутні місяці до цільового трафіку (крива FORECAST_CURVE)."""
     if not history:
         return ""
     T = _THEMES.get(theme, _THEMES["dark"])
@@ -48,22 +67,35 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "d
     if len(vals) < 2 or max(vals) <= 0:
         return ""
 
+    n = len(vals)
+    last_v = vals[-1]
+
+    # --- прогнозні точки (майбутні місяці) ---
+    fvals, flabels = [], []
+    tgt = int(forecast_target or 0)
+    if tgt and tgt > last_v:
+        base = last_v
+        gap = tgt - base
+        last_date = pts[-1].get("date")
+        for j, cf in enumerate(FORECAST_CURVE, start=1):
+            fvals.append(int(round(base + gap * cf)))
+            flabels.append(_add_months(last_date, j))
+
     W, H = 760, 230
     padL, padR, padT, padB = 56, 16, 16, 34
     plotW = W - padL - padR
     plotH = H - padT - padB
-    n = len(vals)
-    vmax = max(vals)
-    # приємна верхня межа
+    total = n + len(fvals)
+    vmax = max(max(vals), tgt if fvals else 0)
     import math
     step = 10 ** max(0, len(str(int(vmax))) - 2)
     top = math.ceil(vmax / step) * step if step else vmax
     top = max(top, 1)
 
-    def X(i): return padL + (plotW * i / (n - 1))
+    def X(i): return padL + (plotW * i / (total - 1))
     def Y(v): return padT + plotH * (1 - v / top)
 
-    # горизонтальні лінії сітки + підписи осі Y (0, half, top)
+    # сітка + підписи осі Y
     grid = []
     for gv in (0, top / 2, top):
         y = Y(gv)
@@ -72,6 +104,7 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "d
         grid.append(f'<text x="{padL-8}" y="{y+4:.1f}" text-anchor="end" '
                     f'fill="{T["axis"]}" font-size="11" font-weight="700">{_fmt(gv)}</text>')
 
+    # фактична лінія
     line_pts = " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(vals))
     area = (f"M {X(0):.1f},{Y(0):.1f} "
             + " ".join(f"L {X(i):.1f},{Y(v):.1f}" for i, v in enumerate(vals))
@@ -88,11 +121,49 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "d
         xlabels.append(f'<text x="{cx:.1f}" y="{H-12}" text-anchor="middle" '
                        f'fill="{T["axis"]}" font-size="10.5" font-weight="700">'
                        f'{_month_label(p.get("date"))}</text>')
-    # значення останньої точки
-    lx, lv = X(n-1), vals[-1]
+
+    fc_svg = ""
+    if fvals:
+        # пунктирна лінія від останньої фактичної точки через прогнозні
+        fc_pts = [(X(n - 1), Y(last_v))] + [(X(n + j), Y(fv)) for j, fv in enumerate(fvals)]
+        fc_poly = " ".join(f"{x:.1f},{y:.1f}" for x, y in fc_pts)
+        divx = (X(n - 1) + X(n)) / 2
+        fc_parts = [
+            f'<line x1="{divx:.1f}" y1="{padT}" x2="{divx:.1f}" y2="{padT+plotH:.1f}" '
+            f'stroke="{T["grid"]}" stroke-width="1" stroke-dasharray="2 3"/>',
+            f'<polyline points="{fc_poly}" fill="none" stroke="{T["fc"]}" '
+            f'stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" '
+            f'stroke-dasharray="6 4"/>',
+        ]
+        for j, fv in enumerate(fvals):
+            cx, cy = X(n + j), Y(fv)
+            last = (j == len(fvals) - 1)
+            r = 4.5 if last else 3
+            fc_parts.append(
+                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r}" '
+                f'fill="{T["fc"] if last else T["dotstroke"]}" '
+                f'stroke="{T["fc"]}" stroke-width="1.8"/>')
+            fc_parts.append(
+                f'<text x="{cx:.1f}" y="{H-12}" text-anchor="middle" '
+                f'fill="{T["fc"]}" font-size="10.5" font-weight="700">'
+                f'{_month_label(flabels[j])}</text>')
+        # значення цілі біля останньої прогнозної точки
+        tx, ty = X(total - 1), Y(fvals[-1])
+        tlbl_y = ty - 10 if ty > padT + 16 else ty + 16
+        fc_parts.append(
+            f'<text x="{tx:.1f}" y="{tlbl_y:.1f}" text-anchor="end" '
+            f'fill="{T["fcval"]}" font-size="13" font-weight="800">{_fmt(fvals[-1])}</text>')
+        fc_parts.append(
+            f'<text x="{X(n):.1f}" y="{padT+11:.1f}" text-anchor="start" '
+            f'fill="{T["fc"]}" font-size="10" font-weight="800" '
+            f'letter-spacing="0.5">ПРОГНОЗ · 4 МІС</text>')
+        fc_svg = "".join(fc_parts)
+
+    # значення останньої фактичної точки
+    lx, lv = X(n - 1), last_v
     ly = Y(lv)
     lbl_y = ly - 10 if ly > padT + 16 else ly + 16
-    val_lbl = (f'<text x="{lx:.1f}" y="{lbl_y:.1f}" text-anchor="end" '
+    val_lbl = (f'<text x="{lx:.1f}" y="{lbl_y:.1f}" text-anchor="middle" '
                f'fill="{T["val"]}" font-size="12.5" font-weight="800">{_fmt(lv)}</text>')
 
     return (
@@ -105,6 +176,6 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "d
         + f'<path d="{area}" fill="url(#tgrad)"/>'
         + f'<polyline points="{line_pts}" fill="none" stroke="{T["line"]}" '
           f'stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>'
-        + "".join(dots) + "".join(xlabels) + val_lbl
+        + "".join(dots) + fc_svg + "".join(xlabels) + val_lbl
         + "</svg>"
     )
