@@ -57,6 +57,7 @@ def check(domain: str) -> dict:
     advertisers = []
     # розподіл форматів по вибірці креативів (text = пошук, image = медійка/банери, video = YouTube)
     fmt = {"text": 0, "image": 0, "video": 0, "other": 0}
+    items = []
     for c in creatives:
         a = (c.get("advertiser") or "").strip()
         if a and a not in advertisers:
@@ -66,6 +67,22 @@ def check(domain: str) -> dict:
             fmt[f] += 1
         elif f:
             fmt["other"] += 1
+        # прев'ю креативу: картинка (банери) або текст (пошукові), якщо є у відповіді
+        img = (c.get("image") or c.get("thumbnail") or "").strip()
+        txt = ""
+        for k in ("title", "headline", "text", "description", "snippet", "body"):
+            if c.get(k):
+                txt = str(c.get(k)).strip()
+                break
+        if img or txt:
+            items.append({
+                "format": f or "other",
+                "image": img,
+                "text": txt,
+                "link": (c.get("link") or c.get("details_link") or "").strip(),
+                "first_shown": c.get("first_shown"),
+                "last_shown": c.get("last_shown"),
+            })
     running = count > 0 or bool(creatives)
     return {
         "checked": True,
@@ -74,5 +91,6 @@ def check(domain: str) -> dict:
         "advertisers": advertisers[:5],
         "formats": fmt,                       # к-сть по форматах у вибірці
         "formats_sampled": len(creatives),    # скільки креативів проаналізовано
+        "creatives": items[:12],              # прев'ю креативів (лише веб)
         "link": link,
     }

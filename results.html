@@ -159,6 +159,26 @@
     {% endif %}
   </div>
   {% endif %}
+  {% if r.ads and r.ads.creatives %}
+  <details class="creatives-acc">
+    <summary class="creatives-summary">🖼️ Креативи реклами ({{ r.ads.creatives|length }})</summary>
+    <div class="creatives-grid">
+      {% for cr in r.ads.creatives %}
+      <div class="creative">
+        {% if cr.image %}
+        <a href="{{ cr.link or r.ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="креатив"></a>
+        {% else %}
+        <div class="creative-text">
+          <span class="creative-fmt">{{ 'пошук' if cr.format=='text' else 'відео' if cr.format=='video' else cr.format }}</span>
+          {% if cr.text %}<div class="creative-txt">{{ cr.text }}</div>{% else %}<div class="creative-txt muted">текстове оголошення</div>{% endif %}
+          {% if cr.link %}<a class="btn-sm" href="{{ cr.link }}" target="_blank" rel="noopener">Відкрити</a>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
   {% if r.services %}
   <div class="svc">
     <div class="svc-h">🧩 Підходить під послуги</div>
