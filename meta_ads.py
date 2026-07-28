@@ -110,17 +110,21 @@ def _images_of(item: dict):
         if u and isinstance(u, str) and u.startswith("http") and u not in imgs:
             imgs.append(u)
 
+    def _img_from(d):
+        if isinstance(d, dict):
+            _add(d.get("original_image_url") or d.get("originalImageUrl")
+                 or d.get("resized_image_url") or d.get("resizedImageUrl") or d.get("url"))
+        elif isinstance(d, str):
+            _add(d)
+
     for im in (sn.get("images") or item.get("images") or []):
-        if isinstance(im, dict):
-            _add(im.get("original_image_url") or im.get("resized_image_url") or im.get("url"))
-        elif isinstance(im, str):
-            _add(im)
+        _img_from(im)
     for c in (sn.get("cards") or []):
-        if isinstance(c, dict):
-            _add(c.get("original_image_url") or c.get("resized_image_url"))
+        _img_from(c)
     for v in (sn.get("videos") or []):
         if isinstance(v, dict):
-            _add(v.get("video_preview_image_url") or v.get("thumbnail_url"))
+            _add(v.get("videoPreviewImageUrl") or v.get("video_preview_image_url")
+                 or v.get("thumbnailUrl") or v.get("thumbnail_url"))
     for k in ("originalImageUrl", "imageUrl", "thumbnailUrl", "image", "thumbnail"):
         _add(item.get(k))
     return imgs
@@ -172,9 +176,10 @@ def check(domain: str, debug: bool = False) -> dict:
                 seen.add(key)
         imgs = _images_of(it)
         if imgs and len(creatives) < 12:
-            creatives.append({"image": imgs[0],
-                              "link": (it.get("ad_snapshot_url") or it.get("snapshot_url")
-                                       or _snap(it).get("snapshot_url") or lib_url),
+            ad_id = it.get("adArchiveID") or it.get("adArchiveId") or it.get("ad_archive_id")
+            crea_link = (f"https://www.facebook.com/ads/library/?id={ad_id}" if ad_id
+                         else (it.get("ad_snapshot_url") or lib_url))
+            creatives.append({"image": imgs[0], "link": crea_link,
                               "platforms": [k for k in seen]})
     return {
         "checked": True,
