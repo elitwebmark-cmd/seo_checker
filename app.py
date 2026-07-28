@@ -178,6 +178,22 @@ def index():
                            bot_url=config.TELEGRAM_BOT_URL)
 
 
+@app.route("/demo")
+@login_required
+def demo():
+    """Демо-результат на змодельованих даних — без витрати API-квоти."""
+    import demo as demo_mod
+    _prune_jobs()
+    job_id = "demo" + uuid.uuid4().hex[:8]
+    res = demo_mod.demo_result()
+    now = time.time()
+    with JOBS_LOCK:
+        JOBS[job_id] = {"total": 1, "done": 1, "results": [res], "status": "done",
+                        "do_onpage": True, "do_ads": True, "do_social": True,
+                        "started": now, "finished": now, "demo": True}
+    return redirect(url_for("results", job_id=job_id))
+
+
 @app.route("/analyze", methods=["POST"])
 @login_required
 def analyze():
@@ -244,6 +260,11 @@ def report_pdf():
     if job:
         res = next((r for r in job["results"]
                     if (r.get("domain") or "").lower() == domain), None)
+    # Демо-домен: завжди беремо змодельовані дані (без API-квоти).
+    if (not res or res.get("error")) and domain:
+        import demo as demo_mod
+        if domain == demo_mod.DEMO_DOMAIN.lower():
+            res = demo_mod.demo_result()
     # Fallback: job міг зникнути з пам'яті (рестарт контейнера). Перебудуємо
     # дані через qualify — SemRush-кеш (7 днів) робить це майже безкоштовним.
     if (not res or res.get("error")) and domain:
