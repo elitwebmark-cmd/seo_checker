@@ -26,7 +26,10 @@ ADS_ACTIVE_DAYS = int(os.getenv("ADS_ACTIVE_DAYS", "30"))   # вікно «кр�
 APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
 APIFY_META_ACTOR = os.getenv("APIFY_META_ACTOR", "apify~facebook-ads-scraper")
 # JSON-шаблон вхідних даних актора; {url} і {count} підставляються автоматично.
-APIFY_META_INPUT = os.getenv("APIFY_META_INPUT", '{"startUrls":[{"url":"{url}"}],"count":{count}}')
+# Дефолт під apify/facebook-ads-scraper (поле urls + count + activeStatus).
+APIFY_META_INPUT = os.getenv(
+    "APIFY_META_INPUT",
+    '{"urls":[{"url":"{url}"}],"count":{count},"activeStatus":"active"}')
 APIFY_TIMEOUT = int(os.getenv("APIFY_TIMEOUT", "120"))       # синхронний запуск актора може тривати довше
 META_ADS_LIMIT = int(os.getenv("META_ADS_LIMIT", "30"))      # скільки оголошень тягнути
 META_ADS_COUNTRY = os.getenv("META_ADS_COUNTRY", "UA")

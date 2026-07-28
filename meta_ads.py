@@ -119,10 +119,14 @@ def check(domain: str) -> dict:
     if not config.APIFY_TOKEN:
         return {"checked": False, "note": "APIFY_TOKEN не заданий"}
     page = find_facebook_page(domain)
-    query = page or _host(domain).split(".")[0]
-    lib_url = _library_url(query)
+    # актор приймає або URL сторінки FB, або URL Ad Library з фільтрами
+    if page:
+        target_url = f"https://www.facebook.com/{page}"
+    else:
+        target_url = _library_url(_host(domain).split(".")[0])
+    lib_url = _library_url(page or _host(domain).split(".")[0])
     try:
-        items = _run_apify(lib_url, config.META_ADS_LIMIT)
+        items = _run_apify(target_url, config.META_ADS_LIMIT)
     except Exception as e:
         return {"checked": False, "note": f"помилка Apify: {str(e)[:140]}", "link": lib_url}
 
