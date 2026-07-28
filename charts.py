@@ -207,12 +207,15 @@ def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark"
     na = len(vals)
     total = na + len(fvals)
     W, H = 360, 210
-    padL, padR, padT, padB = 42, 10, 22, 34
+    padL, padR, padT, padB = 42, 34, 26, 34
     plotW, plotH = W - padL - padR, H - padT - padB
     vmax = max(max(vals), tgt)
     import math
     step = 10 ** max(0, len(str(int(vmax))) - 2)
     top = math.ceil(vmax / step) * step if step else vmax
+    # запас зверху, щоб підпис цілі не налазив на верхню точку
+    if step and tgt > 0.88 * top:
+        top += step
     top = max(top, 1)
 
     def X(i): return padL + (plotW * i / (total - 1))
@@ -262,8 +265,8 @@ def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark"
                      f'fill="{T["fc"] if last else T["dotstroke"]}" '
                      f'stroke="{T["fc"]}" stroke-width="1.8"/>')
     ty = Y(fvals[-1])
-    parts.append(f'<text x="{X(total-1):.1f}" y="{(ty-8 if ty>padT+14 else ty+15):.1f}" '
-                 f'text-anchor="end" fill="{T["fcval"]}" font-size="11.5" '
+    parts.append(f'<text x="{X(total-1):.1f}" y="{(ty-12 if ty>padT+20 else ty+20):.1f}" '
+                 f'text-anchor="middle" fill="{T["fcval"]}" font-size="11.5" '
                  f'font-weight="800">{_fmt(fvals[-1])}</text>')
     parts.append(f'<text x="{X(na):.1f}" y="{padT-8:.1f}" text-anchor="start" '
                  f'fill="{T["fc"]}" font-size="9" font-weight="800" '
