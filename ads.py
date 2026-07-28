@@ -46,21 +46,34 @@ def _base_params(host: str, days: int) -> dict:
     }
 
 
-def _platform_total(host: str, days: int, code: str) -> int:
-    """К-сть оголошень на конкретній платформі за вікно (1 запит SerpApi)."""
+def _creative_from(c: dict) -> dict:
+    f = (c.get("format") or "").strip().lower()
+    img = (c.get("image") or c.get("thumbnail") or "").strip()
+    txt = ""
+    for k in ("title", "headline", "text", "description", "snippet", "body"):
+        if c.get(k):
+            txt = str(c.get(k)).strip()
+            break
+    return {"format": f or "other", "image": img, "text": txt,
+            "link": (c.get("link") or c.get("details_link") or "").strip(),
+            "first_shown": c.get("first_shown"), "last_shown": c.get("last_shown")}
+
+
+def _platform_query(host: str, days: int, code: str, num: int = 12):
+    """(total, creatives[]) по конкретній платформі за вікно (1 запит SerpApi)."""
     p = _base_params(host, days)
     p["platform"] = code
-    p["num"] = 1
+    p["num"] = num
     try:
         d = requests.get(SERPAPI_URL, params=p, timeout=config.ADS_TIMEOUT).json()
     except Exception:
-        return 0
+        return 0, []
     if d.get("error"):
-        return 0
+        return 0, []
     t = (d.get("search_information") or {}).get("total_results")
-    if isinstance(t, (int, float)) and t:
-        return int(t)
-    return len(d.get("ad_creatives") or [])
+    cres = d.get("ad_creatives") or []
+    total = int(t) if isinstance(t, (int, float)) and t else len(cres)
+    return total, cres
 
 
 def check(domain: str) -> dict:
@@ -121,12 +134,29 @@ def check(domain: str) -> dict:
             })
     running = count > 0 or bool(creatives)
 
-    # матриця по платформах (+5 запитів SerpApi) — лише коли реклама активна
+    # матриця + креативи по платформах (+5 запитів SerpApi) — лише коли реклама активна.
+    # Тягнемо крео окремо по кожній платформі й тегуємо, щоб у звіті ділились.
     platforms = None
+    creatives_out = [dict(it, platforms=[]) for it in items[:12]]
     if running:
         platforms = {}
+        merged = {}
         for key, code, _lbl in _PLATFORMS:
-            platforms[key] = _platform_total(host, days, code)
+            total, cres = _platform_query(host, days, code, num=12)
+            platforms[key] = total
+            for c in cres:
+                cr = _creative_from(c)
+                idk = cr["image"] or cr["link"] or (cr["text"][:40] if cr["text"] else "")
+                if not idk:
+                    continue
+                if idk in merged:
+                    if key not in merged[idk]["platforms"]:
+                        merged[idk]["platforms"].append(key)
+                else:
+                    cr["platforms"] = [key]
+                    merged[idk] = cr
+        if merged:
+            creatives_out = list(merged.values())[:15]
 
     return {
         "checked": True,
@@ -135,7 +165,7 @@ def check(domain: str) -> dict:
         "advertisers": advertisers[:5],
         "formats": fmt,                       # к-сть по форматах у вибірці
         "formats_sampled": len(creatives),    # скільки креативів проаналізовано
-        "creatives": items[:12],              # прев'ю креативів (лише веб)
+        "creatives": creatives_out,           # прев'ю креативів з тегами платформ (лише веб)
         "platforms": platforms,               # к-сть оголошень по платформах
         "platform_labels": _PLATFORM_LABELS if running else None,
         "period_days": days,                  # вікно, за яке взято дані

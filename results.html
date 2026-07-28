@@ -233,13 +233,15 @@
     <summary class="creatives-summary">🖼️ Креативи реклами ({{ r.ads.creatives|length }})</summary>
     <div class="cr-filters">
       <button type="button" class="cr-chip active" data-f="all">Усі</button>
-      <button type="button" class="cr-chip" data-f="fmt:text">Пошук</button>
-      <button type="button" class="cr-chip" data-f="fmt:image">Банери</button>
-      <button type="button" class="cr-chip" data-f="fmt:video">Відео</button>
+      <button type="button" class="cr-chip" data-f="plat:search">Пошук Google</button>
+      <button type="button" class="cr-chip" data-f="plat:shopping">Покупки</button>
+      <button type="button" class="cr-chip" data-f="plat:youtube">YouTube</button>
+      <button type="button" class="cr-chip" data-f="plat:maps">Карти</button>
+      <button type="button" class="cr-chip" data-f="plat:play">Play</button>
     </div>
     <div class="creatives-grid">
       {% for cr in r.ads.creatives %}
-      <div class="creative cr-item" data-fmt="{{ cr.format }}">
+      <div class="creative cr-item" data-fmt="{{ cr.format }}" data-plat="{{ cr.platforms|join(' ') if cr.platforms else '' }}">
         {% if cr.image %}
         <a href="{{ cr.link or r.ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="креатив"></a>
         {% else %}

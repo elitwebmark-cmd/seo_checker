@@ -356,7 +356,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     score = min(score, 100)
 
     services = _services(verdict, commercial_count, ads_info, social_info,
-                         overview["organic_keywords"], niche_caveat)
+                         overview["organic_keywords"], niche_caveat, meta_info=meta_info)
 
     reasons = []
     reasons.append(("Ніша під офер", niche_note_full, niche_ok))
@@ -545,7 +545,7 @@ def apply_custom_econ(benefit: dict, conv=None, check=None, margin=None, close=N
 
 
 def _services(verdict, commercial_count, ads_info, social_info, organic_keywords=0,
-              niche_caveat=False) -> list:
+              niche_caveat=False, meta_info=None) -> list:
     """Під які послуги потенційно підходить сайт. Евристика (level: yes|maybe|no)."""
     out = []
 
@@ -586,22 +586,31 @@ def _services(verdict, commercial_count, ads_info, social_info, organic_keywords
         out.append({"name": "Контекстна реклама", "level": "no",
                     "note": "немає комерційних запитів"})
 
-    # 3) SMM / таргет — лише якщо соцмережі перевіряли
+    # 3) SMM (органічні соцмережі) — лише якщо соцмережі перевіряли
     if social_info is not None:
         if not social_info.get("found"):
-            out.append({"name": "SMM / таргет", "level": "maybe",
+            out.append({"name": "SMM (соцмережі)", "level": "maybe",
                         "note": "профіль не знайдено на сайті — потенціал з нуля"})
         elif not social_info.get("checked"):
-            out.append({"name": "SMM / таргет", "level": "maybe",
+            out.append({"name": "SMM (соцмережі)", "level": "maybe",
                         "note": "профіль є, але дані недоступні"})
         else:
             f = social_info.get("followers") or 0
             if f >= config.SMM_FOLLOWERS_MIN:
-                out.append({"name": "SMM / таргет", "level": "yes",
-                            "note": f"є аудиторія (~{f} підписників) — SMM/таргет доречні"})
+                out.append({"name": "SMM (соцмережі)", "level": "yes",
+                            "note": f"є аудиторія (~{f} підписників) — SMM доречний"})
             else:
-                out.append({"name": "SMM / таргет", "level": "maybe",
+                out.append({"name": "SMM (соцмережі)", "level": "maybe",
                             "note": f"профіль слабкий (~{f}) — треба розвивати"})
+
+    # 4) Таргетована реклама (Meta) — за фактом активної реклами в Ad Library
+    if meta_info is not None and meta_info.get("checked"):
+        if meta_info.get("running"):
+            out.append({"name": "Таргет (Meta)", "level": "yes",
+                        "note": f"вже крутить таргет (~{meta_info.get('count', 0)} крео) — можна масштабувати"})
+        else:
+            out.append({"name": "Таргет (Meta)", "level": "maybe",
+                        "note": "канал не активний — точка зростання"})
 
     return out
 

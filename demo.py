@@ -106,11 +106,11 @@ def demo_result() -> dict:
         "platform_labels": {"search": "Пошук Google", "youtube": "YouTube",
                             "shopping": "Google Покупки", "maps": "Карти Google", "play": "Google Play"},
         "creatives": [
-            {"format": "image", "image": _banner(300, 250, "Косметологія −20%", "#C12814"), "text": "", "link": ""},
-            {"format": "image", "image": _banner(336, 280, "Лазерна епіляція", "#15151B"), "text": "", "link": ""},
-            {"format": "text", "image": "", "text": "Естетична косметологія у Києві — консультація безкоштовно", "link": ""},
-            {"format": "text", "image": "", "text": "Лазерна епіляція від 199 грн · запис онлайн", "link": ""},
-            {"format": "video", "image": _banner(320, 180, "▶ Відео-огляд", "#0A0A0A"), "text": "", "link": ""},
+            {"format": "image", "image": _banner(300, 250, "Косметологія −20%", "#C12814"), "text": "", "link": "", "platforms": ["search", "shopping"]},
+            {"format": "image", "image": _banner(336, 280, "Лазерна епіляція", "#15151B"), "text": "", "link": "", "platforms": ["shopping"]},
+            {"format": "text", "image": "", "text": "Естетична косметологія у Києві — консультація безкоштовно", "link": "", "platforms": ["search"]},
+            {"format": "text", "image": "", "text": "Лазерна епіляція від 199 грн · запис онлайн", "link": "", "platforms": ["search"]},
+            {"format": "video", "image": _banner(320, 180, "▶ Відео-огляд", "#0A0A0A"), "text": "", "link": "", "platforms": ["youtube"]},
         ],
         "link": "https://adstransparency.google.com/?region=UA&domain=demo-klinika.ua",
     }
@@ -140,7 +140,8 @@ def demo_result() -> dict:
         {"name": "SEO за ТОП", "level": "yes", "note": "є комерційні позиції, трафік і потенціал під офер"},
         {"name": "Базове SEO", "level": "yes", "note": "є SEO-база для щомісячного просування"},
         {"name": "Контекстна реклама", "level": "yes", "note": "вже інвестує в контекст — можна вести/оптимізувати"},
-        {"name": "SMM / таргет", "level": "yes", "note": "є аудиторія (~48 200 підписників) — SMM/таргет доречні"},
+        {"name": "SMM (соцмережі)", "level": "yes", "note": "є аудиторія (~48 200 підписників) — SMM доречний"},
+        {"name": "Таргет (Meta)", "level": "yes", "note": "вже крутить таргет (~14 крео) — можна масштабувати"},
     ]
     factors = [
         {"name": "Ніша під офер", "value": "профільна", "ok": True},
