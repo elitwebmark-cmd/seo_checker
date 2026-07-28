@@ -126,6 +126,11 @@ details{margin-top:2px}summary{cursor:pointer;color:var(--gold);font-size:13px;f
 .rc-sect.serv{border-left:3px solid #159A4B}
 .rc-sect.mat{border-left:3px solid #9a7bff}
 .rc-sect-h{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:800;color:#EDEDF0;letter-spacing:.2px;margin-bottom:13px;padding-bottom:10px;border-bottom:1px solid var(--bord)}
+details.rc-sect>summary.rc-sect-h{cursor:pointer;list-style:none}
+details.rc-sect>summary.rc-sect-h::-webkit-details-marker{display:none}
+.rc-sect-h::after{content:"▾";margin-left:auto;color:var(--mute);font-size:13px;transition:transform .15s}
+details.rc-sect[open]>.rc-sect-h::after{transform:rotate(180deg)}
+details.rc-sect:not([open])>.rc-sect-h{margin-bottom:0;padding-bottom:0;border-bottom:none}
 .rc-sect-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 10px;border-radius:7px;font-size:10.5px;font-weight:900;letter-spacing:.5px;text-transform:uppercase}
 .rc-sect-badge.s-seo{background:rgba(253,58,31,.16);color:#ff7a5f}
 .rc-sect-badge.s-ppc{background:rgba(58,160,255,.16);color:#6fb8ff}
