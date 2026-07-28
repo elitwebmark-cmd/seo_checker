@@ -79,25 +79,32 @@ _PLAT_MAP = {
 }
 
 
+def _snap(item: dict) -> dict:
+    sn = item.get("snapshot") or item.get("adSnapshot") or {}
+    if isinstance(sn, str):
+        try:
+            sn = json.loads(sn)
+        except (json.JSONDecodeError, TypeError):
+            sn = {}
+    return sn if isinstance(sn, dict) else {}
+
+
 def _platforms_of(item: dict):
-    for k in ("publisher_platforms", "publisherPlatforms", "platforms", "publisher_platform"):
-        v = item.get(k)
-        if isinstance(v, str):
-            v = [v]
-        if isinstance(v, list) and v:
-            return [str(x).lower().replace(" ", "_") for x in v]
-    sn = item.get("snapshot") or {}
-    v = sn.get("publisher_platform") or sn.get("publisherPlatforms")
-    if isinstance(v, str):
-        v = [v]
-    if isinstance(v, list):
-        return [str(x).lower().replace(" ", "_") for x in v]
+    sn = _snap(item)
+    for src in (item, sn):
+        for k in ("publisher_platforms", "publisherPlatforms", "publisher_platform",
+                  "publisherPlatform", "platforms"):
+            v = src.get(k)
+            if isinstance(v, str):
+                v = [v]
+            if isinstance(v, list) and v:
+                return [str(x).lower().replace(" ", "_") for x in v]
     return []
 
 
 def _images_of(item: dict):
     imgs = []
-    sn = item.get("snapshot") or item.get("adSnapshot") or {}
+    sn = _snap(item)
 
     def _add(u):
         if u and isinstance(u, str) and u.startswith("http") and u not in imgs:
@@ -119,7 +126,7 @@ def _images_of(item: dict):
     return imgs
 
 
-def check(domain: str) -> dict:
+def check(domain: str, debug: bool = False) -> dict:
     if not config.APIFY_TOKEN:
         return {"checked": False, "note": "APIFY_TOKEN не заданий"}
     # Пріоритет — точний пошук за FB-сторінкою бренду (як view_all_page_id у веб-бібліотеці).
@@ -144,14 +151,19 @@ def check(domain: str) -> dict:
     except Exception as e:
         return {"checked": False, "note": f"помилка Apify: {str(e)[:140]}", "link": lib_url}
 
+    if debug:
+        return {"checked": True, "count": len(items), "target_url": target_url,
+                "raw_sample": items[0] if items else None}
+
+    brand = page or _host(domain).split(".")[0]
     if not items:
-        return {"checked": True, "running": False, "count": 0, "page": page,
+        return {"checked": True, "running": False, "count": 0, "page": brand,
                 "platforms": {}, "creatives": [], "link": lib_url}
 
     plat = {"facebook": 0, "instagram": 0, "messenger": 0, "audience_network": 0}
     creatives, page_name = [], page
     for it in items:
-        page_name = page_name or it.get("page_name") or it.get("pageName")
+        page_name = page_name or it.get("page_name") or it.get("pageName") or _snap(it).get("page_name")
         seen = set()
         for p in _platforms_of(it):
             key = _PLAT_MAP.get(p)
@@ -162,13 +174,13 @@ def check(domain: str) -> dict:
         if imgs and len(creatives) < 12:
             creatives.append({"image": imgs[0],
                               "link": (it.get("ad_snapshot_url") or it.get("snapshot_url")
-                                       or (it.get("snapshot") or {}).get("snapshot_url") or lib_url),
+                                       or _snap(it).get("snapshot_url") or lib_url),
                               "platforms": [k for k in seen]})
     return {
         "checked": True,
         "running": True,
         "count": len(items),
-        "page": page_name or query,
+        "page": page_name or brand,
         "platforms": plat,
         "creatives": creatives,
         "link": lib_url,
