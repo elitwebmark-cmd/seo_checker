@@ -3,7 +3,7 @@
 import os, re, asyncio, html, logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import (Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton,
-                           InlineKeyboardMarkup, InlineKeyboardButton)
+                           InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile)
 from aiogram.filters import CommandStart, Command
 
 import qualify, config
@@ -60,6 +60,7 @@ def result_kb(domain: str, has_dotisk: bool) -> InlineKeyboardMarkup:
     rows = []
     if has_dotisk:
         rows.append([InlineKeyboardButton(text="🎯 Усі запити для дотиску", callback_data="allq")])
+    rows.append([InlineKeyboardButton(text="📄 Завантажити PDF", callback_data="pdf")])
     rows.append([InlineKeyboardButton(text="🔁 Повторити", callback_data="again")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -366,6 +367,24 @@ async def cb_allq(cb: CallbackQuery):
                      f"у ТОП-1 ~{q.get('traffic_top1', 0)}/міс")
     await cb.message.answer("\n".join(lines), parse_mode="HTML", disable_web_page_preview=True)
     await cb.answer()
+
+
+@dp.callback_query(F.data == "pdf")
+async def cb_pdf(cb: CallbackQuery):
+    last = LAST.get(cb.message.chat.id)
+    if not last or not last.get("res"):
+        return await cb.answer("Немає даних для звіту")
+    await cb.answer("Готую PDF…")
+    try:
+        import pdf as pdfmod
+        data = await asyncio.to_thread(pdfmod.build, last["res"])
+        fname = (last["domain"] or "seo").replace("/", "_") + "-elitweb-seo.pdf"
+        await cb.message.answer_document(
+            BufferedInputFile(data, filename=fname),
+            caption=f"📄 SEO-звіт — {html.escape(last['domain'])}")
+    except Exception:
+        log.exception("pdf failed for %s", last.get("domain"))
+        await cb.message.answer("⚠️ Не вдалося згенерувати PDF. Спробуй пізніше.")
 
 
 @dp.callback_query(F.data == "again")

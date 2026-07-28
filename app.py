@@ -1,7 +1,7 @@
 """Веб-інтерфейс: авторизація -> список сайтів -> прогрес -> результати."""
 import os, uuid, threading, concurrent.futures, functools, time, logging
 from flask import (Flask, render_template, request, jsonify, redirect,
-                   url_for, session)
+                   url_for, session, Response)
 
 import qualify, config, hubspot_sync, manus, semrush
 
@@ -228,7 +228,32 @@ def results(job_id):
     if not job:
         return redirect(url_for("index"))
     return render_template("results.html", results=job["results"], cfg=config,
-                           do_onpage=job["do_onpage"], bot_url=config.TELEGRAM_BOT_URL)
+                           do_onpage=job["do_onpage"], bot_url=config.TELEGRAM_BOT_URL,
+                           job_id=job_id)
+
+
+@app.route("/report.pdf")
+@login_required
+def report_pdf():
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower()
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+    res = None
+    if job:
+        res = next((r for r in job["results"]
+                    if (r.get("domain") or "").lower() == domain), None)
+    if not res:
+        return redirect(url_for("index"))
+    try:
+        import pdf
+        data = pdf.build(res)
+    except Exception:
+        log.exception("pdf build failed for %s", domain)
+        return "Помилка генерації PDF", 500
+    fname = (domain or "seo").replace("/", "_") + "-elitweb-seo.pdf"
+    return Response(data, mimetype="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @app.route("/api/analyze", methods=["POST"])

@@ -28,11 +28,20 @@ def _month_label(ym: str) -> str:
     return ym or "—"
 
 
-def traffic_svg(history: List[Dict[str, Any]], months: int = 12) -> str:
+_THEMES = {
+    "dark":  {"line": RED, "area": RED, "grid": GRID, "axis": MUTE,
+              "dot": RED, "last": GOLD, "dotstroke": BG, "val": GOLD},
+    "light": {"line": "#FD3A1F", "area": "#FD3A1F", "grid": "#E6E6EA", "axis": "#9A9AA2",
+              "dot": "#FD3A1F", "last": "#C12814", "dotstroke": "#FFFFFF", "val": "#C12814"},
+}
+
+
+def traffic_svg(history: List[Dict[str, Any]], months: int = 12, theme: str = "dark") -> str:
     """Лінійний графік органічного трафіку по місяцях (найстаріший ліворуч).
     history — список dict {date:'YYYYMM', org_traffic, ...} (свіжі першими)."""
     if not history:
         return ""
+    T = _THEMES.get(theme, _THEMES["dark"])
     pts = list(reversed(history))[-months:]           # oldest -> newest
     pts = [p for p in pts if p.get("date")]
     vals = [max(0, int(p.get("org_traffic", 0) or 0)) for p in pts]
@@ -59,9 +68,9 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12) -> str:
     for gv in (0, top / 2, top):
         y = Y(gv)
         grid.append(f'<line x1="{padL}" y1="{y:.1f}" x2="{W-padR}" y2="{y:.1f}" '
-                    f'stroke="{GRID}" stroke-width="1"/>')
+                    f'stroke="{T["grid"]}" stroke-width="1"/>')
         grid.append(f'<text x="{padL-8}" y="{y+4:.1f}" text-anchor="end" '
-                    f'fill="{MUTE}" font-size="11" font-weight="700">{_fmt(gv)}</text>')
+                    f'fill="{T["axis"]}" font-size="11" font-weight="700">{_fmt(gv)}</text>')
 
     line_pts = " ".join(f"{X(i):.1f},{Y(v):.1f}" for i, v in enumerate(vals))
     area = (f"M {X(0):.1f},{Y(0):.1f} "
@@ -73,28 +82,28 @@ def traffic_svg(history: List[Dict[str, Any]], months: int = 12) -> str:
         cx, cy = X(i), Y(v)
         last = (i == n - 1)
         r = 4 if last else 2.6
-        col = GOLD if last else RED
+        col = T["last"] if last else T["dot"]
         dots.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r}" fill="{col}" '
-                    f'stroke="{BG}" stroke-width="1.5"/>')
+                    f'stroke="{T["dotstroke"]}" stroke-width="1.5"/>')
         xlabels.append(f'<text x="{cx:.1f}" y="{H-12}" text-anchor="middle" '
-                       f'fill="{MUTE}" font-size="10.5" font-weight="700">'
+                       f'fill="{T["axis"]}" font-size="10.5" font-weight="700">'
                        f'{_month_label(p.get("date"))}</text>')
     # значення останньої точки
     lx, lv = X(n-1), vals[-1]
     ly = Y(lv)
     lbl_y = ly - 10 if ly > padT + 16 else ly + 16
     val_lbl = (f'<text x="{lx:.1f}" y="{lbl_y:.1f}" text-anchor="end" '
-               f'fill="{GOLD}" font-size="12.5" font-weight="800">{_fmt(lv)}</text>')
+               f'fill="{T["val"]}" font-size="12.5" font-weight="800">{_fmt(lv)}</text>')
 
     return (
         f'<svg viewBox="0 0 {W} {H}" width="100%" preserveAspectRatio="xMidYMid meet" '
         f'role="img" aria-label="Динаміка органічного трафіку">'
         f'<defs><linearGradient id="tgrad" x1="0" y1="0" x2="0" y2="1">'
-        f'<stop offset="0" stop-color="{RED}" stop-opacity="0.34"/>'
-        f'<stop offset="1" stop-color="{RED}" stop-opacity="0"/></linearGradient></defs>'
+        f'<stop offset="0" stop-color="{T["area"]}" stop-opacity="0.22"/>'
+        f'<stop offset="1" stop-color="{T["area"]}" stop-opacity="0"/></linearGradient></defs>'
         + "".join(grid)
         + f'<path d="{area}" fill="url(#tgrad)"/>'
-        + f'<polyline points="{line_pts}" fill="none" stroke="{RED}" '
+        + f'<polyline points="{line_pts}" fill="none" stroke="{T["line"]}" '
           f'stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>'
         + "".join(dots) + "".join(xlabels) + val_lbl
         + "</svg>"
