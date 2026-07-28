@@ -175,12 +175,28 @@ def check(domain: str, debug: bool = False) -> dict:
                 plat[key] += 1
                 seen.add(key)
         imgs = _images_of(it)
-        if imgs and len(creatives) < 12:
+        sn = _snap(it)
+        body = sn.get("body")
+        text = body.get("text", "") if isinstance(body, dict) else (body if isinstance(body, str) else "")
+        text = (text or sn.get("title") or sn.get("caption") or "").strip()
+        fmt = (sn.get("displayFormat") or sn.get("display_format") or "").lower()
+        cta = (sn.get("ctaText") or sn.get("cta_text") or "").strip()
+        start = (it.get("startDateFormatted") or it.get("start_date_formatted") or "")[:10]
+        versions = it.get("collationCount") or it.get("collation_count") or 1
+        if (imgs or text) and len(creatives) < 15:
             ad_id = it.get("adArchiveID") or it.get("adArchiveId") or it.get("ad_archive_id")
             crea_link = (f"https://www.facebook.com/ads/library/?id={ad_id}" if ad_id
                          else (it.get("ad_snapshot_url") or lib_url))
-            creatives.append({"image": imgs[0], "link": crea_link,
-                              "platforms": [k for k in seen]})
+            creatives.append({
+                "image": imgs[0] if imgs else "",
+                "text": text[:280],
+                "cta": cta,
+                "format": fmt,
+                "platforms": [k for k in seen],
+                "start": start,
+                "versions": int(versions) if str(versions).isdigit() else 1,
+                "link": crea_link,
+            })
     return {
         "checked": True,
         "running": True,

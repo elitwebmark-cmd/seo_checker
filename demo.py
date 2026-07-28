@@ -121,10 +121,14 @@ def demo_result() -> dict:
         "checked": True, "running": True, "count": 14, "page": "Demo Klinika",
         "platforms": {"facebook": 14, "instagram": 12, "messenger": 5, "audience_network": 3},
         "creatives": [
-            {"image": _banner(300, 300, "Акція −25%", "#1877F2"), "link": "", "platforms": ["facebook", "instagram"]},
-            {"image": _banner(300, 300, "Запис онлайн", "#C12814"), "link": "", "platforms": ["instagram"]},
-            {"image": _banner(300, 300, "Безкоштовна консультація", "#15151B"), "link": "", "platforms": ["facebook"]},
-            {"image": _banner(300, 300, "Лазер від 199₴", "#159A4B"), "link": "", "platforms": ["instagram", "facebook"]},
+            {"image": _banner(300, 300, "Акція −25%", "#1877F2"), "link": "", "platforms": ["facebook", "instagram"],
+             "text": "Косметологія у Києві зі знижкою 25% на перший візит. Запишись онлайн за хвилину.", "cta": "Записатися", "format": "image", "start": "2026-06-11", "versions": 2},
+            {"image": _banner(300, 300, "Запис онлайн", "#C12814"), "link": "", "platforms": ["instagram"],
+             "text": "Лазерна епіляція без болю — консультація безкоштовно.", "cta": "Написати", "format": "video", "start": "2026-07-01", "versions": 1},
+            {"image": _banner(300, 300, "Консультація", "#15151B"), "link": "", "platforms": ["facebook"],
+             "text": "Естетична медицина: ботокс, мезотерапія, чистка обличчя. Перший огляд — 0 грн.", "cta": "Дізнатися ціну", "format": "image", "start": "2026-05-20", "versions": 3},
+            {"image": _banner(300, 300, "Лазер від 199₴", "#159A4B"), "link": "", "platforms": ["instagram", "facebook"],
+             "text": "Лазер від 199 грн за зону. Тільки цього місяця.", "cta": "Записатися", "format": "video", "start": "2026-07-10", "versions": 1},
         ],
         "link": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=UA&q=demo-klinika",
     }

@@ -231,9 +231,15 @@
   {% if r.ads and r.ads.creatives %}
   <details class="creatives-acc">
     <summary class="creatives-summary">🖼️ Креативи реклами ({{ r.ads.creatives|length }})</summary>
+    <div class="cr-filters">
+      <button type="button" class="cr-chip active" data-f="all">Усі</button>
+      <button type="button" class="cr-chip" data-f="fmt:text">Пошук</button>
+      <button type="button" class="cr-chip" data-f="fmt:image">Банери</button>
+      <button type="button" class="cr-chip" data-f="fmt:video">Відео</button>
+    </div>
     <div class="creatives-grid">
       {% for cr in r.ads.creatives %}
-      <div class="creative">
+      <div class="creative cr-item" data-fmt="{{ cr.format }}">
         {% if cr.image %}
         <a href="{{ cr.link or r.ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="креатив"></a>
         {% else %}
@@ -273,9 +279,26 @@
   </div>
   {% if r.meta_ads.creatives %}
   <div class="creatives-h">🖼️ Креативи реклами ({{ r.meta_ads.creatives|length }})</div>
+  <div class="cr-filters">
+    <button type="button" class="cr-chip active" data-f="all">Усі</button>
+    <button type="button" class="cr-chip" data-f="plat:facebook">Facebook</button>
+    <button type="button" class="cr-chip" data-f="plat:instagram">Instagram</button>
+    <button type="button" class="cr-chip" data-f="fmt:video">Відео</button>
+    <button type="button" class="cr-chip" data-f="fmt:image">Банери</button>
+  </div>
   <div class="creatives-grid">
     {% for cr in r.meta_ads.creatives %}
-    <div class="creative"><a href="{{ cr.link or r.meta_ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="Meta креатив"></a></div>
+    <div class="creative cr-item" data-plat="{{ cr.platforms|join(' ') }}" data-fmt="{{ cr.format }}">
+      {% if cr.image %}<a href="{{ cr.link or r.meta_ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="Meta креатив"></a>{% endif %}
+      <div class="creative-meta">
+        <div class="creative-tags">
+          {% if cr.format %}<span class="creative-fmt">{{ 'відео' if cr.format=='video' else 'банер' if cr.format=='image' else cr.format }}</span>{% endif %}
+          {% if cr.versions and cr.versions > 1 %}<span class="creative-badge">×{{ cr.versions }} оголош.</span>{% endif %}
+        </div>
+        {% if cr.text %}<div class="creative-body">{{ cr.text }}</div>{% endif %}
+        <div class="creative-foot">{% if cr.cta %}<b>{{ cr.cta }}</b>{% endif %}{% if cr.platforms %} · {{ cr.platforms|join(' ')|replace('facebook','FB')|replace('instagram','IG')|replace('messenger','Msg')|replace('audience_network','AN') }}{% endif %}{% if cr.start %} · з {{ cr.start }}{% endif %} · <a href="{{ cr.link or r.meta_ads.link }}" target="_blank" rel="noopener">деталі</a></div>
+      </div>
+    </div>
     {% endfor %}
   </div>
   {% endif %}
@@ -483,6 +506,32 @@
       q('.mpf-budget').value=defaults.b; q('.mpf-cpc').value=defaults.cpc; q('.mpf-conv').value=defaults.conv;
       q('.mpf-check').value=defaults.check; q('.mpf-margin').value=defaults.margin; q('.mpf-close').value=defaults.close;
       apply(false);
+    });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  document.querySelectorAll('.cr-filters').forEach(function(bar){
+    var grid = bar.nextElementSibling;
+    while(grid && !grid.classList.contains('creatives-grid')) grid = grid.nextElementSibling;
+    if(!grid) return;
+    bar.querySelectorAll('.cr-chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        bar.querySelectorAll('.cr-chip').forEach(function(c){ c.classList.remove('active'); });
+        chip.classList.add('active');
+        var f = chip.dataset.f || 'all';
+        grid.querySelectorAll('.cr-item').forEach(function(it){
+          var show = true;
+          if(f !== 'all'){
+            var parts = f.split(':'), k = parts[0], v = parts[1];
+            if(k === 'plat') show = (it.dataset.plat||'').split(' ').indexOf(v) >= 0;
+            else if(k === 'fmt') show = (it.dataset.fmt||'') === v;
+          }
+          it.style.display = show ? '' : 'none';
+        });
+      });
     });
   });
 })();
