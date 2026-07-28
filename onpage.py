@@ -80,13 +80,29 @@ def check_page(sess, url: str) -> dict:
     desc_tag = soup.find("meta", attrs={"name": re.compile("^description$", re.I)})
     description = (desc_tag.get("content", "").strip() if desc_tag else "")
     h1s = [h.get_text(strip=True) for h in soup.find_all("h1")]
+    h2s = [h.get_text(strip=True) for h in soup.find_all("h2")][:6]
+    kw_tag = soup.find("meta", attrs={"name": re.compile("^keywords$", re.I)})
+    meta_keywords = (kw_tag.get("content", "").strip() if kw_tag else "")
+
+    def _meta_prop(prop):
+        t = soup.find("meta", attrs={"property": prop}) or soup.find("meta", attrs={"name": prop})
+        return (t.get("content", "").strip() if t else "")
+    og_title = _meta_prop("og:title")
+    og_desc = _meta_prop("og:description")
+    og_site = _meta_prop("og:site_name")
     text_chars = _visible_text_len(BeautifulSoup(html, "html.parser"))
     script_srcs = len(soup.find_all("script", src=True))
+    # зведений текст мета-сигналів ніші (title/desc/keywords/og/h1/h2)
+    niche_text = " ".join([title, description, meta_keywords, og_title, og_desc,
+                           og_site, " ".join(h1s), " ".join(h2s)]).strip()
     return {
         "url": url, "ok": True,
         "title": title, "title_len": len(title),
         "description": description, "desc_len": len(description),
         "h1": h1s[0] if h1s else "", "h1_count": len(h1s),
+        "h2": h2s, "meta_keywords": meta_keywords,
+        "og_title": og_title, "og_description": og_desc, "og_site_name": og_site,
+        "niche_text": niche_text,
         "text_chars": text_chars, "script_srcs": script_srcs,
         "has_seo_text": text_chars >= config.SEO_TEXT_MIN_CHARS,
         "meta_ok": bool(title) and bool(description) and len(h1s) >= 1,

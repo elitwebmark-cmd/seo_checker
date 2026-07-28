@@ -170,12 +170,20 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
 
     # --- визначення ніші (евристика) ---
     _kw_text = " ".join(k.get("keyword", "") for k in kws)
-    _onp_text = ""
+    # мета-текст сторінок (title/description/keywords/og/h1/h2) — найчистіший сигнал ніші
+    _meta_parts = []
     if isinstance(onp.get("home"), dict):
         h = onp["home"]
-        _onp_text = " ".join([h.get("title", ""), h.get("description", ""), h.get("h1", "")])
+        _meta_parts.append(h.get("niche_text") or " ".join(
+            [h.get("title", ""), h.get("description", ""), h.get("h1", "")]))
+    for c in (onp.get("categories") or []):
+        if isinstance(c, dict) and c.get("niche_text"):
+            _meta_parts.append(c.get("niche_text"))
+    _meta_text = " ".join(p for p in _meta_parts if p)
     _cat_text = " ".join(c.get("url", "") for c in (onp.get("categories") or []) if isinstance(c, dict))
-    niche_info = niche.classify(" ".join([domain, _kw_text, _onp_text, _cat_text]), onp)
+    # мета-сигнали важать більше за органіку (×5), бо органіка агенцій/блогів «шумить»
+    blob = " ".join([domain, (_meta_text + " ") * 5, _kw_text, _cat_text])
+    niche_info = niche.classify(blob, onp)
     try:
         matched_cases = cases.match(niche_info, limit=config.CASES_LIMIT)
     except Exception:
