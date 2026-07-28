@@ -23,6 +23,46 @@ def _deeplink(host: str) -> str:
     return f"https://adstransparency.google.com/?region=UA&domain={host}"
 
 
+# ключ у відповіді, код SerpApi, людська назва (UA)
+_PLATFORMS = [
+    ("search", "SEARCH", "Пошук Google"),
+    ("youtube", "YOUTUBE", "YouTube"),
+    ("shopping", "SHOPPING", "Google Покупки"),
+    ("maps", "MAPS", "Карти Google"),
+    ("play", "PLAY", "Google Play"),
+]
+_PLATFORM_LABELS = {k: lbl for k, _code, lbl in _PLATFORMS}
+
+
+def _base_params(host: str, days: int) -> dict:
+    today = datetime.date.today()
+    return {
+        "engine": "google_ads_transparency_center",
+        "text": host,
+        "region": config.ADS_REGION,   # 2804 = Україна
+        "start_date": (today - datetime.timedelta(days=days)).strftime("%Y%m%d"),
+        "end_date": today.strftime("%Y%m%d"),
+        "api_key": config.SERPAPI_KEY,
+    }
+
+
+def _platform_total(host: str, days: int, code: str) -> int:
+    """К-сть оголошень на конкретній платформі за вікно (1 запит SerpApi)."""
+    p = _base_params(host, days)
+    p["platform"] = code
+    p["num"] = 1
+    try:
+        d = requests.get(SERPAPI_URL, params=p, timeout=config.ADS_TIMEOUT).json()
+    except Exception:
+        return 0
+    if d.get("error"):
+        return 0
+    t = (d.get("search_information") or {}).get("total_results")
+    if isinstance(t, (int, float)) and t:
+        return int(t)
+    return len(d.get("ad_creatives") or [])
+
+
 def check(domain: str) -> dict:
     host = _host(domain)
     link = _deeplink(host)
@@ -30,17 +70,7 @@ def check(domain: str) -> dict:
         return {"checked": False, "note": "SERPAPI_KEY не заданий", "link": link}
 
     days = getattr(config, "ADS_ACTIVE_DAYS", 30)
-    today = datetime.date.today()
-    params = {
-        "engine": "google_ads_transparency_center",
-        "text": host,
-        "region": config.ADS_REGION,   # 2804 = Україна
-        "num": 40,
-        # вікно «крутить зараз»: лише оголошення, показані за останні N днів
-        "start_date": (today - datetime.timedelta(days=days)).strftime("%Y%m%d"),
-        "end_date": today.strftime("%Y%m%d"),
-        "api_key": config.SERPAPI_KEY,
-    }
+    params = dict(_base_params(host, days), num=40)
     try:
         r = requests.get(SERPAPI_URL, params=params, timeout=config.ADS_TIMEOUT)
         data = r.json()
@@ -90,6 +120,14 @@ def check(domain: str) -> dict:
                 "last_shown": c.get("last_shown"),
             })
     running = count > 0 or bool(creatives)
+
+    # матриця по платформах (+5 запитів SerpApi) — лише коли реклама активна
+    platforms = None
+    if running:
+        platforms = {}
+        for key, code, _lbl in _PLATFORMS:
+            platforms[key] = _platform_total(host, days, code)
+
     return {
         "checked": True,
         "running": running,
@@ -98,6 +136,8 @@ def check(domain: str) -> dict:
         "formats": fmt,                       # к-сть по форматах у вибірці
         "formats_sampled": len(creatives),    # скільки креативів проаналізовано
         "creatives": items[:12],              # прев'ю креативів (лише веб)
+        "platforms": platforms,               # к-сть оголошень по платформах
+        "platform_labels": _PLATFORM_LABELS if running else None,
         "period_days": days,                  # вікно, за яке взято дані
         "link": link,
     }

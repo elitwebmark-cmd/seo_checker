@@ -310,6 +310,14 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         ads_line = f"не крутиться за {ad.get('period_days', 30)} дн."
     else:
         ads_line = "не перевірялось"
+    pm = ad.get("platforms") or {}
+    if ad.get("checked") and ad.get("running") and pm:
+        _pl = {"search": "Пошук", "youtube": "YouTube", "shopping": "Покупки",
+               "maps": "Карти", "play": "Play"}
+        platforms_line = " · ".join(f"{_pl[k]} {pm.get(k, 0)}"
+                                    for k in ("search", "youtube", "shopping", "maps", "play"))
+    else:
+        platforms_line = "—"
     sh = res.get("shopping") or {}
     if sh.get("checked") and sh.get("uses"):
         shop = f" · магазин «{sh.get('shop_name')}»" if sh.get("shop_name") else ""
@@ -387,6 +395,7 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         SEP, "",
         "<b>PPC ІНФОРМАЦІЯ</b>",
         _lbl("Контекст (Transparency)", ads_line),
+        _lbl("Оголошення по платформах", platforms_line),
         _lbl("Google Shopping / PLA", shopping_line),
         _lbl("Контекст-бюджет (SemRush)", budget_line),
         "<b>Динаміка PPC (12 міс.):</b>",

@@ -244,6 +244,14 @@ def fmt(res: dict) -> str:
                              + " · ".join([_fm("пошук", f.get("text", 0)),
                                            _fm("банери", f.get("image", 0)),
                                            _fm("відео", f.get("video", 0))]))
+            pm = ad.get("platforms") or {}
+            if pm:
+                _sh = {"search": "Пошук", "youtube": "YouTube", "shopping": "Покупки",
+                       "maps": "Карти", "play": "Play"}
+                mxp = max(pm.values()) or 1
+                prows = [f"{_sh[k]:<8}{_bar(pm.get(k, 0), mxp):<13}{pm.get(k, 0):>4}"
+                         for k in ("search", "youtube", "shopping", "maps", "play")]
+                lines.append("📊 <b>Платформи:</b>\n<pre>" + html.escape("\n".join(prows)) + "</pre>")
         else:
             lines.append(f"📣 <b>Контекст:</b> не крутиться за {ad.get('period_days', 30)} дн. — "
                          f"<a href=\"{ad['link']}\">перевірити</a>")

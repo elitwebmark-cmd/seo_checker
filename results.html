@@ -117,6 +117,22 @@
       <a class="btn-sm" href="{{ r.ads.link }}" target="_blank" rel="noopener">Transparency Center</a>
     </div>
     {% endif %}
+    {% if r.ads and r.ads.running and r.ads.platforms %}
+    <div class="sig sig-col">
+      <span class="sig-l"><span class="sig-ico">📊</span>Оголошення по платформах <span class="sig-per">за {{ r.ads.period_days or 30 }} дн.</span></span>
+      <div class="plat-matrix">
+        {% set pmax = (r.ads.platforms.values()|max) or 1 %}
+        {% for key in ['search','youtube','shopping','maps','play'] %}
+        {% set n = r.ads.platforms[key] or 0 %}
+        <div class="plat-row">
+          <span class="plat-name">{{ r.ads.platform_labels[key] }}</span>
+          <div class="plat-track"><div class="plat-fill" style="width:{{ (n / pmax * 100)|round(1) }}%"></div></div>
+          <span class="plat-cnt">{{ n }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
     {% if r.shopping and r.shopping.checked %}
     <div class="sig">
       <span class="sig-l"><span class="sig-ico">🛒</span>Google Shopping</span>
