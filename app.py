@@ -237,20 +237,34 @@ def results(job_id):
 def report_pdf():
     job_id = request.args.get("job", "")
     domain = (request.args.get("domain") or "").strip().lower()
+    debug = request.args.get("debug")
     with JOBS_LOCK:
         job = JOBS.get(job_id)
     res = None
     if job:
         res = next((r for r in job["results"]
                     if (r.get("domain") or "").lower() == domain), None)
-    if not res:
+    # Fallback: job міг зникнути з пам'яті (рестарт контейнера). Перебудуємо
+    # дані через qualify — SemRush-кеш (7 днів) робить це майже безкоштовним.
+    if (not res or res.get("error")) and domain:
+        rebuilt = _safe_qualify(domain, do_onpage=False, do_ads=True, do_social=True)
+        if not rebuilt.get("error"):
+            res = rebuilt
+        elif debug:
+            return Response("qualify fallback failed for %r:\n\n%s"
+                            % (domain, rebuilt.get("error")),
+                            mimetype="text/plain", status=500)
+    if not res or res.get("error"):
+        if debug:
+            return Response("No result for domain=%r job=%r" % (domain, job_id),
+                            mimetype="text/plain", status=404)
         return redirect(url_for("index"))
     try:
         import pdf
         data = pdf.build(res)
     except Exception:
         log.exception("pdf build failed for %s", domain)
-        if request.args.get("debug"):
+        if debug:
             import traceback
             return Response("PDF build failed:\n\n" + traceback.format_exc(),
                             mimetype="text/plain", status=500)
