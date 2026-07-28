@@ -321,6 +321,21 @@ def fmt(res: dict) -> str:
             lines.append(f"🛒 <b>Google Shopping:</b> працює · ≥{sh.get('pla_keywords', 0)} товарних запитів{shop}")
         else:
             lines.append("🛒 <b>Google Shopping:</b> товарна реклама не крутиться")
+    mt = res.get("meta_ads") or {}
+    if mt.get("checked"):
+        if mt.get("running"):
+            pl = mt.get("platforms") or {}
+            def _pm(name, n):
+                return f"{name} {n}" if n else None
+            parts = [x for x in (_pm("FB", pl.get("facebook")), _pm("IG", pl.get("instagram")),
+                                 _pm("Messenger", pl.get("messenger")), _pm("AN", pl.get("audience_network"))) if x]
+            pstr = (" · " + ", ".join(parts)) if parts else ""
+            pg = f" · «{html.escape(mt.get('page',''))}»" if mt.get("page") else ""
+            lines.append(f"📘 <b>Meta реклама:</b> працює · {mt.get('count', 0)} активних крео{pg}{pstr} — "
+                         f"<a href=\"{mt['link']}\">Ad Library</a>")
+        else:
+            lines.append(f"📘 <b>Meta реклама:</b> активних оголошень не знайдено — "
+                         f"<a href=\"{mt['link']}\">Ad Library</a>")
     pd = res.get("paid") or {}
     if pd.get("budget") or pd.get("keywords"):
         b = f"~${pd['budget']}/міс" if pd.get("budget") else "н/д"

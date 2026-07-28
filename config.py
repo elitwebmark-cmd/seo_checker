@@ -21,6 +21,16 @@ ADS_REGION = os.getenv("ADS_REGION", "2804")           # 2804 = Україна
 ADS_TIMEOUT = int(os.getenv("ADS_TIMEOUT", "25"))
 ADS_ACTIVE_DAYS = int(os.getenv("ADS_ACTIVE_DAYS", "30"))   # вікно «крутить рекламу зараз» у Transparency Center
 
+# --- Meta (Facebook/Instagram) реклама через Apify Ad Library Scraper ---
+# Deep-чек (1 домен). Актор і вхідні дані — через env, щоб міняти без коду.
+APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
+APIFY_META_ACTOR = os.getenv("APIFY_META_ACTOR", "apify~facebook-ads-scraper")
+# JSON-шаблон вхідних даних актора; {url} і {count} підставляються автоматично.
+APIFY_META_INPUT = os.getenv("APIFY_META_INPUT", '{"startUrls":[{"url":"{url}"}],"count":{count}}')
+APIFY_TIMEOUT = int(os.getenv("APIFY_TIMEOUT", "120"))       # синхронний запуск актора може тривати довше
+META_ADS_LIMIT = int(os.getenv("META_ADS_LIMIT", "30"))      # скільки оголошень тягнути
+META_ADS_COUNTRY = os.getenv("META_ADS_COUNTRY", "UA")
+
 # --- Соцмережі (Instagram через SerpApi) ---
 # Поріг аудиторії, з якого SMM/таргет вважаємо доречним
 SMM_FOLLOWERS_MIN = int(os.getenv("SMM_FOLLOWERS_MIN", "1000"))

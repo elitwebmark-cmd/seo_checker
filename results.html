@@ -110,10 +110,10 @@
   </div>
   {% endif %}
   </div>{# /rc-sect seo #}
-  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) or r.media_plan %}
+  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) or (r.meta_ads and r.meta_ads.checked) or r.media_plan %}
   <div class="rc-sect ppc">
-  <div class="rc-sect-h"><span class="rc-sect-badge s-ppc">PPC</span>Контекстна реклама — присутність, медіаплан, креативи</div>
-  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) %}
+  <div class="rc-sect-h"><span class="rc-sect-badge s-ppc">PPC</span>Реклама — контекст, Meta, медіаплан, креативи</div>
+  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) or (r.meta_ads and r.meta_ads.checked) %}
   <div class="sigs">
     {% if r.ads and r.ads.checked %}
     <div class="sig">
@@ -157,6 +157,21 @@
       <span class="dot dot-off"></span>
       <span class="sig-v">Товарна реклама не крутиться</span>
       {% endif %}
+    </div>
+    {% endif %}
+    {% if r.meta_ads and r.meta_ads.checked %}
+    <div class="sig">
+      <span class="sig-l"><span class="sig-ico">📘</span>Meta реклама</span>
+      {% if r.meta_ads.running %}
+      <span class="dot dot-red"></span>
+      <span class="sig-v">Працює · <span class="u">{{ r.meta_ads.count }}</span> активних крео</span>
+      {% if r.meta_ads.page %}<span class="sig-sub">сторінка: {{ r.meta_ads.page }}</span>{% endif %}
+      {% if r.meta_ads.platforms %}<span class="sig-sub">майданчики: {% if r.meta_ads.platforms.facebook %}<b class="fmt-on">FB {{ r.meta_ads.platforms.facebook }}</b>{% else %}<span class="fmt-off">FB —</span>{% endif %} · {% if r.meta_ads.platforms.instagram %}<b class="fmt-on">IG {{ r.meta_ads.platforms.instagram }}</b>{% else %}<span class="fmt-off">IG —</span>{% endif %} · {% if r.meta_ads.platforms.messenger %}<b class="fmt-on">Messenger {{ r.meta_ads.platforms.messenger }}</b>{% else %}<span class="fmt-off">Messenger —</span>{% endif %} · {% if r.meta_ads.platforms.audience_network %}<b class="fmt-on">AN {{ r.meta_ads.platforms.audience_network }}</b>{% else %}<span class="fmt-off">AN —</span>{% endif %}</span>{% endif %}
+      {% else %}
+      <span class="dot dot-off"></span>
+      <span class="sig-v">Активних оголошень не знайдено</span>
+      {% endif %}
+      <a class="btn-sm" href="{{ r.meta_ads.link }}" target="_blank" rel="noopener">Ad Library</a>
     </div>
     {% endif %}
     {% if r.paid and (r.paid.budget or r.paid.keywords) %}
@@ -243,6 +258,18 @@
           {% if cr.link %}<a class="btn-sm" href="{{ cr.link }}" target="_blank" rel="noopener">Відкрити</a>{% endif %}
         </div>
         {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+  {% if r.meta_ads and r.meta_ads.creatives %}
+  <details class="creatives-acc">
+    <summary class="creatives-summary">📘 Meta креативи ({{ r.meta_ads.creatives|length }})</summary>
+    <div class="creatives-grid">
+      {% for cr in r.meta_ads.creatives %}
+      <div class="creative">
+        <a href="{{ cr.link or r.meta_ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="Meta креатив"></a>
       </div>
       {% endfor %}
     </div>

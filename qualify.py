@@ -254,6 +254,15 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             shopping_info = {"checked": False}
 
+    # --- Meta (Facebook/Instagram) реклама через Apify (deep-чек) ---
+    meta_info = None
+    if do_ads:
+        try:
+            import meta_ads
+            meta_info = meta_ads.check(domain)
+        except Exception:
+            meta_info = {"checked": False, "note": "помилка перевірки"}
+
     # --- тренд попиту по ніші (Google Trends, топ-5 комерц. запитів; deep-чек) ---
     niche_trend = None
     if do_ads:
@@ -415,6 +424,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "contractor": onp.get("contractor") if do_onpage else None,
         "ads": ads_info,
         "shopping": shopping_info,
+        "meta_ads": meta_info,
         "media_plan": media_plan,
         "niche_trend": niche_trend,
         "trend_svg": charts.trend_svg(niche_trend["points"], theme="dark") if niche_trend else "",

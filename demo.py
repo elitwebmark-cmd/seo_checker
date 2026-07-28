@@ -117,6 +117,17 @@ def demo_result() -> dict:
 
     shopping = {"checked": True, "uses": True, "pla_keywords": 6, "sampled": 10,
                 "shop_name": "Demo Klinika", "products": []}
+    meta_ads = {
+        "checked": True, "running": True, "count": 14, "page": "Demo Klinika",
+        "platforms": {"facebook": 14, "instagram": 12, "messenger": 5, "audience_network": 3},
+        "creatives": [
+            {"image": _banner(300, 300, "Акція −25%", "#1877F2"), "link": "", "platforms": ["facebook", "instagram"]},
+            {"image": _banner(300, 300, "Запис онлайн", "#C12814"), "link": "", "platforms": ["instagram"]},
+            {"image": _banner(300, 300, "Безкоштовна консультація", "#15151B"), "link": "", "platforms": ["facebook"]},
+            {"image": _banner(300, 300, "Лазер від 199₴", "#159A4B"), "link": "", "platforms": ["instagram", "facebook"]},
+        ],
+        "link": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=UA&q=demo-klinika",
+    }
     paid = {"keywords": 84, "traffic": 1200, "budget": 3400}
     social = {"checked": True, "found": True, "handle": "demo_klinika", "url": "#",
               "followers": 48200, "is_private": False, "active": True, "avg_engagement": 620}
@@ -171,7 +182,7 @@ def demo_result() -> dict:
                                      "чистка обличчя", "мезотерапія"],
                         "geo": "UA", "change_pct": 40, "avg": 65.7, "peak": 82},
         "trend_svg": charts.trend_svg(_trend_points(), theme="dark"),
-        "ads": ads, "shopping": shopping, "paid": paid, "social": social,
+        "ads": ads, "shopping": shopping, "meta_ads": meta_ads, "paid": paid, "social": social,
         "services": services, "factors": factors, "cases": cases,
         "reasons": [],
         "onpage": None, "contractor": None,
