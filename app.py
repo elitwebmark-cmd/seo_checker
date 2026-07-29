@@ -315,7 +315,7 @@ def report_pdf():
             return Response("PDF build failed:\n\n" + traceback.format_exc(),
                             mimetype="text/plain", status=500)
         return "Помилка генерації PDF", 500
-    fname = (domain or "seo").replace("/", "_") + "-elitweb-seo.pdf"
+    fname = (domain or "report").replace("/", "_") + "-elitweb.pdf"
     return Response(data, mimetype="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 

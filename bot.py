@@ -573,7 +573,7 @@ async def cb_pdf(cb: CallbackQuery):
     try:
         import pdf as pdfmod
         data = await asyncio.to_thread(pdfmod.build, last["res"])
-        fname = (last["domain"] or "seo").replace("/", "_") + "-elitweb-seo.pdf"
+        fname = (last["domain"] or "report").replace("/", "_") + "-elitweb.pdf"
         await cb.message.answer_document(
             BufferedInputFile(data, filename=fname),
             caption=f"📄 SEO-звіт — {html.escape(last['domain'])}")
