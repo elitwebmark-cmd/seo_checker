@@ -231,13 +231,22 @@
   {% if r.ads and r.ads.creatives %}
   <details class="creatives-acc">
     <summary class="creatives-summary">🖼️ Креативи реклами ({{ r.ads.creatives|length }})</summary>
-    <div class="cr-filters">
-      <button type="button" class="cr-chip active" data-f="all">Усі</button>
-      <button type="button" class="cr-chip" data-f="plat:search">Пошук Google</button>
-      <button type="button" class="cr-chip" data-f="plat:shopping">Покупки</button>
-      <button type="button" class="cr-chip" data-f="plat:youtube">YouTube</button>
-      <button type="button" class="cr-chip" data-f="plat:maps">Карти</button>
-      <button type="button" class="cr-chip" data-f="plat:play">Play</button>
+    <div class="cr-block">
+    <div class="cr-filters" data-dim="plat">
+      <span class="cr-flabel">Платформи:</span>
+      <button type="button" class="cr-chip active" data-v="all">Усі</button>
+      <button type="button" class="cr-chip" data-v="search">Пошук Google</button>
+      <button type="button" class="cr-chip" data-v="shopping">Покупки</button>
+      <button type="button" class="cr-chip" data-v="youtube">YouTube</button>
+      <button type="button" class="cr-chip" data-v="maps">Карти</button>
+      <button type="button" class="cr-chip" data-v="play">Play</button>
+    </div>
+    <div class="cr-filters" data-dim="fmt">
+      <span class="cr-flabel">Формати:</span>
+      <button type="button" class="cr-chip active" data-v="all">Усі</button>
+      <button type="button" class="cr-chip" data-v="text">Текст/пошук</button>
+      <button type="button" class="cr-chip" data-v="image">Банери</button>
+      <button type="button" class="cr-chip" data-v="video">Відео</button>
     </div>
     <div class="creatives-grid">
       {% for cr in r.ads.creatives %}
@@ -253,6 +262,7 @@
         {% endif %}
       </div>
       {% endfor %}
+    </div>
     </div>
   </details>
   {% endif %}
@@ -281,12 +291,20 @@
   </div>
   {% if r.meta_ads.creatives %}
   <div class="creatives-h">🖼️ Креативи реклами ({{ r.meta_ads.creatives|length }})</div>
-  <div class="cr-filters">
-    <button type="button" class="cr-chip active" data-f="all">Усі</button>
-    <button type="button" class="cr-chip" data-f="plat:facebook">Facebook</button>
-    <button type="button" class="cr-chip" data-f="plat:instagram">Instagram</button>
-    <button type="button" class="cr-chip" data-f="fmt:video">Відео</button>
-    <button type="button" class="cr-chip" data-f="fmt:image">Банери</button>
+  <div class="cr-block">
+  <div class="cr-filters" data-dim="plat">
+    <span class="cr-flabel">Майданчики:</span>
+    <button type="button" class="cr-chip active" data-v="all">Усі</button>
+    <button type="button" class="cr-chip" data-v="facebook">Facebook</button>
+    <button type="button" class="cr-chip" data-v="instagram">Instagram</button>
+    <button type="button" class="cr-chip" data-v="messenger">Messenger</button>
+    <button type="button" class="cr-chip" data-v="audience_network">Audience Network</button>
+  </div>
+  <div class="cr-filters" data-dim="fmt">
+    <span class="cr-flabel">Формати:</span>
+    <button type="button" class="cr-chip active" data-v="all">Усі</button>
+    <button type="button" class="cr-chip" data-v="image">Банери</button>
+    <button type="button" class="cr-chip" data-v="video">Відео</button>
   </div>
   <div class="creatives-grid">
     {% for cr in r.meta_ads.creatives %}
@@ -302,6 +320,7 @@
       </div>
     </div>
     {% endfor %}
+  </div>
   </div>
   {% endif %}
   </details>{# /rc-sect meta #}
@@ -515,23 +534,30 @@
 
 <script>
 (function(){
-  document.querySelectorAll('.cr-filters').forEach(function(bar){
-    var grid = bar.nextElementSibling;
-    while(grid && !grid.classList.contains('creatives-grid')) grid = grid.nextElementSibling;
+  document.querySelectorAll('.cr-block').forEach(function(block){
+    var grid = block.querySelector('.creatives-grid');
     if(!grid) return;
-    bar.querySelectorAll('.cr-chip').forEach(function(chip){
-      chip.addEventListener('click', function(){
-        bar.querySelectorAll('.cr-chip').forEach(function(c){ c.classList.remove('active'); });
-        chip.classList.add('active');
-        var f = chip.dataset.f || 'all';
-        grid.querySelectorAll('.cr-item').forEach(function(it){
-          var show = true;
-          if(f !== 'all'){
-            var parts = f.split(':'), k = parts[0], v = parts[1];
-            if(k === 'plat') show = (it.dataset.plat||'').split(' ').indexOf(v) >= 0;
-            else if(k === 'fmt') show = (it.dataset.fmt||'') === v;
-          }
-          it.style.display = show ? '' : 'none';
+    var state = {};
+    function apply(){
+      grid.querySelectorAll('.cr-item').forEach(function(it){
+        var show = true;
+        for(var dim in state){
+          var v = state[dim];
+          if(v === 'all') continue;
+          if(dim === 'plat') show = show && (it.dataset.plat||'').split(' ').indexOf(v) >= 0;
+          else if(dim === 'fmt') show = show && (it.dataset.fmt||'') === v;
+        }
+        it.style.display = show ? '' : 'none';
+      });
+    }
+    block.querySelectorAll('.cr-filters').forEach(function(bar){
+      var dim = bar.dataset.dim; state[dim] = 'all';
+      bar.querySelectorAll('.cr-chip').forEach(function(chip){
+        chip.addEventListener('click', function(){
+          bar.querySelectorAll('.cr-chip').forEach(function(c){ c.classList.remove('active'); });
+          chip.classList.add('active');
+          state[dim] = chip.dataset.v || 'all';
+          apply();
         });
       });
     });

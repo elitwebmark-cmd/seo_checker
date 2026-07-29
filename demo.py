@@ -99,7 +99,7 @@ def demo_result() -> dict:
 
     ads = {
         "checked": True, "running": True, "count": 24, "advertisers": ["demo-klinika.ua"],
-        "period_days": None,
+        "period_days": 7,
         "formats": {"text": 15, "image": 8, "video": 1, "other": 0},
         "formats_sampled": 24,
         "platforms": {"search": 15, "youtube": 4, "shopping": 3, "maps": 2, "play": 0},
