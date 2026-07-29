@@ -255,9 +255,10 @@
         <a href="{{ cr.link or r.ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="креатив"></a>
         {% else %}
         <div class="creative-text">
-          <span class="creative-fmt">{{ 'пошук' if cr.format=='text' else 'відео' if cr.format=='video' else cr.format }}</span>
-          {% if cr.text %}<div class="creative-txt">{{ cr.text }}</div>{% else %}<div class="creative-txt muted">текстове оголошення</div>{% endif %}
-          {% if cr.link %}<a class="btn-sm" href="{{ cr.link }}" target="_blank" rel="noopener">Відкрити</a>{% endif %}
+          <span class="creative-fmt">{{ 'відео' if cr.format=='video' else 'пошук' if cr.format=='text' else cr.format }}</span>
+          {% if cr.platforms %}<div class="creative-txt"><b>{{ cr.platforms|join(' ')|replace('search','Пошук Google')|replace('shopping','Покупки')|replace('youtube','YouTube')|replace('maps','Карти')|replace('play','Play') }}</b></div>{% endif %}
+          {% if cr.text %}<div class="creative-txt">{{ cr.text }}</div>{% elif cr.format=='video' %}<div class="creative-txt muted">відео-оголошення (прев'ю недоступне)</div>{% else %}<div class="creative-txt muted">текстове оголошення</div>{% endif %}
+          {% if cr.link %}<a class="btn-sm" href="{{ cr.link }}" target="_blank" rel="noopener">Відкрити в Ad Library</a>{% endif %}
         </div>
         {% endif %}
       </div>

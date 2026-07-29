@@ -141,7 +141,7 @@ def check(domain: str) -> dict:
     # Крео збираємо прямо з per-platform вибірок (реальні теги платформ), показуємо
     # лише ті, що мають прев'ю-картинку (щоб не було порожніх карток).
     platforms = None
-    creatives_out = [dict(it, platforms=[]) for it in items[:lim] if it.get("image")]
+    creatives_out = [dict(it, platforms=[]) for it in items[:lim]]
     if running:
         platforms = {}
         merged = {}
@@ -150,9 +150,10 @@ def check(domain: str) -> dict:
             platforms[key] = total
             for c in cres:
                 cr = _creative_from(c)
-                if not cr["image"]:
+                # ідентифікатор: картинка → лінк → текст (відео/YouTube часто без картинки)
+                idk = cr["image"] or cr["link"] or (cr["text"][:60] if cr["text"] else "")
+                if not idk:
                     continue
-                idk = cr["image"]
                 if idk in merged:
                     if key not in merged[idk]["platforms"]:
                         merged[idk]["platforms"].append(key)
