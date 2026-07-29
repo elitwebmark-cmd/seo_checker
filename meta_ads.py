@@ -155,18 +155,31 @@ def check(domain: str, debug: bool = False) -> dict:
     except Exception as e:
         return {"checked": False, "note": f"помилка Apify: {str(e)[:140]}", "link": lib_url}
 
+    # Актор віддає два формати: або оголошення напряму (є 'snapshot'),
+    # або обгортку сторінки {pageInfo, results:[...], totalCount}. Зводимо до списку оголошень.
+    ads_list, page_name0 = [], None
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        if isinstance(it.get("results"), list):
+            ads_list.extend(it["results"])
+            pg = ((it.get("pageInfo") or {}).get("page") or {})
+            page_name0 = page_name0 or pg.get("name")
+        elif "snapshot" in it or "publisherPlatform" in it or "adArchiveID" in it:
+            ads_list.append(it)
+
     if debug:
-        return {"checked": True, "count": len(items), "target_url": target_url,
-                "raw_sample": items[0] if items else None}
+        return {"checked": True, "count": len(ads_list), "target_url": target_url,
+                "raw_sample": (ads_list[0] if ads_list else (items[0] if items else None))}
 
     brand = page or _host(domain).split(".")[0]
-    if not items:
-        return {"checked": True, "running": False, "count": 0, "page": brand,
+    if not ads_list:
+        return {"checked": True, "running": False, "count": 0, "page": page_name0 or brand,
                 "platforms": {}, "creatives": [], "link": lib_url}
 
     plat = {"facebook": 0, "instagram": 0, "messenger": 0, "audience_network": 0}
-    creatives, page_name = [], page
-    for it in items:
+    creatives, page_name = [], (page_name0 or page)
+    for it in ads_list:
         page_name = page_name or it.get("page_name") or it.get("pageName") or _snap(it).get("page_name")
         seen = set()
         for p in _platforms_of(it):
@@ -209,7 +222,7 @@ def check(domain: str, debug: bool = False) -> dict:
     return {
         "checked": True,
         "running": True,
-        "count": len(items),
+        "count": len(ads_list),
         "page": page_name or brand,
         "platforms": plat,
         "creatives": creatives,
