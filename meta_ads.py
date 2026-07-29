@@ -130,6 +130,23 @@ def _images_of(item: dict):
     return imgs
 
 
+def _fetch_ads(url: str):
+    """(ads_list, page_name). Обробляє два формати актора: оголошення напряму
+    або обгортку {pageInfo, results:[...]}"""
+    items = _run_apify(url, config.META_ADS_LIMIT)
+    ads_list, page_name = [], None
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        if isinstance(it.get("results"), list):
+            ads_list.extend(it["results"])
+            pg = ((it.get("pageInfo") or {}).get("page") or {})
+            page_name = page_name or pg.get("name")
+        elif "snapshot" in it or "publisherPlatform" in it or "adArchiveID" in it:
+            ads_list.append(it)
+    return ads_list, page_name
+
+
 def check(domain: str, debug: bool = False) -> dict:
     if not config.APIFY_TOKEN:
         return {"checked": False, "note": "APIFY_TOKEN не заданий"}
@@ -151,31 +168,30 @@ def check(domain: str, debug: bool = False) -> dict:
         target_url = _library_url(query)
         lib_url = target_url
     try:
-        items = _run_apify(target_url, config.META_ADS_LIMIT)
+        ads_list, page_name0 = _fetch_ads(target_url)
     except Exception as e:
         return {"checked": False, "note": f"помилка Apify: {str(e)[:140]}", "link": lib_url}
 
-    # Актор віддає два формати: або оголошення напряму (є 'snapshot'),
-    # або обгортку сторінки {pageInfo, results:[...], totalCount}. Зводимо до списку оголошень.
-    ads_list, page_name0 = [], None
-    for it in items:
-        if not isinstance(it, dict):
-            continue
-        if isinstance(it.get("results"), list):
-            ads_list.extend(it["results"])
-            pg = ((it.get("pageInfo") or {}).get("page") or {})
-            page_name0 = page_name0 or pg.get("name")
-        elif "snapshot" in it or "publisherPlatform" in it or "adArchiveID" in it:
-            ads_list.append(it)
+    # Якщо за сторінкою нема активних — відкат на keyword-пошук (як у веб-Центрі).
+    by_keyword = (page is None)
+    if not ads_list and page:
+        kw_url = _library_url(_host(domain).split(".")[0])
+        try:
+            kl, pn = _fetch_ads(kw_url)
+        except Exception:
+            kl, pn = [], None
+        if kl:
+            ads_list, page_name0, lib_url, by_keyword = kl, (page_name0 or pn), kw_url, True
 
     if debug:
         return {"checked": True, "count": len(ads_list), "target_url": target_url,
-                "raw_sample": (ads_list[0] if ads_list else (items[0] if items else None))}
+                "by_keyword": by_keyword,
+                "raw_sample": (ads_list[0] if ads_list else None)}
 
     brand = page or _host(domain).split(".")[0]
     if not ads_list:
         return {"checked": True, "running": False, "count": 0, "page": page_name0 or brand,
-                "platforms": {}, "creatives": [], "link": lib_url}
+                "platforms": {}, "creatives": [], "by_keyword": by_keyword, "link": lib_url}
 
     plat = {"facebook": 0, "instagram": 0, "messenger": 0, "audience_network": 0}
     creatives, page_name = [], (page_name0 or page)
@@ -226,5 +242,6 @@ def check(domain: str, debug: bool = False) -> dict:
         "page": page_name or brand,
         "platforms": plat,
         "creatives": creatives,
+        "by_keyword": by_keyword,
         "link": lib_url,
     }
