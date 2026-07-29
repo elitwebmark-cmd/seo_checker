@@ -572,7 +572,7 @@ async def cb_pdf(cb: CallbackQuery):
         fname = (last["domain"] or "report").replace("/", "_") + "-elitweb.pdf"
         await cb.message.answer_document(
             BufferedInputFile(data, filename=fname),
-            caption=f"📄 SEO-звіт — {html.escape(last['domain'])}")
+            caption=f"📄 Звіт з аналізу — {html.escape(last['domain'])}")
     except Exception:
         log.exception("pdf failed for %s", last.get("domain"))
         await cb.message.answer("⚠️ Не вдалося згенерувати PDF. Спробуй пізніше.")
