@@ -137,10 +137,10 @@
   </div>
   {% endif %}
   </details>{# /rc-sect seo #}
-  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) or r.media_plan %}
+  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or r.media_plan %}
   <details class="rc-sect ppc">
   <summary class="rc-sect-h"><span class="rc-sect-badge s-ppc">PPC</span>Контекстна реклама — присутність, медіаплан, креативи</summary>
-  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or (r.shopping and r.shopping.checked) %}
+  {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) %}
   <div class="sigs">
     {% if r.ads and r.ads.checked %}
     <div class="sig">
@@ -171,19 +171,6 @@
         </div>
         {% endfor %}
       </div>
-    </div>
-    {% endif %}
-    {% if r.shopping and r.shopping.checked %}
-    <div class="sig">
-      <span class="sig-l"><span class="sig-ico">🛒</span>Google Shopping</span>
-      {% if r.shopping.uses %}
-      <span class="dot dot-red"></span>
-      <span class="sig-v">Працює · <span class="u">≥{{ r.shopping.pla_keywords }}</span> PLA-запитів</span>
-      {% if r.shopping.shop_name %}<span class="sig-sub">магазин: {{ r.shopping.shop_name }}</span>{% endif %}
-      {% else %}
-      <span class="dot dot-off"></span>
-      <span class="sig-v">Товарна реклама не крутиться</span>
-      {% endif %}
     </div>
     {% endif %}
     {% if r.paid and (r.paid.budget or r.paid.keywords) %}

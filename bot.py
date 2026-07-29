@@ -334,13 +334,6 @@ def fmt(res: dict) -> str:
             per = f" за {ad['period_days']} дн." if ad.get("period_days") else ""
             lines.append(f"📣 <b>Контекст:</b> не крутиться{per} — "
                          f"<a href=\"{ad['link']}\">перевірити</a>")
-    sh = res.get("shopping") or {}
-    if sh.get("checked"):
-        if sh.get("uses"):
-            shop = f" · магазин «{html.escape(sh.get('shop_name',''))}»" if sh.get("shop_name") else ""
-            lines.append(f"🛒 <b>Google Shopping:</b> працює · ≥{sh.get('pla_keywords', 0)} товарних запитів{shop}")
-        else:
-            lines.append("🛒 <b>Google Shopping:</b> товарна реклама не крутиться")
     mt = res.get("meta_ads") or {}
     if mt.get("checked"):
         if mt.get("running"):
