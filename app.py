@@ -141,7 +141,7 @@ def _process_job(job_id, domains, do_onpage, do_ads=False, do_social=False, user
                     log.info("job %s: %s -> %s", job_id, d, res.get("verdict"))
                     try:
                         import stats_log
-                        stats_log.log_analysis(res, "web", user)
+                        stats_log.log_analysis(res, "web", user, config.SEMRUSH_DB)
                     except Exception:
                         pass
                     with JOBS_LOCK:

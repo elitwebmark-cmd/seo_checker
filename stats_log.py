@@ -9,21 +9,21 @@ import requests
 import config
 
 
-def _row(res: dict, source: str, user: str = "") -> dict:
+def _row(res: dict, source: str, user: str = "", region: str = "") -> dict:
     ni = res.get("niche") or {}
     bn = res.get("benefit") or {}
-    ov = res.get("overview") or {}
+    mt = res.get("metrics") or {}
     return {
         "ts": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "domain": res.get("domain", ""),
         "source": source,                      # web / telegram / demo / hubspot
         "user": user or "",                    # email або chat_id
-        "region": res.get("db") or res.get("region") or "",
+        "region": region or "",                # регіон бази SemRush (ua/pl/…)
         "verdict": res.get("verdict", ""),
         "score": res.get("score", ""),
         "niche": ni.get("subniche", "") or "",
         "offer_fit": ("так" if ni.get("offer_fit") else "ні") if ni.get("offer_fit") is not None else "",
-        "traffic": (ov.get("organic_traffic") if ov else "") or res.get("traffic", "") or "",
+        "traffic": mt.get("organic_traffic", "") if mt else "",
         "commercial_kw": bn.get("queries", "") if bn else "",
     }
 
@@ -40,12 +40,12 @@ def _post(payload: dict):
         pass
 
 
-def log_analysis(res: dict, source: str, user: str = ""):
+def log_analysis(res: dict, source: str, user: str = "", region: str = ""):
     """Асинхронно (в окремому потоці) пише рядок у таблицю."""
     if not config.SHEETS_LOG_URL or not res or res.get("error"):
         return
     try:
-        payload = _row(res, source, user)
+        payload = _row(res, source, user, region)
         threading.Thread(target=_post, args=(payload,), daemon=True).start()
     except Exception:
         pass
