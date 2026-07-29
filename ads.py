@@ -183,13 +183,25 @@ def check(domain: str) -> dict:
                 if not idk:
                     continue
                 if idk in merged:
-                    if key not in merged[idk]["platforms"]:
-                        merged[idk]["platforms"].append(key)
+                    m = merged[idk]
+                    if key not in m["platforms"]:
+                        m["platforms"].append(key)
+                    # підтягуємо кращі поля, якщо у збереженого їх нема
+                    if not m.get("image") and cr.get("image"):
+                        m["image"] = cr["image"]
+                    if not m.get("video") and cr.get("video"):
+                        m["video"] = cr["video"]
+                    if not m.get("text") and cr.get("text"):
+                        m["text"] = cr["text"]
                 else:
                     cr["platforms"] = [key]
                     merged[idk] = cr
         if merged:
-            creatives_out = list(merged.values())[:lim]
+            creatives_out = list(merged.values())
+    # прибираємо порожні картки (без прев'ю/тексту); відео лишаємо (окрема ▶-картка)
+    creatives_out = [c for c in creatives_out
+                     if c.get("image") or c.get("video") or c.get("text")
+                     or c.get("format") == "video"][:lim]
 
     return {
         "checked": True,
