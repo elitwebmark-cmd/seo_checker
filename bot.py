@@ -467,6 +467,11 @@ async def run_analysis(msg: Message, domain: str):
     try:
         res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True, True)
         LAST[msg.chat.id] = {"domain": domain, "res": res}
+        try:
+            import stats_log
+            stats_log.log_analysis(res, "telegram", str(msg.chat.id))
+        except Exception:
+            pass
         await wait.edit_text(fmt(res), parse_mode="HTML", disable_web_page_preview=True,
                              reply_markup=result_kb(res))
         pm = _pages_msg(res)

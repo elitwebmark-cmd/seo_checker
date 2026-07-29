@@ -128,7 +128,7 @@ def _finish(job_id):
     log.info("job %s finished", job_id)
 
 
-def _process_job(job_id, domains, do_onpage, do_ads=False, do_social=False):
+def _process_job(job_id, domains, do_onpage, do_ads=False, do_social=False, user=""):
     log.info("job %s START: %d domain(s), onpage=%s, ads=%s, social=%s",
              job_id, len(domains), do_onpage, do_ads, do_social)
     try:
@@ -139,6 +139,11 @@ def _process_job(job_id, domains, do_onpage, do_ads=False, do_social=False):
                     d = futs[fut]
                     res = fut.result()
                     log.info("job %s: %s -> %s", job_id, d, res.get("verdict"))
+                    try:
+                        import stats_log
+                        stats_log.log_analysis(res, "web", user)
+                    except Exception:
+                        pass
                     with JOBS_LOCK:
                         j = JOBS.get(job_id)
                         if j is None:
@@ -210,7 +215,8 @@ def analyze():
         JOBS[job_id] = {"total": len(domains), "done": 0, "results": [],
                         "status": "running", "do_onpage": do_onpage, "do_ads": do_ads,
                         "do_social": do_social, "started": time.time(), "finished": None}
-    threading.Thread(target=_process_job, args=(job_id, domains, do_onpage, do_ads, do_social),
+    threading.Thread(target=_process_job,
+                     args=(job_id, domains, do_onpage, do_ads, do_social, session.get("email", "")),
                      daemon=True).start()
     return redirect(url_for("progress", job_id=job_id))
 

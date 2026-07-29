@@ -20,6 +20,11 @@ KWPLAN_LANG = os.getenv("KWPLAN_LANG", "1013")      # 1013 = укр., 1031 = р�
 KWPLAN_LIMIT = int(os.getenv("KWPLAN_LIMIT", "15")) # скільки топ-запитів лишати у звіті
 KWPLAN_TIMEOUT = int(os.getenv("KWPLAN_TIMEOUT", "30"))
 
+# --- Логування аналізів у Google Таблицю (Apps Script веб-хук) ---
+SHEETS_LOG_URL = os.getenv("SHEETS_LOG_URL", "")          # URL веб-застосунку Apps Script
+SHEETS_LOG_SECRET = os.getenv("SHEETS_LOG_SECRET", "")    # опційний секрет (звірка у скрипті)
+SHEETS_LOG_TIMEOUT = int(os.getenv("SHEETS_LOG_TIMEOUT", "10"))
+
 # --- SemRush ---
 SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
 SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua
