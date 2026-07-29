@@ -424,10 +424,6 @@ def fmt(res: dict) -> str:
         lines.append("\n🧩 <b>Підходить під послуги:</b>")
         for s in sv:
             lines.append(f"{mk.get(s['level'], '•')} {html.escape(s['name'])} — {html.escape(s['note'])}")
-    lines.append("")
-    for name, val, ok in res.get("reasons", []):
-        mark = "✔" if ok else ("•" if ok is None else "✗")
-        lines.append(f"{mark} {html.escape(name)}: <b>{html.escape(str(val))}</b>")
     dq = res.get("dotisk_queries", [])
     if dq:
         lines.append(f"\n🎯 <b>Кандидати в ТОП-1</b> (топ {min(len(dq), 8)} з {len(dq)}):")
