@@ -490,8 +490,14 @@ async def start(msg: Message):
         return await msg.answer(f"⛔ Доступ обмежено. Твій chat_id: <code>{msg.chat.id}</code>", parse_mode="HTML")
     s = st(msg.chat.id)
     await msg.answer(
-        "👋 Аналізатор сайтів під офер <b>SEO з оплатою за вихід у ТОП</b>.\n\n"
-        "Надішли <b>домен</b> — я перевірю по SemRush та on-page і скажу, чи підходить.\n\n"
+        "👋 <b>Аналіз інтернет-маркетингу сайту</b> — комплексна перевірка.\n\n"
+        "Надішли <b>домен</b> — і я зберу по ньому:\n"
+        "• 🔍 SEO-потенціал і кваліфікацію під офер «SEO за вихід у ТОП»\n"
+        "• 📈 динаміку трафіку та прогноз зростання\n"
+        "• 📊 попит у ніші (Google Trends) і за запитами (Keyword Planner)\n"
+        "• 📣 контекстну рекламу (Google Ads Transparency) + медіаплан\n"
+        "• 📘 таргет у Meta (Facebook / Instagram Ad Library)\n"
+        "• 🧩 які послуги підходять + схожі кейси Elit-Web\n\n"
         f"Регіон: {REGIONS.get(s['db'], s['db'])} · Глибина: "
         f"{'повний' if s['depth']=='full' else 'швидкий'}\n"
         "Змінити — кнопка «⚙️ Налаштування».",
