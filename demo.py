@@ -110,7 +110,7 @@ def demo_result() -> dict:
             {"format": "image", "image": _banner(336, 280, "Лазерна епіляція", "#15151B"), "text": "", "link": "", "platforms": ["shopping"]},
             {"format": "text", "image": "", "text": "Естетична косметологія у Києві — консультація безкоштовно", "link": "", "platforms": ["search"]},
             {"format": "text", "image": "", "text": "Лазерна епіляція від 199 грн · запис онлайн", "link": "", "platforms": ["search"]},
-            {"format": "video", "image": _banner(320, 180, "▶ Відео-огляд", "#0A0A0A"), "text": "", "link": "", "platforms": ["youtube"]},
+            {"format": "video", "image": "", "text": "", "link": "https://adstransparency.google.com/?region=UA&domain=demo-klinika.ua", "platforms": ["youtube"]},
         ],
         "link": "https://adstransparency.google.com/?region=UA&domain=demo-klinika.ua",
     }

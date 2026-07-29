@@ -255,11 +255,17 @@
         <video class="creative-img" src="{{ cr.video }}"{% if cr.image %} poster="{{ cr.image }}"{% endif %} controls preload="none" playsinline></video>
         {% elif cr.image %}
         <a href="{{ cr.link or r.ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="креатив"></a>
+        {% elif cr.format == 'video' %}
+        <a class="creative-video" href="{{ cr.link or r.ads.link }}" target="_blank" rel="noopener">
+          <span class="cv-play">▶</span>
+          <span class="cv-cap">Відео-оголошення{% if cr.platforms %} · {{ cr.platforms|join(' ')|replace('youtube','YouTube')|replace('search','Пошук')|replace('maps','Карти') }}{% endif %}</span>
+          <span class="cv-open">Дивитись відео</span>
+        </a>
         {% else %}
         <div class="creative-text">
-          <span class="creative-fmt">{{ 'відео' if cr.format=='video' else 'пошук' if cr.format=='text' else cr.format }}</span>
+          <span class="creative-fmt">{{ 'пошук' if cr.format=='text' else cr.format }}</span>
           {% if cr.platforms %}<div class="creative-txt"><b>{{ cr.platforms|join(' ')|replace('search','Пошук Google')|replace('shopping','Покупки')|replace('youtube','YouTube')|replace('maps','Карти')|replace('play','Play') }}</b></div>{% endif %}
-          {% if cr.text %}<div class="creative-txt">{{ cr.text }}</div>{% elif cr.format=='video' %}<div class="creative-txt muted">відео-оголошення (прев'ю недоступне)</div>{% else %}<div class="creative-txt muted">текстове оголошення</div>{% endif %}
+          {% if cr.text %}<div class="creative-txt">{{ cr.text }}</div>{% else %}<div class="creative-txt muted">текстове оголошення</div>{% endif %}
           {% if cr.link %}<a class="btn-sm" href="{{ cr.link }}" target="_blank" rel="noopener">Відкрити в Ad Library</a>{% endif %}
         </div>
         {% endif %}

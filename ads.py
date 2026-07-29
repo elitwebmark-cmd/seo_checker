@@ -59,9 +59,13 @@ def _creative_from(c: dict) -> dict:
         if c.get(k):
             txt = str(c.get(k)).strip()
             break
-    return {"format": f or "other", "image": img, "video": video, "text": txt,
-            "link": (c.get("link") or c.get("details_link") or "").strip(),
-            "first_shown": c.get("first_shown"), "last_shown": c.get("last_shown")}
+    return {
+        "cid": (c.get("ad_creative_id") or "").strip(),
+        "format": f or "other", "image": img, "video": video, "text": txt,
+        # details_link → сторінка оголошення на Google (там відео відтворюється)
+        "link": (c.get("details_link") or c.get("link") or "").strip(),
+        "first_shown": c.get("first_shown"), "last_shown": c.get("last_shown"),
+    }
 
 
 def _platform_query(host: str, days: int, code: str, num: int = 12):
@@ -174,8 +178,8 @@ def check(domain: str) -> dict:
             platforms[key] = total
             for c in cres:
                 cr = _creative_from(c)
-                # ідентифікатор: картинка → лінк → текст (відео/YouTube часто без картинки)
-                idk = cr["image"] or cr["link"] or (cr["text"][:60] if cr["text"] else "")
+                # стабільний ідентифікатор крео (той самий CR у різних платформах)
+                idk = cr["cid"] or cr["image"] or cr["link"] or (cr["text"][:60] if cr["text"] else "")
                 if not idk:
                     continue
                 if idk in merged:
