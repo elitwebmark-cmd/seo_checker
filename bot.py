@@ -56,12 +56,20 @@ def settings_kb(s: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[reg_row[:2], reg_row[2:], depth_row])
 
 
-def result_kb(domain: str, has_dotisk: bool) -> InlineKeyboardMarkup:
+def result_kb(res: dict) -> InlineKeyboardMarkup:
     rows = []
-    if has_dotisk:
+    # великі виділені кнопки переходу в бібліотеки реклами
+    ad = res.get("ads") or {}
+    if ad.get("link"):
+        rows.append([InlineKeyboardButton(text="🔎 GOOGLE ADS TRANSPARENCY", url=ad["link"])])
+    mt = res.get("meta_ads") or {}
+    if mt.get("link"):
+        rows.append([InlineKeyboardButton(text="📘 META AD LIBRARY", url=mt["link"])])
+    if res.get("dotisk_queries"):
         rows.append([InlineKeyboardButton(text="🎯 Усі запити для дотиску", callback_data="allq")])
     rows.append([InlineKeyboardButton(text="📄 Завантажити PDF", callback_data="pdf")])
-    rows.append([InlineKeyboardButton(text="🔁 Повторити", callback_data="again")])
+    rows.append([InlineKeyboardButton(text="🔁 Повторити", callback_data="again"),
+                 InlineKeyboardButton(text="🆕 Нова перевірка", callback_data="newcheck")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -128,8 +136,9 @@ def _traffic_pre(hist: list) -> str:
     mx = max(vals) or 1
     rows = [f"{_month(h.get('date')):<6} {_bar(v, mx):<13} {_fmtk(v):>6}"
             for h, v in zip(pts, vals)]
-    mult = f" ×{round(vals[-1] / vals[0], 1)}" if vals[0] > 0 else ""
-    head = f"📈 <b>Трафік 12 міс:</b> {_fmtk(vals[0])}→{_fmtk(vals[-1])}{mult}"
+    chg = round((vals[-1] - vals[0]) / vals[0] * 100) if vals[0] > 0 else None
+    chg_s = f" ({'+' if chg >= 0 else ''}{chg}%)" if chg is not None else ""
+    head = f"📈 <b>Трафік за 12 міс:</b> {_fmtk(vals[0])}→{_fmtk(vals[-1])}{chg_s}"
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
@@ -142,35 +151,64 @@ def _sparkline(vals, mx) -> str:
     return "".join(_SPARK[min(7, int(v / mx * 7))] for v in vals)
 
 
+def _pt_month(p: dict) -> str:
+    """MM.YY з точки тренду (спершу timestamp, потім label)."""
+    ts = p.get("ts")
+    try:
+        import datetime
+        d = datetime.datetime.fromtimestamp(int(ts))
+        return f"{d.month:02d}.{str(d.year)[2:]}"
+    except Exception:
+        lb = str(p.get("label") or "")
+        m = re.search(r"(\d{4})", lb)
+        return (lb[:5] if lb else "—")
+
+
 def _trend_pre(nt: dict) -> str:
-    if not nt or not nt.get("points"):
+    pts = (nt or {}).get("points") or []
+    if len(pts) < 3:
         return ""
-    pts = [p.get("value", 0) for p in nt["points"]]
+    # ~7 рівномірних точок з підписом місяця (щоб було читабельно)
+    k = 7
     n = len(pts)
-    step = max(1, n // 24)
-    samp = [pts[i] for i in range(0, n, step)]
-    mx = max(samp) or 1
+    idx = sorted(set(round(i * (n - 1) / (k - 1)) for i in range(k)))
+    sample = [pts[i] for i in idx]
+    vals = [max(0.0, float(p.get("value", 0) or 0)) for p in sample]
+    mx = max(vals) or 1
+    rows = [f"{_pt_month(p):<6} {_bar(v, mx):<13} {int(round(v)):>3}"
+            for p, v in zip(sample, vals)]
     chg = nt.get("change_pct")
     chg_s = f" ({'+' if chg >= 0 else ''}{chg}%)" if chg is not None else ""
     kw = " · ".join(nt.get("keywords") or [])
-    return (f"📊 <b>Тренд попиту</b> (Google Trends · 12 міс · UA):{chg_s}"
-            f"\n<pre>{html.escape(_sparkline(samp, mx))}</pre>"
-            f"<i>за запитами: {html.escape(kw)}</i>")
+    out = (f"📊 <b>Тренд попиту</b> (Google Trends · 12 міс · UA · індекс 0–100):{chg_s}"
+           f"\n<pre>{html.escape(chr(10).join(rows))}</pre>")
+    if kw:
+        out += f"<i>за запитами: {html.escape(kw)}</i>"
+    return out
 
 
 def _kwplan_pre(kp: dict) -> str:
     if not kp or not kp.get("trend"):
         return ""
     pts = kp["trend"]
+    labels = kp.get("trend_labels") or []
     mx = max(pts) or 1
+    # ~7 рівномірних точок з підписом місяця
+    k = 7
+    n = len(pts)
+    idx = sorted(set(round(i * (n - 1) / (k - 1)) for i in range(k)))
+    chart_rows = [f"{(labels[i] if i < len(labels) else '—'):<6} {_bar(pts[i], mx):<13} {_fmtk(pts[i]):>6}"
+                  for i in idx]
     chg = kp.get("change_pct")
     chg_s = f" ({'+' if chg >= 0 else ''}{chg}%)" if chg is not None else ""
     top = kp.get("keywords") or []
-    rows = "\n".join(f"• {html.escape(k['keyword'])} — {_fmtk(k['volume'])}/міс"
-                     for k in top[:5])
-    return (f"🔑 <b>Попит за запитами</b> (Keyword Planner · 12 міс · UA):{chg_s}"
-            f"\n<pre>{html.escape(_sparkline(pts, mx))}</pre>"
-            + (f"{rows}" if rows else ""))
+    kw_rows = "\n".join(f"• {html.escape(k['keyword'])} — {_fmtk(k['volume'])}/міс"
+                        for k in top[:5])
+    out = (f"🔑 <b>Попит за запитами</b> (Keyword Planner · 12 міс · UA):{chg_s}"
+           f"\n<pre>{html.escape(chr(10).join(chart_rows))}</pre>")
+    if kw_rows:
+        out += kw_rows
+    return out
 
 
 def _forecast_pre(hist: list, target) -> str:
@@ -257,6 +295,18 @@ def _pages_msg(res: dict) -> str:
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
+def _dotisk_pre(dq: list, limit: int = 8) -> str:
+    """Таблиця кандидатів у ТОП-1: запит · позиція · частотність · трафік у ТОП-1."""
+    if not dq:
+        return ""
+    rows = [f"{'Запит':<20}{'поз':>4}{'частота':>8}{'ТОП1/міс':>9}"]
+    for q in dq[:limit]:
+        kw = str(q.get("keyword") or "")[:20]
+        rows.append(f"{kw:<20}{q.get('position', 0):>4}"
+                    f"{_fmtk(q.get('volume', 0)):>8}{_fmtk(q.get('traffic_top1', 0)):>9}")
+    return "<pre>" + html.escape("\n".join(rows)) + "</pre>"
+
+
 def fmt(res: dict) -> str:
     if res.get("error"):
         return f"⚠️ <b>{html.escape(res['domain'])}</b>\nПомилка: {html.escape(res['error'])}"
@@ -312,8 +362,7 @@ def fmt(res: dict) -> str:
             if ad.get("advertisers"):
                 adv = " · " + html.escape(", ".join(ad["advertisers"]))
             per = f" за {ad['period_days']} дн." if ad.get("period_days") else ""
-            lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош.{per}{adv} — "
-                         f"<a href=\"{ad['link']}\">перевірити</a>")
+            lines.append(f"📣 <b>Контекст:</b> працює · ~{ad['count']} оголош.{per}{adv}")
             f = ad.get("formats") or {}
             if f:
                 def _fm(name, n):
@@ -332,8 +381,7 @@ def fmt(res: dict) -> str:
                 lines.append("📊 <b>Платформи:</b>\n<pre>" + html.escape("\n".join(prows)) + "</pre>")
         else:
             per = f" за {ad['period_days']} дн." if ad.get("period_days") else ""
-            lines.append(f"📣 <b>Контекст:</b> не крутиться{per} — "
-                         f"<a href=\"{ad['link']}\">перевірити</a>")
+            lines.append(f"📣 <b>Контекст:</b> не крутиться{per}")
     mt = res.get("meta_ads") or {}
     if mt.get("checked"):
         if mt.get("running"):
@@ -344,11 +392,9 @@ def fmt(res: dict) -> str:
                                  _pm("Messenger", pl.get("messenger")), _pm("AN", pl.get("audience_network"))) if x]
             pstr = (" · " + ", ".join(parts)) if parts else ""
             pg = f" · «{html.escape(mt.get('page',''))}»" if mt.get("page") else ""
-            lines.append(f"📘 <b>Meta реклама:</b> працює · {mt.get('count', 0)} активних крео{pg}{pstr} — "
-                         f"<a href=\"{mt['link']}\">Ad Library</a>")
+            lines.append(f"📘 <b>Meta реклама:</b> працює · {mt.get('count', 0)} активних крео{pg}{pstr}")
         else:
-            lines.append(f"📘 <b>Meta реклама:</b> активних оголошень не знайдено — "
-                         f"<a href=\"{mt['link']}\">Ad Library</a>")
+            lines.append("📘 <b>Meta реклама:</b> активних оголошень не знайдено")
     pd = res.get("paid") or {}
     if pd.get("budget") or pd.get("keywords"):
         b = f"~${pd['budget']}/міс" if pd.get("budget") else "н/д"
@@ -384,10 +430,8 @@ def fmt(res: dict) -> str:
         lines.append(f"{mark} {html.escape(name)}: <b>{html.escape(str(val))}</b>")
     dq = res.get("dotisk_queries", [])
     if dq:
-        lines.append("\n🎯 <b>Кандидати в ТОП-1:</b>")
-        for q in dq[:8]:
-            lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']} · "
-                         f"у ТОП-1 ~{q.get('traffic_top1', 0)}/міс")
+        lines.append(f"\n🎯 <b>Кандидати в ТОП-1</b> (топ {min(len(dq), 8)} з {len(dq)}):")
+        lines.append(_dotisk_pre(dq, 8))
     return "\n".join(lines)
 
 
@@ -428,7 +472,7 @@ async def run_analysis(msg: Message, domain: str):
         res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True, True)
         LAST[msg.chat.id] = {"domain": domain, "res": res}
         await wait.edit_text(fmt(res), parse_mode="HTML", disable_web_page_preview=True,
-                             reply_markup=result_kb(domain, bool(res.get("dotisk_queries"))))
+                             reply_markup=result_kb(res))
         pm = _pages_msg(res)
         if pm:
             await msg.answer(pm, parse_mode="HTML", disable_web_page_preview=True)
@@ -503,11 +547,14 @@ async def cb_allq(cb: CallbackQuery):
     if not last or not last["res"].get("dotisk_queries"):
         return await cb.answer("Немає даних")
     dq = last["res"]["dotisk_queries"]
-    lines = [f"🎯 <b>Усі кандидати в ТОП-1 — {html.escape(last['domain'])}</b>", ""]
-    for q in dq:
-        lines.append(f"• {html.escape(q['keyword'])} — поз. {q['position']}, частотн. {q['volume']} · "
-                     f"у ТОП-1 ~{q.get('traffic_top1', 0)}/міс")
-    await cb.message.answer("\n".join(lines), parse_mode="HTML", disable_web_page_preview=True)
+    header = f"🎯 <b>Усі кандидати в ТОП-1 — {html.escape(last['domain'])}</b> ({len(dq)})"
+    # чанками по ~40 рядків, щоб влізти в ліміт Telegram
+    for i in range(0, len(dq), 40):
+        chunk = dq[i:i + 40]
+        body = _dotisk_pre(chunk, len(chunk))
+        head = header if i == 0 else ""
+        await cb.message.answer((head + "\n" + body).strip(),
+                                parse_mode="HTML", disable_web_page_preview=True)
     await cb.answer()
 
 
@@ -536,6 +583,14 @@ async def cb_again(cb: CallbackQuery):
         return await cb.answer("Немає що повторити")
     await cb.answer("Повторюю…")
     await run_analysis(cb.message, last["domain"])
+
+
+@dp.callback_query(F.data == "newcheck")
+async def cb_newcheck(cb: CallbackQuery):
+    await cb.answer()
+    await cb.message.answer(
+        "🆕 <b>Нова перевірка</b>\nНадішли домен, напр. <code>daydrive.ua</code>",
+        parse_mode="HTML", reply_markup=main_kb())
 
 
 @dp.message(F.text)
