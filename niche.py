@@ -242,25 +242,40 @@ _AGENCY_STRONG = (
 )
 
 
+def result_for(code: str, confidence: str = "висока", direction: str = None) -> dict:
+    """Повний niche_info по коду підніші (для евристики й AI-класифікатора)."""
+    row = next((s for s in SUB if s[0] == code), None)
+    if not row:
+        return None
+    c, ind, name, dir_default, _ = row
+    d = direction or dir_default
+    econ = NICHE_ECON.get(c)
+    return {
+        "direction": d, "direction_name": DIRECTIONS.get(d),
+        "industry": ind, "industry_name": INDUSTRIES.get(ind),
+        "subniche": name, "subniche_code": c,
+        "confidence": confidence,
+        "offer_fit": c not in OFFER_NO,
+        "conv_pct": econ[0] if econ else None,
+        "avg_check": econ[1] if econ else None,
+        "avg_margin": econ[2] if econ else None,
+        "close_pct": econ[3] if econ else None,
+        "conv_type": econ[4] if econ else None,
+        "cpc": NICHE_CPC.get(c),
+    }
+
+
+def taxonomy_lines() -> list:
+    """Список 'CODE: Галузь → Підніша' для передачі в LLM."""
+    return [f"{code}: {INDUSTRIES.get(ind)} → {name}" for code, ind, name, _d, _k in SUB]
+
+
 def classify(blob: str, onp: dict = None) -> dict:
     text = _norm(blob)
 
     # пріоритет: явні маркери агенції → PROF-05
     if any(m in text for m in _AGENCY_STRONG):
-        code, ind, name, direction, _ = next(s for s in SUB if s[0] == "PROF-05")
-        econ = NICHE_ECON.get(code)
-        return {
-            "direction": direction, "direction_name": DIRECTIONS.get(direction),
-            "industry": ind, "industry_name": INDUSTRIES.get(ind),
-            "subniche": name, "subniche_code": code, "confidence": "висока",
-            "offer_fit": code not in OFFER_NO,
-            "conv_pct": econ[0] if econ else None,
-            "avg_check": econ[1] if econ else None,
-            "avg_margin": econ[2] if econ else None,
-            "close_pct": econ[3] if econ else None,
-            "conv_type": econ[4] if econ else None,
-            "cpc": NICHE_CPC.get(code),
-        }
+        return result_for("PROF-05", "висока")
 
     best_code, best_score = None, 0
     for code, ind, name, direction, kws in SUB:
@@ -290,17 +305,4 @@ def classify(blob: str, onp: dict = None) -> dict:
         direction = "ECOM"
 
     conf = "висока" if best_score >= 3 else ("середня" if best_score >= 1.6 else "низька")
-    econ = NICHE_ECON.get(code)
-    return {
-        "direction": direction, "direction_name": DIRECTIONS.get(direction),
-        "industry": ind, "industry_name": INDUSTRIES.get(ind),
-        "subniche": name, "subniche_code": code,
-        "confidence": conf,
-        "offer_fit": code not in OFFER_NO,
-        "conv_pct": econ[0] if econ else None,
-        "avg_check": econ[1] if econ else None,
-        "avg_margin": econ[2] if econ else None,
-        "close_pct": econ[3] if econ else None,
-        "conv_type": econ[4] if econ else None,
-        "cpc": NICHE_CPC.get(code),
-    }
+    return result_for(best_code, conf, direction)

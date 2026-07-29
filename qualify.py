@@ -183,7 +183,17 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     _cat_text = " ".join(c.get("url", "") for c in (onp.get("categories") or []) if isinstance(c, dict))
     # мета-сигнали важать більше за органіку (×5), бо органіка агенцій/блогів «шумить»
     blob = " ".join([domain, (_meta_text + " ") * 5, _kw_text, _cat_text])
-    niche_info = niche.classify(blob, onp)
+    # AI-класифікатор (Claude Haiku) — точніше; фолбек на евристику
+    _kw_list = [k.get("keyword") for k in sorted(kws, key=lambda x: -(x.get("volume") or 0))
+                if k.get("keyword")][:12]
+    niche_info = None
+    try:
+        import niche_ai
+        niche_info = niche_ai.classify_ai(domain, _meta_text, _kw_list)
+    except Exception:
+        niche_info = None
+    if not niche_info or not niche_info.get("subniche_code"):
+        niche_info = niche.classify(blob, onp)
     try:
         matched_cases = cases.match(niche_info, limit=config.CASES_LIMIT)
     except Exception:

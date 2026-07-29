@@ -1,6 +1,11 @@
 """Пороги кваліфікації та налаштування. Перевизначаються через ENV."""
 import os
 
+# --- AI-класифікатор ніші (Claude Haiku через Anthropic API) ---
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+NICHE_AI_MODEL = os.getenv("NICHE_AI_MODEL", "claude-3-5-haiku-latest")
+NICHE_AI_TIMEOUT = int(os.getenv("NICHE_AI_TIMEOUT", "20"))
+
 # --- SemRush ---
 SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
 SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua
