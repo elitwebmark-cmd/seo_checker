@@ -6,6 +6,20 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 NICHE_AI_MODEL = os.getenv("NICHE_AI_MODEL", "claude-3-5-haiku-latest")
 NICHE_AI_TIMEOUT = int(os.getenv("NICHE_AI_TIMEOUT", "20"))
 
+# --- Google Ads API (Keyword Planner: домен -> запити + помісячний тренд обсягів) ---
+# Безкоштовно (тарифікації викликів нема). Потрібні 5 значень нижче.
+GOOGLE_ADS_DEVELOPER_TOKEN = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN", "")
+GOOGLE_ADS_CLIENT_ID = os.getenv("GOOGLE_ADS_CLIENT_ID", "")
+GOOGLE_ADS_CLIENT_SECRET = os.getenv("GOOGLE_ADS_CLIENT_SECRET", "")
+GOOGLE_ADS_REFRESH_TOKEN = os.getenv("GOOGLE_ADS_REFRESH_TOKEN", "")
+GOOGLE_ADS_LOGIN_CUSTOMER_ID = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "")  # MCC, 10 цифр без дефісів
+GOOGLE_ADS_CUSTOMER_ID = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "")             # акаунт для запиту (можна = MCC)
+GOOGLE_ADS_API_VERSION = os.getenv("GOOGLE_ADS_API_VERSION", "v21")
+KWPLAN_GEO = os.getenv("KWPLAN_GEO", "2804")        # 2804 = Україна (geoTargetConstants)
+KWPLAN_LANG = os.getenv("KWPLAN_LANG", "1013")      # 1013 = укр., 1031 = рос. (languageConstants)
+KWPLAN_LIMIT = int(os.getenv("KWPLAN_LIMIT", "15")) # скільки топ-запитів лишати у звіті
+KWPLAN_TIMEOUT = int(os.getenv("KWPLAN_TIMEOUT", "30"))
+
 # --- SemRush ---
 SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
 SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua

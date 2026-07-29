@@ -24,6 +24,33 @@ def _trend_points():
         pts.append({"value": v, "ts": ts, "label": f"{m:02d}.{y}"})
     return pts
 
+def _kwplan():
+    vols = [12100, 13200, 12800, 14500, 15800, 15100, 17200, 18900, 18100, 20400, 22600, 24100]
+    today = datetime.date.today()
+    labels = []
+    for i in range(len(vols)):
+        m = today.month - (len(vols) - 1 - i)
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        labels.append(f"{m:02d}.{str(y)[2:]}")
+    return {
+        "keywords": [
+            {"keyword": "лазерна епіляція київ", "volume": 8100, "cpc": 9.45, "competition": "HIGH"},
+            {"keyword": "косметологія київ", "volume": 5400, "cpc": 7.80, "competition": "HIGH"},
+            {"keyword": "чистка обличчя", "volume": 4400, "cpc": 5.20, "competition": "MEDIUM"},
+            {"keyword": "ботокс ціна", "volume": 3600, "cpc": 11.30, "competition": "HIGH"},
+            {"keyword": "мезотерапія обличчя", "volume": 2900, "cpc": 8.10, "competition": "MEDIUM"},
+        ],
+        "total_ideas": 742,
+        "trend": vols,
+        "trend_labels": labels,
+        "change_pct": 99,
+        "source": "Google Keyword Planner",
+    }
+
+
 DEMO_DOMAIN = "demo-klinika.ua"
 
 
@@ -187,6 +214,8 @@ def demo_result() -> dict:
                                      "чистка обличчя", "мезотерапія"],
                         "geo": "UA", "change_pct": 40, "avg": 65.7, "peak": 82},
         "trend_svg": charts.trend_svg(_trend_points(), theme="dark"),
+        "kwplan": _kwplan(),
+        "kwplan_svg": charts.kwplan_svg(_kwplan()["trend"], _kwplan()["trend_labels"], theme="dark"),
         "ads": ads, "shopping": shopping, "meta_ads": meta_ads, "paid": paid, "social": social,
         "services": services, "factors": factors, "cases": cases,
         "reasons": [],

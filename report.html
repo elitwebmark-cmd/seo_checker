@@ -230,6 +230,32 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
+{% if r.kwplan %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Попит за запитами</h3> <span class="cnt">· Google Keyword Planner · 12 міс · Україна{% if r.kwplan.change_pct is not none %} · {% if r.kwplan.change_pct >= 0 %}<span style="color:var(--good);font-weight:800">+{{ r.kwplan.change_pct }}%</span>{% else %}<span style="color:var(--red);font-weight:800">{{ r.kwplan.change_pct }}%</span>{% endif %}{% endif %}</span></div>
+  {% if kwplan_svg %}<div class="chart-wrap">{{ kwplan_svg|safe }}</div>{% endif %}
+  {% if r.kwplan.keywords %}
+  <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:10px">
+    <thead><tr style="color:var(--mut);text-align:left">
+      <th style="padding:3px 4px">Запит</th><th style="padding:3px 4px;text-align:right">Обсяг/міс</th>
+      <th style="padding:3px 4px;text-align:right">CPC, грн</th><th style="padding:3px 4px;text-align:right">Конкуренція</th>
+    </tr></thead>
+    <tbody>
+    {% for k in r.kwplan.keywords %}
+      <tr style="border-top:1px solid var(--bord)">
+        <td style="padding:3px 4px">{{ k.keyword }}</td>
+        <td style="padding:3px 4px;text-align:right">{{ k.volume|sp }}</td>
+        <td style="padding:3px 4px;text-align:right">{{ k.cpc if k.cpc is not none else '—' }}</td>
+        <td style="padding:3px 4px;text-align:right">{{ {'LOW':'низька','MEDIUM':'середня','HIGH':'висока'}.get(k.competition, '—') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div style="font-size:9px;font-weight:700;color:var(--mut);margin-top:4px">всього ідей запитів: {{ r.kwplan.total_ideas }}</div>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if r.segments and r.segments.total %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Розподіл позицій в органіці</h3> <span class="cnt">· {{ r.segments.total|sp }} ключів у ТОП-100</span></div>

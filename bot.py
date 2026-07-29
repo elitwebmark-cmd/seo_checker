@@ -158,6 +158,21 @@ def _trend_pre(nt: dict) -> str:
             f"<i>за запитами: {html.escape(kw)}</i>")
 
 
+def _kwplan_pre(kp: dict) -> str:
+    if not kp or not kp.get("trend"):
+        return ""
+    pts = kp["trend"]
+    mx = max(pts) or 1
+    chg = kp.get("change_pct")
+    chg_s = f" ({'+' if chg >= 0 else ''}{chg}%)" if chg is not None else ""
+    top = kp.get("keywords") or []
+    rows = "\n".join(f"• {html.escape(k['keyword'])} — {_fmtk(k['volume'])}/міс"
+                     for k in top[:5])
+    return (f"🔑 <b>Попит за запитами</b> (Keyword Planner · 12 міс · UA):{chg_s}"
+            f"\n<pre>{html.escape(_sparkline(pts, mx))}</pre>"
+            + (f"{rows}" if rows else ""))
+
+
 def _forecast_pre(hist: list, target) -> str:
     """Прогноз зростання: 3 останні фактичні міс + 4 прогнозовані до цілі."""
     import charts
@@ -271,6 +286,10 @@ def fmt(res: dict) -> str:
     if trp:
         lines.append("")
         lines.append(trp)
+    kpp = _kwplan_pre(res.get("kwplan"))
+    if kpp:
+        lines.append("")
+        lines.append(kpp)
     # --- матриця позицій (бар-чарт) ---
     seg = res.get("segments") or {}
     if seg.get("total"):

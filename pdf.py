@@ -46,12 +46,16 @@ def render_html(res: dict) -> str:
         hist, (res.get("benefit") or {}).get("traffic_top1"), theme="light")
     nt = res.get("niche_trend") or {}
     trend_svg = charts.trend_svg(nt.get("points"), theme="light") if nt.get("points") else ""
+    kp = res.get("kwplan") or {}
+    kwplan_svg = (charts.kwplan_svg(kp.get("trend"), kp.get("trend_labels"), theme="light")
+                  if kp.get("trend") else "")
     return _env.get_template("report.html").render(
         r=res,
         logo=_logo_data_uri(),
         chart_svg=chart_svg,
         forecast_svg=forecast_svg,
         trend_svg=trend_svg,
+        kwplan_svg=kwplan_svg,
         today=datetime.date.today().strftime("%d.%m.%Y"),
     )
 

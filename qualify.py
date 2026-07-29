@@ -299,6 +299,15 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
             except Exception:
                 niche_trend = None
 
+    # --- Keyword Planner (Google Ads API): домен -> запити + тренд обсягів (deep-чек) ---
+    kwplan_info = None
+    if do_ads:
+        try:
+            import kwplan
+            kwplan_info = kwplan.keyword_ideas(domain)
+        except Exception:
+            kwplan_info = None
+
     # --- соцмережі (Instagram; лише для одного домену; інформаційно) ---
     social_info = None
     if do_social:
@@ -446,6 +455,9 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "media_plan": media_plan,
         "niche_trend": niche_trend,
         "trend_svg": charts.trend_svg(niche_trend["points"], theme="dark") if niche_trend else "",
+        "kwplan": kwplan_info,
+        "kwplan_svg": charts.kwplan_svg(kwplan_info["trend"], kwplan_info["trend_labels"],
+                                        theme="dark") if kwplan_info else "",
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),
                  "budget": overview.get("adwords_cost", 0)},
