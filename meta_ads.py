@@ -183,12 +183,21 @@ def check(domain: str, debug: bool = False) -> dict:
         cta = (sn.get("ctaText") or sn.get("cta_text") or "").strip()
         start = (it.get("startDateFormatted") or it.get("start_date_formatted") or "")[:10]
         versions = it.get("collationCount") or it.get("collation_count") or 1
-        if (imgs or text) and len(creatives) < 15:
+        # пряме відео (mp4) для відтворення в звіті, якщо є
+        video_url = ""
+        for v in (sn.get("videos") or []):
+            if isinstance(v, dict):
+                video_url = (v.get("videoSdUrl") or v.get("videoHdUrl")
+                             or v.get("video_sd_url") or v.get("video_hd_url") or "").strip()
+                if video_url:
+                    break
+        if (imgs or text or video_url) and len(creatives) < 15:
             ad_id = it.get("adArchiveID") or it.get("adArchiveId") or it.get("ad_archive_id")
             crea_link = (f"https://www.facebook.com/ads/library/?id={ad_id}" if ad_id
                          else (it.get("ad_snapshot_url") or lib_url))
             creatives.append({
                 "image": imgs[0] if imgs else "",
+                "video": video_url,
                 "text": text[:280],
                 "cta": cta,
                 "format": fmt,

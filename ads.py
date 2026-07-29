@@ -50,13 +50,16 @@ def _base_params(host: str, days: int) -> dict:
 
 def _creative_from(c: dict) -> dict:
     f = (c.get("format") or "").strip().lower()
-    img = (c.get("image") or c.get("thumbnail") or "").strip()
+    img = (c.get("image") or c.get("thumbnail") or c.get("video_thumbnail")
+           or c.get("preview_image") or c.get("preview") or "").strip()
+    v = c.get("video") or c.get("video_url") or c.get("youtube_video")
+    video = v.strip() if isinstance(v, str) else ""
     txt = ""
     for k in ("title", "headline", "text", "description", "snippet", "body"):
         if c.get(k):
             txt = str(c.get(k)).strip()
             break
-    return {"format": f or "other", "image": img, "text": txt,
+    return {"format": f or "other", "image": img, "video": video, "text": txt,
             "link": (c.get("link") or c.get("details_link") or "").strip(),
             "first_shown": c.get("first_shown"), "last_shown": c.get("last_shown")}
 
@@ -76,6 +79,27 @@ def _platform_query(host: str, days: int, code: str, num: int = 12):
     cres = d.get("ad_creatives") or []
     total = int(t) if isinstance(t, (int, float)) and t else len(cres)
     return total, cres
+
+
+def debug(domain: str) -> dict:
+    """Сирі семпли крео (основний + по кожній платформі) для інспекції полів."""
+    host = _host(domain)
+    days = getattr(config, "ADS_ACTIVE_DAYS", 7)
+    out = {"host": host, "days": days, "main_sample": None, "per_platform": {}}
+    try:
+        d = requests.get(SERPAPI_URL, params=dict(_base_params(host, days), num=3),
+                         timeout=config.ADS_TIMEOUT).json()
+        cr = d.get("ad_creatives") or []
+        out["main_sample"] = cr[0] if cr else None
+    except Exception as e:
+        out["main_error"] = str(e)[:200]
+    for key, code, _lbl in _PLATFORMS:
+        try:
+            t, cres = _platform_query(host, days, code, num=3)
+            out["per_platform"][key] = {"total": t, "sample": cres[0] if cres else None}
+        except Exception as e:
+            out["per_platform"][key] = {"error": str(e)[:200]}
+    return out
 
 
 def check(domain: str) -> dict:

@@ -251,7 +251,9 @@
     <div class="creatives-grid">
       {% for cr in r.ads.creatives %}
       <div class="creative cr-item" data-fmt="{{ cr.format }}" data-plat="{{ cr.platforms|join(' ') if cr.platforms else '' }}">
-        {% if cr.image %}
+        {% if cr.video %}
+        <video class="creative-img" src="{{ cr.video }}"{% if cr.image %} poster="{{ cr.image }}"{% endif %} controls preload="none" playsinline></video>
+        {% elif cr.image %}
         <a href="{{ cr.link or r.ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="креатив"></a>
         {% else %}
         <div class="creative-text">
@@ -310,7 +312,7 @@
   <div class="creatives-grid">
     {% for cr in r.meta_ads.creatives %}
     <div class="creative cr-item" data-plat="{{ cr.platforms|join(' ') }}" data-fmt="{{ cr.format }}">
-      {% if cr.image %}<a href="{{ cr.link or r.meta_ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="Meta креатив"></a>{% endif %}
+      {% if cr.video %}<video class="creative-img" src="{{ cr.video }}"{% if cr.image %} poster="{{ cr.image }}"{% endif %} controls preload="none" playsinline></video>{% elif cr.image %}<a href="{{ cr.link or r.meta_ads.link }}" target="_blank" rel="noopener"><img class="creative-img" src="{{ cr.image }}" loading="lazy" alt="Meta креатив"></a>{% endif %}
       <div class="creative-meta">
         <div class="creative-tags">
           {% if cr.format %}<span class="creative-fmt">{{ 'відео' if cr.format=='video' else 'банер' if cr.format=='image' else cr.format }}</span>{% endif %}

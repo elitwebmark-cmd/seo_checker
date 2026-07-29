@@ -351,9 +351,9 @@ def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark"
                      f'fill="{T["axis"]}" font-size="9.5" font-weight="700">'
                      f'{_month_label(p.get("date"))}</text>')
     for j, lb in enumerate(flabels):
-        mm = str(lb)[4:6] if len(str(lb)) >= 6 else str(lb)
         parts.append(f'<text x="{X(na+j):.1f}" y="{H-12}" text-anchor="middle" '
-                     f'fill="{T["fc"]}" font-size="9.5" font-weight="700">{mm}</text>')
+                     f'fill="{T["fc"]}" font-size="9.5" font-weight="700">'
+                     f'{_month_label(lb)}</text>')
 
     return (f'<svg viewBox="0 0 {W} {H}" width="100%" preserveAspectRatio="xMidYMid meet" '
             f'role="img" aria-label="Прогноз зростання трафіку">'
