@@ -155,6 +155,18 @@ def debug(domain: str) -> dict:
     except Exception as e:
         out["access_token_error"] = str(e)[:400]
         return out
+
+    # які акаунти взагалі доступні цьому токену
+    try:
+        rr = requests.get(
+            f"https://googleads.googleapis.com/{config.GOOGLE_ADS_API_VERSION}"
+            f"/customers:listAccessibleCustomers",
+            headers={"developer-token": config.GOOGLE_ADS_DEVELOPER_TOKEN,
+                     "Authorization": f"Bearer {_access_token()}"},
+            timeout=config.KWPLAN_TIMEOUT)
+        out["accessible_customers"] = rr.json()
+    except Exception as e:
+        out["accessible_customers_error"] = str(e)[:400]
     cid = config.GOOGLE_ADS_CUSTOMER_ID.replace("-", "")
     url = (f"https://googleads.googleapis.com/{config.GOOGLE_ADS_API_VERSION}"
            f"/customers/{cid}:generateKeywordIdeas")
