@@ -54,15 +54,18 @@ def _library_url(query: str) -> str:
             f"&country={config.META_ADS_COUNTRY}&q={q}&search_type=keyword_unordered&media_type=all")
 
 
-def _run_apify(url: str, count: int):
-    tpl = config.APIFY_META_INPUT.replace("{url}", url).replace("{count}", str(count))
+def _run_apify(url: str, max_items: int):
+    tpl = config.APIFY_META_INPUT.replace("{url}", url).replace("{count}", str(max_items))
     try:
         payload = json.loads(tpl)
     except json.JSONDecodeError:
-        payload = {"startUrls": [{"url": url}], "count": count}
+        payload = {"startUrls": [{"url": url}], "count": max_items}
+    # maxItems — жорсткий кеп кількості результатів (і вартості для pay-per-result акторів),
+    # незалежно від того, чи актор шанує "count". Захист від keyword-пошуку на сотні чужих крео.
     endpoint = (f"https://api.apify.com/v2/acts/{config.APIFY_META_ACTOR}"
                 f"/run-sync-get-dataset-items"
-                f"?token={config.APIFY_TOKEN}&timeout={config.APIFY_TIMEOUT}")
+                f"?token={config.APIFY_TOKEN}&timeout={config.APIFY_TIMEOUT}"
+                f"&maxItems={int(max_items)}")
     r = requests.post(endpoint, json=payload, timeout=config.APIFY_TIMEOUT + 15)
     if r.status_code >= 400:
         raise RuntimeError(f"apify HTTP {r.status_code}: {r.text[:160]}")
@@ -130,10 +133,10 @@ def _images_of(item: dict):
     return imgs
 
 
-def _fetch_ads(url: str):
+def _fetch_ads(url: str, max_items: int = None):
     """(ads_list, page_name). Обробляє два формати актора: оголошення напряму
     або обгортку {pageInfo, results:[...]}"""
-    items = _run_apify(url, config.META_ADS_LIMIT)
+    items = _run_apify(url, max_items or config.META_ADS_LIMIT)
     ads_list, page_name = [], None
     for it in items:
         if not isinstance(it, dict):
@@ -154,6 +157,7 @@ def check(domain: str, debug: bool = False) -> dict:
     # Якщо сторінку на сайті не знайдено — відкат на keyword-пошук за брендом.
     fb = find_facebook_page(domain)
     page = None
+    max_items = config.META_ADS_LIMIT   # точний пошук за сторінкою
     if fb and fb[0] == "id":
         page = fb[1]
         target_url = (f"https://www.facebook.com/ads/library/?active_status=active&ad_type=all"
@@ -167,8 +171,9 @@ def check(domain: str, debug: bool = False) -> dict:
         query = _host(domain).split(".")[0]
         target_url = _library_url(query)
         lib_url = target_url
+        max_items = config.META_KEYWORD_LIMIT   # keyword-пошук: менший кеп (чужі крео, дорого)
     try:
-        ads_list, page_name0 = _fetch_ads(target_url)
+        ads_list, page_name0 = _fetch_ads(target_url, max_items)
     except Exception as e:
         return {"checked": False, "note": f"помилка Apify: {str(e)[:140]}", "link": lib_url}
 
@@ -177,7 +182,7 @@ def check(domain: str, debug: bool = False) -> dict:
     if not ads_list and page:
         kw_url = _library_url(_host(domain).split(".")[0])
         try:
-            kl, pn = _fetch_ads(kw_url)
+            kl, pn = _fetch_ads(kw_url, config.META_KEYWORD_LIMIT)
         except Exception:
             kl, pn = [], None
         if kl:
