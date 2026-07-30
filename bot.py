@@ -67,6 +67,7 @@ def result_kb(res: dict) -> InlineKeyboardMarkup:
         rows.append([InlineKeyboardButton(text="📘 META AD LIBRARY", url=mt["link"])])
     if res.get("dotisk_queries"):
         rows.append([InlineKeyboardButton(text="🎯 Усі запити для дотиску", callback_data="allq")])
+    rows.append([InlineKeyboardButton(text="🧪 CRO-аудит (до 2 хв)", callback_data="cro")])
     rows.append([InlineKeyboardButton(text="📄 Завантажити PDF", callback_data="pdf")])
     rows.append([InlineKeyboardButton(text="🔁 Повторити", callback_data="again"),
                  InlineKeyboardButton(text="🆕 Нова перевірка", callback_data="newcheck")])
@@ -452,10 +453,6 @@ def fmt(res: dict) -> str:
         lines.append("\n🧩 <b>Підходить під послуги:</b>")
         for s in sv:
             lines.append(f"{mk.get(s['level'], '•')} {html.escape(s['name'])} — {html.escape(s['note'])}")
-    crp = _cro_pre(res.get("cro"))
-    if crp:
-        lines.append("")
-        lines.append(crp)
     dq = res.get("dotisk_queries", [])
     if dq:
         lines.append(f"\n🎯 <b>Кандидати в ТОП-1</b> (топ {min(len(dq), 8)} з {len(dq)}):")
@@ -495,9 +492,9 @@ async def run_analysis(msg: Message, domain: str):
     s = st(msg.chat.id)
     wait = await msg.answer(
         f"🔎 Аналізую <b>{html.escape(domain)}</b> ({REGIONS.get(s['db'], s['db'])}, "
-        f"{'повний' if s['depth']=='full' else 'швидкий'})… з CRO-аудитом це до 2 хв", parse_mode="HTML")
+        f"{'повний' if s['depth']=='full' else 'швидкий'})… (10–30 c)", parse_mode="HTML")
     try:
-        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True, True, True)
+        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True, True)
         LAST[msg.chat.id] = {"domain": domain, "res": res}
         try:
             import stats_log
@@ -622,6 +619,26 @@ async def cb_again(cb: CallbackQuery):
         return await cb.answer("Немає що повторити")
     await cb.answer("Повторюю…")
     await run_analysis(cb.message, last["domain"])
+
+
+@dp.callback_query(F.data == "cro")
+async def cb_cro(cb: CallbackQuery):
+    last = LAST.get(cb.message.chat.id)
+    if not last or not last.get("domain"):
+        return await cb.answer("Немає домену")
+    await cb.answer("Запускаю CRO-аудит…")
+    note = await cb.message.answer("🧪 Генерую CRO-аудит… рендер сайту триває до ~2 хв.")
+    try:
+        import cro
+        info = await asyncio.to_thread(cro.audit, last["domain"])
+    except Exception:
+        info = None
+    if not info:
+        return await note.edit_text("⚠️ CRO-аудит недоступний (доступ або сервіс). Спробуй пізніше.")
+    # зберігаємо в результат, щоб PDF теж підхопив
+    last["res"]["cro"] = info
+    await note.edit_text(_cro_pre(info) or "CRO-аудит без даних", parse_mode="HTML",
+                         disable_web_page_preview=True)
 
 
 @dp.callback_query(F.data == "newcheck")
