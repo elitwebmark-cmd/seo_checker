@@ -1,5 +1,5 @@
 """Веб-інтерфейс: авторизація -> список сайтів -> прогрес -> результати."""
-# deploy marker: CRO integration + /debug/cro (rebuild trigger)
+# deploy marker: CRO on-demand + redesigned report (rebuild trigger)
 import os, uuid, threading, concurrent.futures, functools, time, logging
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session, Response)
