@@ -16,10 +16,11 @@
 {% endif %}
 
 <form method="post" action="/analyze" class="card">
-  <textarea name="domains" placeholder="daydrive.ua&#10;makeup.com.ua&#10;example.com"></textarea>
+  <textarea name="domains" id="domainsBox" placeholder="daydrive.ua&#10;makeup.com.ua&#10;example.com"></textarea>
   <div><label class="chk"><input type="checkbox" name="onpage" checked> Перевіряти on-page SEO (повільніше для великих списків)</label></div>
   <div><label class="chk"><input type="checkbox" name="ads" checked> Перевіряти контекстну рекламу (Google Ads · спрацьовує лише для 1 домену)</label></div>
   <div><label class="chk"><input type="checkbox" name="social" checked> Перевіряти соцмережі (Instagram · спрацьовує лише для 1 домену)</label></div>
+  <div><label class="chk" id="croLabel"><input type="checkbox" name="cro" id="croChk"> CRO-аудит конверсійності (до 2 хв · лише для 1 домену)</label></div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
     <button type="submit">Проаналізувати</button>
     <a class="btn btn-ghost" href="/demo" style="text-decoration:none">🧪 Перевірити на демо-даних</a>
@@ -34,4 +35,25 @@
     <li><span class="badge b-red">НЕ ПІДХОДИТЬ</span> — трафік &lt; 1 000, комерц. запитів &lt; 100, або немає позицій</li>
   </ul>
 </div>
+<script>
+(function(){
+  var box = document.getElementById('domainsBox');
+  var chk = document.getElementById('croChk');
+  var lbl = document.getElementById('croLabel');
+  if(!box || !chk) return;
+  function countDomains(){
+    var m = (box.value || '').match(/([a-z0-9-]+\.)+[a-z]{2,}/gi);
+    return m ? m.length : 0;
+  }
+  function sync(){
+    var n = countDomains();
+    var ok = (n === 1);
+    chk.disabled = !ok;
+    if(!ok){ chk.checked = false; }
+    lbl.style.opacity = ok ? '1' : '.5';
+  }
+  box.addEventListener('input', sync);
+  sync();
+})();
+</script>
 {% endblock %}

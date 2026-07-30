@@ -367,9 +367,13 @@
   <div class="cro-gen" style="margin-bottom:14px">
     <div class="cro-block" data-domain="{{ r.domain }}" data-job="{{ job_id }}">
       <div class="cro-head"><span class="rc-sect-badge s-cro">CRO</span>Конверсійний аудит сайту</div>
-      <p style="font-size:12.5px;color:var(--mute);margin:6px 0 10px">Окремий аудит конверсійності (швидкість, UX, CTA, довіра) через CRO-аудитор Elit-Web. Триває до ~2 хв.</p>
-      <button type="button" class="btn-cro">🧪 Згенерувати CRO-аудит</button>
-      <div class="cro-slot"></div>
+      {% if r.cro and r.cro.checked %}
+        <div class="cro-slot">{% set cro = r.cro %}{% include "cro_block.html" %}</div>
+      {% else %}
+        <p style="font-size:12.5px;color:var(--mute);margin:6px 0 10px">Окремий аудит конверсійності (швидкість, UX, CTA, довіра) через CRO-аудитор Elit-Web. Триває до ~2 хв.</p>
+        <button type="button" class="btn-cro">🧪 Згенерувати CRO-аудит</button>
+        <div class="cro-slot"></div>
+      {% endif %}
     </div>
   </div>
   <div class="rc-acc">
@@ -598,7 +602,27 @@
 </script>
 
 <script>
+function bindCroFilter(root){
+  var wrap = root.querySelector('[data-cro-issues]');
+  if(!wrap) return;
+  var chips = wrap.querySelectorAll('.cro-chip');
+  var cards = wrap.querySelectorAll('.cro-card');
+  chips.forEach(function(chip){
+    chip.addEventListener('click', function(){
+      chips.forEach(function(c){ c.classList.remove('active'); });
+      chip.classList.add('active');
+      var pri = chip.dataset.pri;
+      cards.forEach(function(card){
+        card.style.display = (pri === 'all' || card.dataset.pri === pri) ? '' : 'none';
+      });
+    });
+  });
+}
 (function(){
+  // прив'язати фільтр до вже відрендерених CRO-блоків (авто-режим)
+  document.querySelectorAll('.cro-block .cro-slot [data-cro-issues]').forEach(function(w){
+    bindCroFilter(w.closest('.cro-slot'));
+  });
   document.querySelectorAll('.cro-block').forEach(function(block){
     var btn = block.querySelector('.btn-cro');
     var slot = block.querySelector('.cro-slot');
@@ -619,6 +643,7 @@
           clearInterval(tick);
           slot.innerHTML = html;
           btn.style.display = 'none';
+          bindCroFilter(slot);
         })
         .catch(function(){
           clearInterval(tick);

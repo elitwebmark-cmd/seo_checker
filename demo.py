@@ -51,6 +51,59 @@ def _kwplan():
     }
 
 
+def _cro_demo():
+    return {
+        "checked": True, "score_total": 42, "score_label": "Критично",
+        "domain": "demo-klinika.ua",
+        "categories": {
+            "speed": {"score": 38, "label": "потребує уваги"},
+            "ux": {"score": 52, "label": "середньо"},
+            "cta": {"score": 40, "label": "слабко"},
+            "trust": {"score": 63, "label": "добре"},
+        },
+        "summary": ("Сайт має базову структуру медичного центру з наявним соціальним доказом, телефоном і "
+                    "чатом, однак критично втрачає конверсії через три ключові проблеми: примусовий мовний "
+                    "попап, що блокує контент при вході, слабкий H1 без ціннісної пропозиції та неправильну "
+                    "ієрархію CTA (акції важливіші за запис). Найбільший потенціал росту — переробка hero-"
+                    "секції (H1 + CTA + мікроформа) і усунення мовного попапу, що разом може підняти "
+                    "конверсію сторінки на 30–50%."),
+        "quick_wins": [
+            "Модальне вікно мови блокує весь контент при вході",
+            "Первинний CTA 'НАШІ АКЦІЇ' не веде до конверсії",
+            "H1 не передає жодної вигоди клієнту",
+        ],
+        "issues": [
+            {"category": "ux", "priority": "critical", "priority_label": "Критично",
+             "title": "Модальне вікно мови блокує контент",
+             "problem": "Попап вибору мови перекриває весь екран при вході й змушує зробити зайву дію."},
+            {"category": "cta", "priority": "critical", "priority_label": "Критично",
+             "title": "Первинний CTA 'НАШІ АКЦІЇ' не веде до конверсії",
+             "problem": "Головна кнопка веде на акції, а не на запис — цільова дія втрачається."},
+            {"category": "ux", "priority": "critical", "priority_label": "Критично",
+             "title": "H1 не передає вигоди клієнту",
+             "problem": "Заголовок не містить ціннісної пропозиції та ключового запиту."},
+            {"category": "speed", "priority": "important", "priority_label": "Важливо",
+             "title": "Повільний LCP (4.1 c)",
+             "problem": "Велике héro-зображення блокує відображення першого екрана."},
+            {"category": "trust", "priority": "important", "priority_label": "Важливо",
+             "title": "Відгуки не біля форми запису",
+             "problem": "Соціальний доказ рознесений по сторінці, не підкріплює цільову дію."},
+            {"category": "ux", "priority": "important", "priority_label": "Важливо",
+             "title": "Форма запису задовга",
+             "problem": "6 полів знижують відсоток завершення форми."},
+            {"category": "cta", "priority": "improvement", "priority_label": "Покращення",
+             "title": "Немає липкої кнопки дзвінка на мобільному",
+             "problem": "На мобільному контакт не завжди в зоні видимості."},
+            {"category": "trust", "priority": "improvement", "priority_label": "Покращення",
+             "title": "Немає сертифікатів/ліцензій у футері",
+             "problem": "Для меддомену це знижує сприйняту надійність."},
+        ],
+        "issues_total": 8,
+        "pagespeed": {"score": 59, "lcp": "4.1 c", "fcp": "2.3 c", "cls": "0.08", "tbt": "310 ms", "si": "5.2 c"},
+        "link": "https://cro-auditor-production.up.railway.app",
+    }
+
+
 DEMO_DOMAIN = "demo-klinika.ua"
 
 
@@ -216,35 +269,7 @@ def demo_result() -> dict:
         "trend_svg": charts.trend_svg(_trend_points(), theme="dark"),
         "kwplan": _kwplan(),
         "kwplan_svg": charts.kwplan_svg(_kwplan()["trend"], _kwplan()["trend_labels"], theme="dark"),
-        "cro": {
-            "checked": True, "score_total": 46,
-            "categories": {
-                "speed": {"score": 38, "label": "потребує уваги"},
-                "ux": {"score": 52, "label": "середньо"},
-                "cta": {"score": 40, "label": "слабко"},
-                "trust": {"score": 63, "label": "добре"},
-            },
-            "summary": "Сайт має пристойну довіру, але слабкі заклики до дії та повільне завантаження знижують конверсію. Основний потенціал — прискорення LCP і посилення CTA на першому екрані.",
-            "quick_wins": [
-                "Додати чіткий CTA-блок на першому екрані з єдиною цільовою дією",
-                "Стиснути героїчне зображення та ввімкнути lazy-load (LCP −1.5 c)",
-                "Показати відгуки/сертифікати біля форми запису",
-            ],
-            "issues": [
-                {"category": "cta", "priority": "HIGH", "title": "Немає явного CTA на першому екрані",
-                 "problem": "Користувач не бачить цільової дії без прокрутки.",
-                 "recommendation": "Додати кнопку «Записатися» у героїчний блок."},
-                {"category": "speed", "priority": "HIGH", "title": "Повільний LCP (4.1 c)",
-                 "problem": "Велике зображення блокує відображення.",
-                 "recommendation": "Оптимізувати формат (WebP) і preload ключового зображення."},
-                {"category": "ux", "priority": "MEDIUM", "title": "Форма запису задовга",
-                 "problem": "6 полів знижують завершення форми.",
-                 "recommendation": "Скоротити до 3 полів (ім'я, телефон, послуга)."},
-            ],
-            "issues_total": 11,
-            "pagespeed": {"score": 55, "lcp": "4.1 c", "fcp": "2.3 c", "cls": "0.08", "tbt": "310 ms", "si": "5.2 c"},
-            "link": "https://cro-auditor-production.up.railway.app",
-        },
+        "cro": _cro_demo(),
         "ads": ads, "shopping": shopping, "meta_ads": meta_ads, "paid": paid, "social": social,
         "services": services, "factors": factors, "cases": cases,
         "reasons": [],

@@ -210,15 +210,17 @@ def analyze():
     # Реклама/соцмережі: лише коли домен один І галочку ввімкнено (економія квоти SerpApi)
     do_ads = (len(domains) == 1) and (request.form.get("ads") == "on")
     do_social = (len(domains) == 1) and (request.form.get("social") == "on")
+    do_cro = (len(domains) == 1) and (request.form.get("cro") == "on")
     _prune_jobs()
     job_id = uuid.uuid4().hex[:12]
     with JOBS_LOCK:
         JOBS[job_id] = {"total": len(domains), "done": 0, "results": [],
                         "status": "running", "do_onpage": do_onpage, "do_ads": do_ads,
-                        "do_social": do_social, "started": time.time(), "finished": None}
+                        "do_social": do_social, "do_cro": do_cro,
+                        "started": time.time(), "finished": None}
     threading.Thread(target=_process_job,
                      args=(job_id, domains, do_onpage, do_ads, do_social,
-                           session.get("email", "")),
+                           session.get("email", ""), do_cro),
                      daemon=True).start()
     return redirect(url_for("progress", job_id=job_id))
 

@@ -47,6 +47,20 @@ def _login() -> str:
     return tok
 
 
+def _score_label(score) -> str:
+    if score is None:
+        return ""
+    try:
+        s = float(score)
+    except (TypeError, ValueError):
+        return ""
+    if s >= 70:
+        return "Добре"
+    if s >= 50:
+        return "Потребує уваги"
+    return "Критично"
+
+
 def _clean_domain(domain: str) -> str:
     d = (domain or "").strip().lower().replace("https://", "").replace("http://", "").strip("/")
     return d.split("/")[0]
@@ -87,20 +101,29 @@ def _shape(a, j, ps):
         c = cats.get(k) or {}
         return {"score": c.get("score"), "label": c.get("label")}
 
+    _PRI = {"critical": "Критично", "high": "Критично",
+            "important": "Важливо", "medium": "Важливо",
+            "improvement": "Покращення", "low": "Покращення"}
     issues = []
-    for it in (a.get("issues") or [])[:config.CRO_ISSUES_LIMIT]:
+    for it in (a.get("issues") or []):   # усі помилки
         if isinstance(it, dict):
-            issues.append({"category": it.get("category"), "priority": (it.get("priority") or ""),
+            praw = (it.get("priority") or "").strip().lower()
+            issues.append({"category": it.get("category"),
+                           "priority": praw,                       # critical|important|improvement
+                           "priority_label": _PRI.get(praw, "Покращення"),
                            "title": it.get("title"), "problem": it.get("problem"),
                            "impact": it.get("impact"), "recommendation": it.get("recommendation")})
+    tot = a.get("score_total")
     return {
         "checked": True,
-        "score_total": a.get("score_total"),
+        "score_total": tot,
+        "score_label": _score_label(tot),
         "categories": {k: _cat(k) for k in ("speed", "ux", "cta", "trust")},
         "summary": a.get("summary") or "",
-        "quick_wins": [w for w in (a.get("top_quick_wins") or []) if w][:3],
+        "quick_wins": [w for w in (a.get("top_quick_wins") or []) if w],
         "issues": issues,
-        "issues_total": len(a.get("issues") or []),
+        "issues_total": len(issues),
+        "domain": j.get("url") or "",
         "pagespeed": {
             "score": ps.get("score"),
             "lcp": ps.get("lcp"), "fcp": ps.get("fcp"), "cls": ps.get("cls"),

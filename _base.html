@@ -164,6 +164,37 @@ details.rc-sect:not([open])>.rc-sect-h{margin-bottom:0;padding-bottom:0;border-b
 .cro-slot{margin-top:10px}
 .cro-loading{font-size:13px;color:#3fded0;margin-top:10px}
 .cro-err{font-size:13px;color:#ff7a5f;margin-top:10px}
+/* нова верстка CRO-звіту */
+.cro-scores{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 14px}
+.cro-scorecard{flex:1;min-width:130px;background:var(--card2,#17171d);border:1px solid var(--bord);border-radius:12px;padding:14px 18px;text-align:center}
+.cro-scorecard .num{font-size:48px;font-weight:900;line-height:1}
+.cro-scorecard .num .den{font-size:20px;color:var(--mute);font-weight:800}
+.cro-scorecard .cap{font-size:12px;color:var(--mute);margin-top:6px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.cro-summary{font-size:13.5px;line-height:1.55;color:#d7d7dc;background:rgba(0,194,178,.05);border-left:3px solid #00C2B2;border-radius:0 8px 8px 0;padding:10px 14px;margin:12px 0}
+.cro-qw{margin:12px 0}
+.cro-qw-h{font-size:13px;font-weight:800;color:#EDEDF0;margin-bottom:4px}
+.cro-qw ul{margin:0;padding-left:18px}
+.cro-qw li{font-size:13px;color:#d7d7dc;margin:4px 0}
+.cro-issues{margin-top:16px}
+.cro-issues-h{font-size:13px;font-weight:800;color:#EDEDF0;margin-bottom:8px}
+.cro-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.cro-chip{background:var(--card2,#17171d);border:1px solid var(--bord);color:#c4c4cc;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer}
+.cro-chip:hover{border-color:#00C2B2}
+.cro-chip.active{background:#00C2B2;color:#04201d;border-color:#00C2B2}
+.cro-card{position:relative;border:1px solid var(--bord);border-radius:10px;padding:12px 90px 12px 14px;margin:8px 0;background:var(--card2,#17171d)}
+.cro-card.pri-critical{border-left:3px solid #FD3A1F}
+.cro-card.pri-important{border-left:3px solid #FFC85A}
+.cro-card.pri-improvement{border-left:3px solid #8C8C95}
+.cro-card-t{font-size:14px;font-weight:800;color:#EDEDF0}
+.cro-card-note{font-size:12.5px;color:#ff6a4d;margin-top:4px;line-height:1.45}
+.cro-badge{position:absolute;top:12px;right:12px;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;padding:3px 9px;border-radius:20px}
+.cro-badge.critical{background:rgba(253,58,31,.18);color:#ff7a5f}
+.cro-badge.important{background:rgba(255,200,90,.20);color:#ffce6a}
+.cro-badge.improvement{background:rgba(140,140,150,.20);color:#b7b7c0}
+.cro-foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--bord)}
+.cro-pdf-link{background:#00C2B2;color:#04201d;text-decoration:none;font-weight:800;font-size:13px;padding:8px 16px;border-radius:8px}
+.cro-pdf-link:hover{background:#12d6c5}
+.cro-src{font-size:11px;color:var(--mute)}
 .rc-sect>.seoviz:first-of-type,.rc-sect>.sigs:first-of-type{margin-top:0}
 .rc-sect .benefit,.rc-sect .mplan,.rc-sect .sigs{margin-top:14px}
 .rc-sect .rc-acc{margin-top:0}

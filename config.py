@@ -26,7 +26,7 @@ CRO_LOGIN_USER = os.getenv("CRO_LOGIN_USER", "")       # username для /api/lo
 CRO_LOGIN_PASSWORD = os.getenv("CRO_LOGIN_PASSWORD", "")
 CRO_LANG = os.getenv("CRO_LANG", "ua")
 CRO_TIMEOUT = int(os.getenv("CRO_TIMEOUT", "30"))       # логін
-CRO_AUDIT_TIMEOUT = int(os.getenv("CRO_AUDIT_TIMEOUT", "170"))  # сам аудит (рендер сайту — довго)
+CRO_AUDIT_TIMEOUT = int(os.getenv("CRO_AUDIT_TIMEOUT", "150"))  # сам аудит (рендер сайту — довго)
 CRO_ISSUES_LIMIT = int(os.getenv("CRO_ISSUES_LIMIT", "6"))      # скільки проблем виводити у звіт
 
 # --- Логування аналізів у Google Таблицю (Apps Script веб-хук) ---

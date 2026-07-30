@@ -304,7 +304,8 @@ def _cro_pre(cro: dict) -> str:
     def _c(k):
         c = cats.get(k) or {}
         return c.get("score")
-    head = f"🧪 <b>CRO-аудит:</b> {tot if tot is not None else '—'}/100"
+    lbl = cro.get("score_label")
+    head = f"🧪 <b>CRO-аудит:</b> {tot if tot is not None else '—'}/100" + (f" · {lbl}" if lbl else "")
     ps = cro.get("pagespeed") or {}
     if ps.get("score") is not None:
         head += f" · PageSpeed {ps['score']}/100"
@@ -316,11 +317,22 @@ def _cro_pre(cro: dict) -> str:
             parts.append(f"{n} {v}")
     if parts:
         lines.append("   " + " · ".join(parts))
-    for w in (cro.get("quick_wins") or [])[:3]:
-        lines.append(f"🏆 {html.escape(str(w))}")
-    for it in (cro.get("issues") or [])[:4]:
-        pri = f"[{it.get('priority')}] " if it.get("priority") else ""
-        lines.append(f"• {html.escape(pri + (it.get('title') or ''))}")
+    if cro.get("summary"):
+        lines.append(html.escape(cro["summary"]))
+    qw = cro.get("quick_wins") or []
+    if qw:
+        lines.append("\n🏆 <b>Quick wins:</b>")
+        for w in qw:
+            lines.append(f"• {html.escape(str(w))}")
+    issues = cro.get("issues") or []
+    if issues:
+        lines.append(f"\n<b>Помилки ({cro.get('issues_total', len(issues))}):</b>")
+        _em = {"critical": "🔴", "important": "🟡", "improvement": "⚪"}
+        for it in issues:
+            mark = _em.get(it.get("priority"), "•")
+            lines.append(f"{mark} {html.escape(it.get('title') or '')}")
+    if cro.get("link"):
+        lines.append(f"\n📄 <a href=\"{cro['link']}\">Повний CRO-звіт (PDF)</a>")
     return "\n".join(lines)
 
 

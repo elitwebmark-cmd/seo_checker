@@ -442,39 +442,51 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 {% endif %}
 
 {% if r.cro and r.cro.checked %}
+{% set pri_col = {'critical':'#C0341B','important':'#E8720E','improvement':'#8C8C95'} %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>CRO-аудит конверсійності</h3> <span class="cnt">· загальний бал {{ r.cro.score_total if r.cro.score_total is not none else '—' }}/100{% if r.cro.pagespeed and r.cro.pagespeed.score is not none %} · PageSpeed {{ r.cro.pagespeed.score }}/100{% endif %}</span></div>
+  <div class="ph"><span class="dt"></span><h3>CRO-аудит конверсійності</h3></div>
+  <table style="width:100%;border-collapse:collapse;margin:4px 0 10px;text-align:center">
+    <tr>
+      <td style="border:1px solid var(--line);padding:10px;width:50%">
+        <div style="font-size:30px;font-weight:900;color:{{ '#159A4B' if (r.cro.score_total or 0) >= 70 else '#E8720E' if (r.cro.score_total or 0) >= 50 else '#C0341B' }}">{{ r.cro.score_total if r.cro.score_total is not none else '—' }}<span style="font-size:15px;color:var(--mut)">/100</span></div>
+        <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:700">CRO-бал · {{ r.cro.score_label or '—' }}</div>
+      </td>
+      {% if r.cro.pagespeed and r.cro.pagespeed.score is not none %}
+      <td style="border:1px solid var(--line);padding:10px;width:50%">
+        <div style="font-size:30px;font-weight:900;color:{{ '#159A4B' if (r.cro.pagespeed.score or 0) >= 70 else '#E8720E' if (r.cro.pagespeed.score or 0) >= 50 else '#C0341B' }}">{{ r.cro.pagespeed.score }}<span style="font-size:15px;color:var(--mut)">/100</span></div>
+        <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:700">PageSpeed</div>
+      </td>
+      {% endif %}
+    </tr>
+  </table>
   {% if r.cro.categories %}
-  <table style="width:100%;border-collapse:collapse;margin:6px 0 8px;font-size:11px;text-align:center">
+  <table style="width:100%;border-collapse:collapse;margin:0 0 8px;font-size:11px;text-align:center">
     <tr>
       {% for key, name in [('speed','Швидкість'),('ux','UX'),('cta','CTA'),('trust','Довіра')] %}
       {% set c = r.cro.categories.get(key) %}
       <td style="border:1px solid var(--line);padding:6px">
-        <div style="font-size:18px;font-weight:800;color:{{ '#159A4B' if (c.score or 0) >= 70 else '#E8720E' if (c.score or 0) >= 40 else '#C0341B' }}">{{ c.score if c and c.score is not none else '—' }}</div>
+        <div style="font-size:16px;font-weight:800;color:{{ '#159A4B' if (c.score or 0) >= 70 else '#E8720E' if (c.score or 0) >= 50 else '#C0341B' }}">{{ c.score if c and c.score is not none else '—' }}</div>
         <div style="color:var(--mut);text-transform:uppercase;font-size:9px;letter-spacing:.4px">{{ name }}</div>
       </td>
       {% endfor %}
     </tr>
   </table>
   {% endif %}
-  {% if r.cro.summary %}<p style="font-size:11px;margin:6px 0">{{ r.cro.summary }}</p>{% endif %}
+  {% if r.cro.summary %}<p style="font-size:11px;margin:6px 0;line-height:1.5">{{ r.cro.summary }}</p>{% endif %}
   {% if r.cro.quick_wins %}
-  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Швидкі перемоги:</div>
+  <div style="font-weight:800;font-size:11px;margin:8px 0 2px">🏆 Quick wins:</div>
   <ul style="margin:2px 0 6px 16px;font-size:11px">{% for w in r.cro.quick_wins %}<li>{{ w }}</li>{% endfor %}</ul>
   {% endif %}
   {% if r.cro.issues %}
-  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Ключові проблеми ({{ r.cro.issues_total }}):</div>
-  <table style="width:100%;border-collapse:collapse;font-size:10px">
-    {% for it in r.cro.issues %}
-    <tr style="border-top:1px solid var(--line)">
-      <td style="padding:4px 6px;vertical-align:top">
-        <b>{% if it.priority %}[{{ it.priority }}] {% endif %}{{ it.title }}</b>
-        {% if it.recommendation %}<div style="color:#0E7A5F;margin-top:2px">→ {{ it.recommendation }}</div>{% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
+  <div style="font-weight:800;font-size:11px;margin:8px 0 4px">Помилки ({{ r.cro.issues_total }}):</div>
+  {% for it in r.cro.issues %}
+  <div style="border:1px solid var(--line);border-left:3px solid {{ pri_col.get(it.priority, '#8C8C95') }};border-radius:5px;padding:5px 8px;margin:4px 0;font-size:10px">
+    <b>{{ it.title }}</b> <span style="float:right;color:{{ pri_col.get(it.priority, '#8C8C95') }};font-weight:800;font-size:8.5px;text-transform:uppercase">{{ it.priority_label }}</span>
+    {% if it.problem %}<div style="color:#C0341B;margin-top:2px">{{ it.problem }}</div>{% endif %}
+  </div>
+  {% endfor %}
   {% endif %}
+  <div style="margin-top:8px;font-size:10px"><a href="{{ r.cro.link }}" style="color:#0E7A5F;font-weight:700">📄 Повний CRO-звіт у сервісі</a></div>
 </div>
 {% endif %}
 
