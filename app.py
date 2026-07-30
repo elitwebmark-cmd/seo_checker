@@ -418,6 +418,23 @@ def debug_kwplan():
                     mimetype="application/json")
 
 
+@app.route("/debug/cro")
+def debug_cro():
+    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    domain = (request.args.get("domain") or "").strip().lower().replace("https://", "").replace("http://", "").strip("/")
+    if not domain:
+        return jsonify({"ok": False, "error": "no domain"}), 400
+    try:
+        import cro
+        data = cro.debug(domain)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:300]}), 500
+    import json as _json
+    return Response(_json.dumps(data, ensure_ascii=False, indent=2)[:14000],
+                    mimetype="application/json")
+
+
 @app.route("/hooks/manus-test")
 def manus_test():
     # Тест Manus без діла: створює задачу по домену, повертає посилання на неї.

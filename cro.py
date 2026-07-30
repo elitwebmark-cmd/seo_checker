@@ -77,6 +77,10 @@ def _fetch(domain: str, lang: str) -> dict:
     a = (j or {}).get("audit") or {}
     if not a:
         return None
+    return _shape(a, j, j.get("pagespeed") or {})
+
+
+def _shape(a, j, ps):
     cats = a.get("categories") or {}
 
     def _cat(k):
@@ -85,18 +89,10 @@ def _fetch(domain: str, lang: str) -> dict:
 
     issues = []
     for it in (a.get("issues") or [])[:config.CRO_ISSUES_LIMIT]:
-        if not isinstance(it, dict):
-            continue
-        issues.append({
-            "category": it.get("category"),
-            "priority": (it.get("priority") or ""),
-            "title": it.get("title"),
-            "problem": it.get("problem"),
-            "impact": it.get("impact"),
-            "recommendation": it.get("recommendation"),
-        })
-
-    ps = j.get("pagespeed") or {}
+        if isinstance(it, dict):
+            issues.append({"category": it.get("category"), "priority": (it.get("priority") or ""),
+                           "title": it.get("title"), "problem": it.get("problem"),
+                           "impact": it.get("impact"), "recommendation": it.get("recommendation")})
     return {
         "checked": True,
         "score_total": a.get("score_total"),
@@ -112,3 +108,44 @@ def _fetch(domain: str, lang: str) -> dict:
         },
         "link": config.CRO_BASE_URL.rstrip("/"),
     }
+
+
+def debug(domain: str) -> dict:
+    """Діагностика: чи задані ключі, чи проходить логін, що повертає аудит."""
+    out = {"ready": _ready(), "base_url": config.CRO_BASE_URL,
+           "has_user": bool(config.CRO_LOGIN_USER), "has_pass": bool(config.CRO_LOGIN_PASSWORD)}
+    if not _ready():
+        out["error"] = "CRO_LOGIN_USER / CRO_LOGIN_PASSWORD не задані"
+        return out
+    try:
+        lr = requests.post(config.CRO_BASE_URL.rstrip("/") + "/api/login",
+                           json={"username": config.CRO_LOGIN_USER, "password": config.CRO_LOGIN_PASSWORD},
+                           timeout=config.CRO_TIMEOUT)
+        out["login_status"] = lr.status_code
+        try:
+            out["login_keys"] = list((lr.json() or {}).keys())
+            out["got_token"] = bool((lr.json() or {}).get("token"))
+        except Exception:
+            out["login_body"] = lr.text[:200]
+        if lr.status_code >= 400 or not (lr.json() or {}).get("token"):
+            return out
+        tok = lr.json()["token"]
+    except Exception as e:
+        out["login_error"] = str(e)[:300]
+        return out
+    try:
+        ar = requests.post(config.CRO_BASE_URL.rstrip("/") + "/api/audit",
+                           json={"url": _clean_domain(domain), "lang": config.CRO_LANG},
+                           headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"},
+                           timeout=config.CRO_AUDIT_TIMEOUT)
+        out["audit_status"] = ar.status_code
+        try:
+            j = ar.json()
+            out["audit_top_keys"] = list((j or {}).keys())
+            out["has_audit_obj"] = bool((j or {}).get("audit"))
+            out["score_total"] = ((j or {}).get("audit") or {}).get("score_total")
+        except Exception:
+            out["audit_body"] = ar.text[:200]
+    except Exception as e:
+        out["audit_error"] = str(e)[:300]
+    return out
