@@ -258,6 +258,35 @@ def results(job_id):
                            job_id=job_id)
 
 
+@app.route("/report/cro", methods=["POST", "GET"])
+@login_required
+def report_cro():
+    """On-demand CRO-аудит по домену. Рендерить партіал і зберігає результат
+    у job, щоб PDF теж міг його підхопити."""
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower()
+    domain = domain.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    if not domain:
+        return "<div class='cro-err'>Домен не вказано.</div>", 400
+    try:
+        import cro
+        info = cro.audit(domain)
+    except Exception:
+        info = None
+    if not info:
+        return ("<div class='cro-err'>CRO-аудит недоступний: перевірте доступ (CRO_LOGIN_*) "
+                "або спробуйте пізніше.</div>"), 200
+    # зберегти в job, щоб /report.pdf теж включив CRO
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job:
+            for r in job["results"]:
+                if r.get("domain") == domain:
+                    r["cro"] = info
+                    break
+    return render_template("cro_block.html", cro=info)
+
+
 @app.route("/report.pdf")
 @login_required
 def report_pdf():

@@ -1,0 +1,48 @@
+{# Партіал CRO-блоку. Рендериться on-demand через /report/cro. Очікує cro=<результат cro.audit>. #}
+<div class="cro-inner">
+  <div class="cro-score">
+    <div class="big" style="color:{{ '#28C76F' if (cro.score_total or 0) >= 70 else '#FFC85A' if (cro.score_total or 0) >= 40 else '#FD3A1F' }}">{{ cro.score_total if cro.score_total is not none else '—' }}<span style="font-size:16px;color:var(--mute)">/100</span></div>
+    <div style="font-size:12px;color:var(--mute)">Загальний CRO-бал{% if cro.pagespeed and cro.pagespeed.score is not none %} · PageSpeed {{ cro.pagespeed.score }}/100{% endif %}</div>
+  </div>
+  {% if cro.categories %}
+  <div class="cro-cats">
+    {% for key, name in [('speed','Швидкість'),('ux','UX'),('cta','CTA'),('trust','Довіра')] %}
+    {% set c = cro.categories.get(key) %}
+    {% if c %}
+    <div class="cro-cat">
+      <div class="v" style="color:{{ '#28C76F' if (c.score or 0) >= 70 else '#FFC85A' if (c.score or 0) >= 40 else '#FD3A1F' }}">{{ c.score if c.score is not none else '—' }}</div>
+      <div class="l">{{ name }}</div>
+      {% if c.label %}<div class="l" style="text-transform:none;color:#b7b7c0">{{ c.label }}</div>{% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if cro.pagespeed %}
+  <div class="cro-ps">
+    {% if cro.pagespeed.lcp %}<span>LCP <b>{{ cro.pagespeed.lcp }}</b></span>{% endif %}
+    {% if cro.pagespeed.fcp %}<span>FCP <b>{{ cro.pagespeed.fcp }}</b></span>{% endif %}
+    {% if cro.pagespeed.cls %}<span>CLS <b>{{ cro.pagespeed.cls }}</b></span>{% endif %}
+    {% if cro.pagespeed.tbt %}<span>TBT <b>{{ cro.pagespeed.tbt }}</b></span>{% endif %}
+    {% if cro.pagespeed.si %}<span>SI <b>{{ cro.pagespeed.si }}</b></span>{% endif %}
+  </div>
+  {% endif %}
+  {% if cro.summary %}<p style="font-size:13px;color:#d7d7dc;margin:8px 0">{{ cro.summary }}</p>{% endif %}
+  {% if cro.quick_wins %}
+  <div class="creatives-h">🏆 Швидкі перемоги</div>
+  <ul style="margin:4px 0 8px 18px;font-size:13px;color:#d7d7dc">
+    {% for w in cro.quick_wins %}<li style="margin:3px 0">{{ w }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if cro.issues %}
+  <div class="creatives-h">Проблеми ({{ cro.issues_total }})</div>
+  {% for it in cro.issues %}
+  <div class="cro-issue">
+    <div class="t">{% if it.priority %}<span class="cro-pri {{ it.priority|lower }}">{{ it.priority }}</span>{% endif %}{{ it.title }}</div>
+    {% if it.problem %}<div class="p">{{ it.problem }}</div>{% endif %}
+    {% if it.recommendation %}<div class="rec">→ {{ it.recommendation }}</div>{% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+  <div class="trend-kw">джерело: CRO-аудитор Elit-Web · <a href="{{ cro.link }}" target="_blank" style="color:#3fded0">відкрити</a></div>
+</div>
