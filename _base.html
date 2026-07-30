@@ -156,7 +156,7 @@ details.rc-sect:not([open])>.rc-sect-h{margin-bottom:0;padding-bottom:0;border-b
 .cro-pri.high{background:rgba(253,58,31,.18);color:#ff7a5f}
 .cro-pri.medium{background:rgba(255,200,90,.18);color:#ffce6a}
 .cro-pri.low{background:rgba(140,140,150,.18);color:#b7b7c0}
-.cro-block{border:1px solid var(--bord);border-left:3px solid #00C2B2;border-radius:10px;padding:14px 16px;background:rgba(0,194,178,.04)}
+.cro-block{margin-top:2px}
 .cro-head{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:800;color:#EDEDF0}
 .btn-cro{background:#00C2B2;color:#04201d;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer}
 .btn-cro:hover{background:#12d6c5}
@@ -185,8 +185,17 @@ details.rc-sect:not([open])>.rc-sect-h{margin-bottom:0;padding-bottom:0;border-b
 .cro-card.pri-critical{border-left:3px solid #FD3A1F}
 .cro-card.pri-important{border-left:3px solid #FFC85A}
 .cro-card.pri-improvement{border-left:3px solid #8C8C95}
-.cro-card-t{font-size:14px;font-weight:800;color:#EDEDF0}
+.cro-card-t{font-size:14px;font-weight:800;color:#EDEDF0;padding-right:70px}
 .cro-card-note{font-size:12.5px;color:#ff6a4d;margin-top:4px;line-height:1.45}
+.cro-shot{display:block;width:100%;max-width:520px;border:1px solid var(--bord);border-radius:8px;margin:10px 0}
+.cro-field{display:flex;gap:8px;margin-top:6px;font-size:12.5px;line-height:1.5}
+.cro-field .k{flex:0 0 84px;font-weight:800;color:#8C8C95;text-transform:uppercase;font-size:10px;letter-spacing:.4px;padding-top:2px}
+.cro-field .k-prob{color:#ff7a5f}
+.cro-field .k-rec{color:#3fded0}
+.cro-field .v{flex:1;color:#d7d7dc}
+.cro-field .v-prob{color:#ff8a72}
+.cro-field .v-rec{color:#8ff0e6}
+.cro-field .v-mut{color:#9a9aa2}
 .cro-badge{position:absolute;top:12px;right:12px;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;padding:3px 9px;border-radius:20px}
 .cro-badge.critical{background:rgba(253,58,31,.18);color:#ff7a5f}
 .cro-badge.important{background:rgba(255,200,90,.20);color:#ffce6a}

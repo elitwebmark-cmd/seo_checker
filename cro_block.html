@@ -69,7 +69,11 @@
       <div class="cro-card pri-{{ it.priority or 'improvement' }}" data-pri="{{ it.priority or 'improvement' }}">
         <span class="cro-badge {{ it.priority or 'improvement' }}">{{ it.priority_label }}</span>
         <div class="cro-card-t">{{ it.title }}</div>
-        {% if it.problem %}<div class="cro-card-note">{{ it.problem }}</div>{% endif %}
+        {% if it.screenshot %}<img class="cro-shot" src="{{ it.screenshot }}" alt="" loading="lazy">{% endif %}
+        {% if it.problem %}<div class="cro-field"><span class="k k-prob">Проблема</span><span class="v v-prob">{{ it.problem }}</span></div>{% endif %}
+        {% if it.impact %}<div class="cro-field"><span class="k">Вплив</span><span class="v">{{ it.impact }}</span></div>{% endif %}
+        {% if it.recommendation %}<div class="cro-field"><span class="k k-rec">Рекомендація</span><span class="v v-rec">{{ it.recommendation }}</span></div>{% endif %}
+        {% if it.benchmark %}<div class="cro-field"><span class="k">Бенчмарк</span><span class="v v-mut">{{ it.benchmark }}</span></div>{% endif %}
       </div>
       {% endfor %}
     </div>

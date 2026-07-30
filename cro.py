@@ -104,15 +104,20 @@ def _shape(a, j, ps):
     _PRI = {"critical": "Критично", "high": "Критично",
             "important": "Важливо", "medium": "Важливо",
             "improvement": "Покращення", "low": "Покращення"}
+    shots = j.get("screenshots") or {}
     issues = []
     for it in (a.get("issues") or []):   # усі помилки
         if isinstance(it, dict):
             praw = (it.get("priority") or "").strip().lower()
+            zone = it.get("screenshot_zone") or it.get("screenshotZone")
+            shot = shots.get(zone) if zone else None
             issues.append({"category": it.get("category"),
                            "priority": praw,                       # critical|important|improvement
                            "priority_label": _PRI.get(praw, "Покращення"),
                            "title": it.get("title"), "problem": it.get("problem"),
-                           "impact": it.get("impact"), "recommendation": it.get("recommendation")})
+                           "impact": it.get("impact"), "benchmark": it.get("benchmark"),
+                           "recommendation": it.get("recommendation"),
+                           "screenshot_zone": zone, "screenshot": shot})
     tot = a.get("score_total")
     return {
         "checked": True,
@@ -123,6 +128,7 @@ def _shape(a, j, ps):
         "quick_wins": [w for w in (a.get("top_quick_wins") or []) if w],
         "issues": issues,
         "issues_total": len(issues),
+        "screenshots": shots,
         "domain": j.get("url") or "",
         "pagespeed": {
             "score": ps.get("score"),
