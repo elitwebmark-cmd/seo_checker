@@ -175,8 +175,14 @@ details.rc-sect:not([open])>.rc-sect-h{margin-bottom:0;padding-bottom:0;border-b
 .cro-qw-h{font-size:13px;font-weight:800;color:#EDEDF0;margin-bottom:4px}
 .cro-qw ul{margin:0;padding-left:18px}
 .cro-qw li{font-size:13px;color:#d7d7dc;margin:4px 0}
-.cro-issues{margin-top:16px}
-.cro-issues-h{font-size:13px;font-weight:800;color:#EDEDF0;margin-bottom:8px}
+.cro-issues{margin-top:16px;border:1px solid var(--bord);border-radius:10px;padding:0 12px}
+.cro-issues-sum{cursor:pointer;list-style:none;font-size:13px;font-weight:800;color:#EDEDF0;padding:12px 0;display:flex;align-items:center;gap:8px}
+.cro-issues-sum::-webkit-details-marker{display:none}
+.cro-issues-sum::before{content:"▸";color:#00C2B2;font-size:14px;transition:transform .15s}
+details.cro-issues[open] .cro-issues-sum::before{transform:rotate(90deg)}
+.cro-issues-hint{font-weight:600;font-size:11px;color:var(--mute);text-transform:none;letter-spacing:0}
+details.cro-issues[open] .cro-issues-hint{display:none}
+.cro-issue-list{padding-bottom:12px}
 .cro-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .cro-chip{background:var(--card2,#17171d);border:1px solid var(--bord);color:#c4c4cc;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer}
 .cro-chip:hover{border-color:#00C2B2}
@@ -187,7 +193,6 @@ details.rc-sect:not([open])>.rc-sect-h{margin-bottom:0;padding-bottom:0;border-b
 .cro-card.pri-improvement{border-left:3px solid #8C8C95}
 .cro-card-t{font-size:14px;font-weight:800;color:#EDEDF0;padding-right:70px}
 .cro-card-note{font-size:12.5px;color:#ff6a4d;margin-top:4px;line-height:1.45}
-.cro-shot{display:block;width:100%;max-width:520px;border:1px solid var(--bord);border-radius:8px;margin:10px 0}
 .cro-field{display:flex;gap:8px;margin-top:6px;font-size:12.5px;line-height:1.5}
 .cro-field .k{flex:0 0 84px;font-weight:800;color:#8C8C95;text-transform:uppercase;font-size:10px;letter-spacing:.4px;padding-top:2px}
 .cro-field .k-prob{color:#ff7a5f}

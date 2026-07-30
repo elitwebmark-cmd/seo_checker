@@ -15,6 +15,19 @@
     {% endif %}
   </div>
 
+  {# --- загальна інформація --- #}
+  {% if cro.summary %}
+  <div class="cro-summary">{{ cro.summary }}</div>
+  {% endif %}
+
+  {# --- quick wins (у шапці) --- #}
+  {% if cro.quick_wins %}
+  <div class="cro-qw">
+    <div class="cro-qw-h">🏆 Quick wins</div>
+    <ul>{% for w in cro.quick_wins %}<li>{{ w }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
   {# --- категорії --- #}
   {% if cro.categories %}
   <div class="cro-cats">
@@ -41,23 +54,10 @@
   </div>
   {% endif %}
 
-  {# --- загальна інформація --- #}
-  {% if cro.summary %}
-  <div class="cro-summary">{{ cro.summary }}</div>
-  {% endif %}
-
-  {# --- quick wins --- #}
-  {% if cro.quick_wins %}
-  <div class="cro-qw">
-    <div class="cro-qw-h">🏆 Quick wins</div>
-    <ul>{% for w in cro.quick_wins %}<li>{{ w }}</li>{% endfor %}</ul>
-  </div>
-  {% endif %}
-
-  {# --- усі помилки з фільтром --- #}
+  {# --- усі помилки під розкривним блоком --- #}
   {% if cro.issues %}
-  <div class="cro-issues" data-cro-issues>
-    <div class="cro-issues-h">Помилки ({{ cro.issues_total }})</div>
+  <details class="cro-issues" data-cro-issues>
+    <summary class="cro-issues-sum">Рекомендації та помилки ({{ cro.issues_total }}) <span class="cro-issues-hint">натисніть, щоб розгорнути</span></summary>
     <div class="cro-filter">
       <button type="button" class="cro-chip active" data-pri="all">Всі</button>
       <button type="button" class="cro-chip" data-pri="critical">Критично</button>
@@ -69,7 +69,6 @@
       <div class="cro-card pri-{{ it.priority or 'improvement' }}" data-pri="{{ it.priority or 'improvement' }}">
         <span class="cro-badge {{ it.priority or 'improvement' }}">{{ it.priority_label }}</span>
         <div class="cro-card-t">{{ it.title }}</div>
-        {% if it.screenshot %}<img class="cro-shot" src="{{ it.screenshot }}" alt="" loading="lazy">{% endif %}
         {% if it.problem %}<div class="cro-field"><span class="k k-prob">Проблема</span><span class="v v-prob">{{ it.problem }}</span></div>{% endif %}
         {% if it.impact %}<div class="cro-field"><span class="k">Вплив</span><span class="v">{{ it.impact }}</span></div>{% endif %}
         {% if it.recommendation %}<div class="cro-field"><span class="k k-rec">Рекомендація</span><span class="v v-rec">{{ it.recommendation }}</span></div>{% endif %}
@@ -77,12 +76,12 @@
       </div>
       {% endfor %}
     </div>
-  </div>
+  </details>
   {% endif %}
 
-  {# --- посилання на повний звіт CRO --- #}
+  {# --- посилання на сервіс --- #}
   <div class="cro-foot">
-    <a href="{{ cro.link }}" target="_blank" class="cro-pdf-link">📄 Повний CRO-звіт (PDF) у сервісі</a>
+    <a href="{{ cro.link }}" target="_blank" class="cro-pdf-link">🔗 Перейти в CRO сервіс</a>
     <span class="cro-src">джерело: CRO-аудитор Elit-Web</span>
   </div>
 </div>

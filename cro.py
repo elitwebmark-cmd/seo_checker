@@ -101,23 +101,23 @@ def _shape(a, j, ps):
         c = cats.get(k) or {}
         return {"score": c.get("score"), "label": c.get("label")}
 
-    _PRI = {"critical": "Критично", "high": "Критично",
-            "important": "Важливо", "medium": "Важливо",
-            "improvement": "Покращення", "low": "Покращення"}
-    shots = j.get("screenshots") or {}
+    # priority у CRO приходить українською ("критично"/"важливо"/"покращення"),
+    # інколи англійською — зводимо до канонічного слага для класів/фільтра.
+    _SLUG = {"критично": "critical", "critical": "critical", "high": "critical",
+             "важливо": "important", "important": "important", "medium": "important",
+             "покращення": "improvement", "improvement": "improvement", "low": "improvement"}
+    _LABEL = {"critical": "Критично", "important": "Важливо", "improvement": "Покращення"}
     issues = []
     for it in (a.get("issues") or []):   # усі помилки
         if isinstance(it, dict):
             praw = (it.get("priority") or "").strip().lower()
-            zone = it.get("screenshot_zone") or it.get("screenshotZone")
-            shot = shots.get(zone) if zone else None
+            slug = _SLUG.get(praw, "improvement")
             issues.append({"category": it.get("category"),
-                           "priority": praw,                       # critical|important|improvement
-                           "priority_label": _PRI.get(praw, "Покращення"),
+                           "priority": slug,                       # critical|important|improvement
+                           "priority_label": _LABEL[slug],
                            "title": it.get("title"), "problem": it.get("problem"),
                            "impact": it.get("impact"), "benchmark": it.get("benchmark"),
-                           "recommendation": it.get("recommendation"),
-                           "screenshot_zone": zone, "screenshot": shot})
+                           "recommendation": it.get("recommendation")})
     tot = a.get("score_total")
     return {
         "checked": True,
@@ -128,7 +128,6 @@ def _shape(a, j, ps):
         "quick_wins": [w for w in (a.get("top_quick_wins") or []) if w],
         "issues": issues,
         "issues_total": len(issues),
-        "screenshots": shots,
         "domain": j.get("url") or "",
         "pagespeed": {
             "score": ps.get("score"),
