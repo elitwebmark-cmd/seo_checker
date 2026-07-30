@@ -441,6 +441,43 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
+{% if r.cro and r.cro.checked %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>CRO-аудит конверсійності</h3> <span class="cnt">· загальний бал {{ r.cro.score_total if r.cro.score_total is not none else '—' }}/100{% if r.cro.pagespeed and r.cro.pagespeed.score is not none %} · PageSpeed {{ r.cro.pagespeed.score }}/100{% endif %}</span></div>
+  {% if r.cro.categories %}
+  <table style="width:100%;border-collapse:collapse;margin:6px 0 8px;font-size:11px;text-align:center">
+    <tr>
+      {% for key, name in [('speed','Швидкість'),('ux','UX'),('cta','CTA'),('trust','Довіра')] %}
+      {% set c = r.cro.categories.get(key) %}
+      <td style="border:1px solid var(--line);padding:6px">
+        <div style="font-size:18px;font-weight:800;color:{{ '#159A4B' if (c.score or 0) >= 70 else '#E8720E' if (c.score or 0) >= 40 else '#C0341B' }}">{{ c.score if c and c.score is not none else '—' }}</div>
+        <div style="color:var(--mut);text-transform:uppercase;font-size:9px;letter-spacing:.4px">{{ name }}</div>
+      </td>
+      {% endfor %}
+    </tr>
+  </table>
+  {% endif %}
+  {% if r.cro.summary %}<p style="font-size:11px;margin:6px 0">{{ r.cro.summary }}</p>{% endif %}
+  {% if r.cro.quick_wins %}
+  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Швидкі перемоги:</div>
+  <ul style="margin:2px 0 6px 16px;font-size:11px">{% for w in r.cro.quick_wins %}<li>{{ w }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if r.cro.issues %}
+  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Ключові проблеми ({{ r.cro.issues_total }}):</div>
+  <table style="width:100%;border-collapse:collapse;font-size:10px">
+    {% for it in r.cro.issues %}
+    <tr style="border-top:1px solid var(--line)">
+      <td style="padding:4px 6px;vertical-align:top">
+        <b>{% if it.priority %}[{{ it.priority }}] {% endif %}{{ it.title }}</b>
+        {% if it.recommendation %}<div style="color:#0E7A5F;margin-top:2px">→ {{ it.recommendation }}</div>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="concl">
   <h4><span class="dt"></span>Висновок</h4>
   <p>{% if r.benefit and r.benefit.profit_uplift is defined and r.benefit.avg_margin %}Вивід комерційних запитів у ТОП-1 здатен додати близько <b>+{{ r.benefit.uplift|sp }} візитів</b> і орієнтовно <b>+{{ r.benefit.profit_uplift|sp }} ₴ прибутку</b> на місяць. {% endif %}Сайт має сформовану SEO-базу ({{ r.metrics.organic_keywords|sp }} органічних ключів, {{ r.metrics.organic_traffic|sp }} візитів/міс) — це надійний фундамент для швидкого росту за напрямком «SEO з оплатою за вихід у ТОП».</p>

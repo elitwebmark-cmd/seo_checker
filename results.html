@@ -362,6 +362,56 @@
   </div>
   </details>
   {% endif %}{# /rc-sect serv #}
+  {% if r.cro and r.cro.checked %}
+  <details class="rc-sect cro" open>
+  <summary class="rc-sect-h"><span class="rc-sect-badge s-cro">CRO</span>Конверсійний аудит сайту</summary>
+    <div class="cro-score">
+      <div class="big" style="color:{{ '#28C76F' if (r.cro.score_total or 0) >= 70 else '#FFC85A' if (r.cro.score_total or 0) >= 40 else '#FD3A1F' }}">{{ r.cro.score_total if r.cro.score_total is not none else '—' }}<span style="font-size:16px;color:var(--mute)">/100</span></div>
+      <div style="font-size:12px;color:var(--mute)">Загальний CRO-бал{% if r.cro.pagespeed and r.cro.pagespeed.score is not none %} · PageSpeed {{ r.cro.pagespeed.score }}/100{% endif %}</div>
+    </div>
+    {% if r.cro.categories %}
+    <div class="cro-cats">
+      {% for key, name in [('speed','Швидкість'),('ux','UX'),('cta','CTA'),('trust','Довіра')] %}
+      {% set c = r.cro.categories.get(key) %}
+      {% if c %}
+      <div class="cro-cat">
+        <div class="v" style="color:{{ '#28C76F' if (c.score or 0) >= 70 else '#FFC85A' if (c.score or 0) >= 40 else '#FD3A1F' }}">{{ c.score if c.score is not none else '—' }}</div>
+        <div class="l">{{ name }}</div>
+        {% if c.label %}<div class="l" style="text-transform:none;color:#b7b7c0">{{ c.label }}</div>{% endif %}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if r.cro.pagespeed %}
+    <div class="cro-ps">
+      {% if r.cro.pagespeed.lcp %}<span>LCP <b>{{ r.cro.pagespeed.lcp }}</b></span>{% endif %}
+      {% if r.cro.pagespeed.fcp %}<span>FCP <b>{{ r.cro.pagespeed.fcp }}</b></span>{% endif %}
+      {% if r.cro.pagespeed.cls %}<span>CLS <b>{{ r.cro.pagespeed.cls }}</b></span>{% endif %}
+      {% if r.cro.pagespeed.tbt %}<span>TBT <b>{{ r.cro.pagespeed.tbt }}</b></span>{% endif %}
+      {% if r.cro.pagespeed.si %}<span>SI <b>{{ r.cro.pagespeed.si }}</b></span>{% endif %}
+    </div>
+    {% endif %}
+    {% if r.cro.summary %}<p style="font-size:13px;color:#d7d7dc;margin:8px 0">{{ r.cro.summary }}</p>{% endif %}
+    {% if r.cro.quick_wins %}
+    <div class="creatives-h">🏆 Швидкі перемоги</div>
+    <ul style="margin:4px 0 8px 18px;font-size:13px;color:#d7d7dc">
+      {% for w in r.cro.quick_wins %}<li style="margin:3px 0">{{ w }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if r.cro.issues %}
+    <div class="creatives-h">Проблеми ({{ r.cro.issues_total }})</div>
+    {% for it in r.cro.issues %}
+    <div class="cro-issue">
+      <div class="t">{% if it.priority %}<span class="cro-pri {{ it.priority|lower }}">{{ it.priority }}</span>{% endif %}{{ it.title }}</div>
+      {% if it.problem %}<div class="p">{{ it.problem }}</div>{% endif %}
+      {% if it.recommendation %}<div class="rec">→ {{ it.recommendation }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    <div class="trend-kw">джерело: CRO-аудитор Elit-Web · <a href="{{ r.cro.link }}" target="_blank" style="color:#3fded0">відкрити</a></div>
+  </details>{# /rc-sect cro #}
+  {% endif %}
   <details class="rc-sect mat">
   <summary class="rc-sect-h"><span class="rc-sect-badge s-mat">Матеріали</span>Корисні матеріали та деталі</summary>
   <div class="rc-acc">

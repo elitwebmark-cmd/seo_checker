@@ -74,7 +74,7 @@ def _is_commercial(kw: dict, brand: str) -> bool:
 
 
 def qualify(domain: str, do_onpage: bool = True, db: str = None,
-            do_ads: bool = False, do_social: bool = False) -> dict:
+            do_ads: bool = False, do_social: bool = False, do_cro: bool = False) -> dict:
     if not config.SEMRUSH_API_KEY:
         raise RuntimeError("SEMRUSH_API_KEY не заданий (ENV).")
 
@@ -308,6 +308,15 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             kwplan_info = None
 
+    # --- CRO-аудит (окремий сервіс Elit-Web; лише за галочкою для 1 домену) ---
+    cro_info = None
+    if do_cro:
+        try:
+            import cro
+            cro_info = cro.audit(domain)
+        except Exception:
+            cro_info = None
+
     # --- соцмережі (Instagram; лише для одного домену; інформаційно) ---
     social_info = None
     if do_social:
@@ -458,6 +467,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "kwplan": kwplan_info,
         "kwplan_svg": charts.kwplan_svg(kwplan_info["trend"], kwplan_info["trend_labels"],
                                         theme="dark") if kwplan_info else "",
+        "cro": cro_info,
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),
                  "budget": overview.get("adwords_cost", 0)},

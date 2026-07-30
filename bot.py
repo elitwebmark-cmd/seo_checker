@@ -295,6 +295,34 @@ def _pages_msg(res: dict) -> str:
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
+def _cro_pre(cro: dict) -> str:
+    if not cro or not cro.get("checked"):
+        return ""
+    tot = cro.get("score_total")
+    cats = cro.get("categories") or {}
+    def _c(k):
+        c = cats.get(k) or {}
+        return c.get("score")
+    head = f"🧪 <b>CRO-аудит:</b> {tot if tot is not None else '—'}/100"
+    ps = cro.get("pagespeed") or {}
+    if ps.get("score") is not None:
+        head += f" · PageSpeed {ps['score']}/100"
+    lines = [head]
+    parts = []
+    for k, n in (("speed", "швидкість"), ("ux", "UX"), ("cta", "CTA"), ("trust", "довіра")):
+        v = _c(k)
+        if v is not None:
+            parts.append(f"{n} {v}")
+    if parts:
+        lines.append("   " + " · ".join(parts))
+    for w in (cro.get("quick_wins") or [])[:3]:
+        lines.append(f"🏆 {html.escape(str(w))}")
+    for it in (cro.get("issues") or [])[:4]:
+        pri = f"[{it.get('priority')}] " if it.get("priority") else ""
+        lines.append(f"• {html.escape(pri + (it.get('title') or ''))}")
+    return "\n".join(lines)
+
+
 def _dotisk_pre(dq: list, limit: int = 8) -> str:
     """Таблиця кандидатів у ТОП-1: запит · позиція · частотність · трафік у ТОП-1."""
     if not dq:
@@ -424,6 +452,10 @@ def fmt(res: dict) -> str:
         lines.append("\n🧩 <b>Підходить під послуги:</b>")
         for s in sv:
             lines.append(f"{mk.get(s['level'], '•')} {html.escape(s['name'])} — {html.escape(s['note'])}")
+    crp = _cro_pre(res.get("cro"))
+    if crp:
+        lines.append("")
+        lines.append(crp)
     dq = res.get("dotisk_queries", [])
     if dq:
         lines.append(f"\n🎯 <b>Кандидати в ТОП-1</b> (топ {min(len(dq), 8)} з {len(dq)}):")
@@ -463,9 +495,9 @@ async def run_analysis(msg: Message, domain: str):
     s = st(msg.chat.id)
     wait = await msg.answer(
         f"🔎 Аналізую <b>{html.escape(domain)}</b> ({REGIONS.get(s['db'], s['db'])}, "
-        f"{'повний' if s['depth']=='full' else 'швидкий'})… (10–30 c)", parse_mode="HTML")
+        f"{'повний' if s['depth']=='full' else 'швидкий'})… з CRO-аудитом це до 2 хв", parse_mode="HTML")
     try:
-        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True, True)
+        res = await asyncio.to_thread(qualify.qualify, domain, s["depth"] == "full", s["db"], True, True, True)
         LAST[msg.chat.id] = {"domain": domain, "res": res}
         try:
             import stats_log

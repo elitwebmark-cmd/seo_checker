@@ -109,10 +109,10 @@ def _err(domain, note):
             "dotisk_queries": []}
 
 
-def _safe_qualify(domain, do_onpage, do_ads=False, do_social=False):
+def _safe_qualify(domain, do_onpage, do_ads=False, do_social=False, do_cro=False):
     try:
         return qualify.qualify(domain, do_onpage=do_onpage, do_ads=do_ads,
-                               do_social=do_social)
+                               do_social=do_social, do_cro=do_cro)
     except Exception as e:
         log.exception("qualify failed for %s", domain)
         return _err(domain, str(e)[:200])
@@ -128,12 +128,12 @@ def _finish(job_id):
     log.info("job %s finished", job_id)
 
 
-def _process_job(job_id, domains, do_onpage, do_ads=False, do_social=False, user=""):
-    log.info("job %s START: %d domain(s), onpage=%s, ads=%s, social=%s",
-             job_id, len(domains), do_onpage, do_ads, do_social)
+def _process_job(job_id, domains, do_onpage, do_ads=False, do_social=False, user="", do_cro=False):
+    log.info("job %s START: %d domain(s), onpage=%s, ads=%s, social=%s, cro=%s",
+             job_id, len(domains), do_onpage, do_ads, do_social, do_cro)
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futs = {ex.submit(_safe_qualify, d, do_onpage, do_ads, do_social): d for d in domains}
+            futs = {ex.submit(_safe_qualify, d, do_onpage, do_ads, do_social, do_cro): d for d in domains}
             try:
                 for fut in concurrent.futures.as_completed(futs, timeout=JOB_TIMEOUT):
                     d = futs[fut]
@@ -209,14 +209,17 @@ def analyze():
     # Реклама/соцмережі: лише коли домен один І галочку ввімкнено (економія квоти SerpApi)
     do_ads = (len(domains) == 1) and (request.form.get("ads") == "on")
     do_social = (len(domains) == 1) and (request.form.get("social") == "on")
+    do_cro = (len(domains) == 1) and (request.form.get("cro") == "on")
     _prune_jobs()
     job_id = uuid.uuid4().hex[:12]
     with JOBS_LOCK:
         JOBS[job_id] = {"total": len(domains), "done": 0, "results": [],
                         "status": "running", "do_onpage": do_onpage, "do_ads": do_ads,
-                        "do_social": do_social, "started": time.time(), "finished": None}
+                        "do_social": do_social, "do_cro": do_cro,
+                        "started": time.time(), "finished": None}
     threading.Thread(target=_process_job,
-                     args=(job_id, domains, do_onpage, do_ads, do_social, session.get("email", "")),
+                     args=(job_id, domains, do_onpage, do_ads, do_social,
+                           session.get("email", ""), do_cro),
                      daemon=True).start()
     return redirect(url_for("progress", job_id=job_id))
 

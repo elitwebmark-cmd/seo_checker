@@ -20,6 +20,15 @@ KWPLAN_LANG = os.getenv("KWPLAN_LANG", "1013")      # 1013 = укр., 1031 = р�
 KWPLAN_LIMIT = int(os.getenv("KWPLAN_LIMIT", "15")) # скільки топ-запитів лишати у звіті
 KWPLAN_TIMEOUT = int(os.getenv("KWPLAN_TIMEOUT", "30"))
 
+# --- CRO-аудитор (окремий сервіс Elit-Web, інтеграція через його API) ---
+CRO_BASE_URL = os.getenv("CRO_BASE_URL", "https://cro-auditor-production.up.railway.app")
+CRO_LOGIN_USER = os.getenv("CRO_LOGIN_USER", "")       # username для /api/login
+CRO_LOGIN_PASSWORD = os.getenv("CRO_LOGIN_PASSWORD", "")
+CRO_LANG = os.getenv("CRO_LANG", "ua")
+CRO_TIMEOUT = int(os.getenv("CRO_TIMEOUT", "30"))       # логін
+CRO_AUDIT_TIMEOUT = int(os.getenv("CRO_AUDIT_TIMEOUT", "170"))  # сам аудит (рендер сайту — довго)
+CRO_ISSUES_LIMIT = int(os.getenv("CRO_ISSUES_LIMIT", "6"))      # скільки проблем виводити у звіт
+
 # --- Логування аналізів у Google Таблицю (Apps Script веб-хук) ---
 SHEETS_LOG_URL = os.getenv("SHEETS_LOG_URL", "")          # URL веб-застосунку Apps Script
 SHEETS_LOG_SECRET = os.getenv("SHEETS_LOG_SECRET", "")    # опційний секрет (звірка у скрипті)
