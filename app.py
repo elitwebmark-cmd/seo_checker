@@ -287,6 +287,57 @@ def report_cro():
     return render_template("cro_block.html", cro=info)
 
 
+def _find_job_result(job_id, domain):
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job:
+            return None
+        for r in job["results"]:
+            if r.get("domain") == domain:
+                return r
+    return None
+
+
+@app.route("/report/ai-seo", methods=["POST", "GET"])
+@login_required
+def report_ai_seo():
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower().replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    if not domain:
+        return "<div class='cro-err'>Домен не вказано.</div>", 400
+    res = _find_job_result(job_id, domain) or {"domain": domain}
+    try:
+        import ai_review
+        s = ai_review.seo_review(domain, res)
+    except Exception:
+        s = None
+    if not s:
+        return "<div class='cro-err'>AI-аналіз недоступний: перевірте ANTHROPIC_API_KEY або спробуйте пізніше.</div>", 200
+    res["ai_seo"] = s
+    return render_template("ai_seo_block.html", s=s)
+
+
+@app.route("/report/ai-summary", methods=["POST", "GET"])
+@login_required
+def report_ai_summary():
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower().replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    if not domain:
+        return "<div class='cro-err'>Домен не вказано.</div>", 400
+    res = _find_job_result(job_id, domain)
+    if not res:
+        return "<div class='cro-err'>Дані звіту не знайдено (можливо, застаріли). Зробіть новий аналіз.</div>", 200
+    try:
+        import ai_review
+        s = ai_review.exec_summary(res)
+    except Exception:
+        s = None
+    if not s:
+        return "<div class='cro-err'>AI-резюме недоступне: перевірте ANTHROPIC_API_KEY або спробуйте пізніше.</div>", 200
+    res["ai_summary"] = s
+    return render_template("ai_summary_block.html", s=s)
+
+
 @app.route("/report.pdf")
 @login_required
 def report_pdf():

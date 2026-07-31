@@ -5,6 +5,10 @@ import os
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 NICHE_AI_MODEL = os.getenv("NICHE_AI_MODEL", "claude-3-5-haiku-latest")
 NICHE_AI_TIMEOUT = int(os.getenv("NICHE_AI_TIMEOUT", "20"))
+# AI-аналітика (SEO-ревʼю + executive summary) — якісніша модель, on-demand.
+AI_REVIEW_MODEL = os.getenv("AI_REVIEW_MODEL", "claude-3-5-sonnet-latest")
+AI_REVIEW_FALLBACK_MODEL = os.getenv("AI_REVIEW_FALLBACK_MODEL", "claude-3-5-haiku-latest")
+AI_REVIEW_TIMEOUT = int(os.getenv("AI_REVIEW_TIMEOUT", "60"))
 
 # --- Google Ads API (Keyword Planner: домен -> запити + помісячний тренд обсягів) ---
 # Безкоштовно (тарифікації викликів нема). Потрібні 5 значень нижче.

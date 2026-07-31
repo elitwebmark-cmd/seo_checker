@@ -441,6 +441,30 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
+{% if r.ai_summary %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>AI-резюме звіту</h3> <span class="cnt">· Claude</span></div>
+  {% if r.ai_summary.summary %}<p style="font-size:11px;line-height:1.55;margin:4px 0">{{ r.ai_summary.summary }}</p>{% endif %}
+  {% if r.ai_summary.priorities %}
+  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Пріоритети:</div>
+  <ol style="margin:2px 0 6px 16px;font-size:10px">{% for p in r.ai_summary.priorities %}<li><b>{{ p.title }}</b>{% if p.why %} — {{ p.why }}{% endif %}</li>{% endfor %}</ol>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if r.ai_seo %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>AI-аналіз SEO</h3> <span class="cnt">· Claude</span></div>
+  {% if r.ai_seo.verdict %}<p style="font-size:11px;line-height:1.55;margin:4px 0">{{ r.ai_seo.verdict }}</p>{% endif %}
+  {% for grp, title in [('strengths','Сильні сторони'),('weaknesses','Слабкі сторони'),('gaps','Семантичні прогалини'),('recommendations','Рекомендації')] %}
+  {% if r.ai_seo[grp] %}
+  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">{{ title }}:</div>
+  <ul style="margin:2px 0 6px 16px;font-size:10px">{% for x in r.ai_seo[grp] %}<li>{{ x }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if r.retention %}
 {% set rt = r.retention %}
 <div class="panel">

@@ -1,0 +1,21 @@
+{# AI SEO-ревʼю. Очікує s = результат ai_review.seo_review. #}
+<div class="ai-inner">
+  {% if s.verdict %}<div class="ai-verdict">{{ s.verdict }}</div>{% endif %}
+  {% if s.strengths %}
+  <div class="ai-h ai-h-ok">Сильні сторони</div>
+  <ul class="ai-list">{% for x in s.strengths %}<li>{{ x }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if s.weaknesses %}
+  <div class="ai-h ai-h-bad">Слабкі сторони</div>
+  <ul class="ai-list">{% for x in s.weaknesses %}<li>{{ x }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if s.gaps %}
+  <div class="ai-h">Семантичні прогалини</div>
+  <ul class="ai-list">{% for x in s.gaps %}<li>{{ x }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if s.recommendations %}
+  <div class="ai-h ai-h-rec">Рекомендації</div>
+  <ul class="ai-list">{% for x in s.recommendations %}<li>{{ x }}</li>{% endfor %}</ul>
+  {% endif %}
+  <div class="trend-kw">AI-аналіз (Claude) на основі on-page та метрик SemRush</div>
+</div>

@@ -1,0 +1,13 @@
+{# AI executive summary. Очікує s = результат ai_review.exec_summary. #}
+<div class="ai-inner">
+  {% if s.summary %}<div class="ai-verdict">{{ s.summary }}</div>{% endif %}
+  {% if s.priorities %}
+  <div class="ai-h ai-h-rec">Пріоритети — з чого почати</div>
+  <ol class="ai-prio">
+    {% for p in s.priorities %}
+    <li><b>{{ p.title }}</b>{% if p.why %} <span>— {{ p.why }}</span>{% endif %}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+  <div class="trend-kw">AI-резюме (Claude) на основі всіх блоків звіту</div>
+</div>

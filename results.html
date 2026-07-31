@@ -22,6 +22,17 @@
   {% if r.niche and r.niche.subniche %}<div class="rc-niche">{% if assets.ic_niche %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_niche) }}" alt="">{% else %}🧭 {% endif %}{{ r.niche.direction_name }} → {{ r.niche.industry_name }} → <b>{{ r.niche.subniche }}</b> <span class="small">({{ r.niche.confidence }})</span></div>{% endif %}
   {% if r.niche_caveat %}<div class="niche-caveat">⚠️ Ніша не профільна під офер — умовно підходить, зважати на нішу</div>{% endif %}
   {% if r.kw_caveat %}<div class="niche-caveat">⚠️ Комерц. запитів 100–299 (нижче норми 300) — умовно прийнятно, не «Ідеально»</div>{% endif %}
+  {% if not r.error %}
+  {% if r.ai_summary %}
+  <div class="ai-gen">{% set s = r.ai_summary %}{% include "ai_summary_block.html" %}</div>
+  {% else %}
+  <div class="ai-gen" data-ai-block data-endpoint="/report/ai-summary" data-domain="{{ r.domain }}" data-job="{{ job_id }}">
+    <button type="button" class="btn-ai">✨ AI-резюме звіту</button>
+    <span class="ai-hint">стратегічний висновок + пріоритети (Claude)</span>
+    <div class="ai-slot"></div>
+  </div>
+  {% endif %}
+  {% endif %}
   <details class="rc-sect seo" open>
   <summary class="rc-sect-h"><span class="rc-sect-badge s-seo">SEO</span>Органічний пошук — трафік, позиції, потенціал</summary>
   <div class="rc-stats">
@@ -134,6 +145,15 @@
     </table>
     <div class="trend-kw">всього ідей запитів: {{ r.kwplan.total_ideas }} · джерело: {{ r.kwplan.source }}</div>
     {% endif %}
+  </div>
+  {% endif %}
+  {% if r.ai_seo %}
+  <div class="ai-gen">{% set s = r.ai_seo %}{% include "ai_seo_block.html" %}</div>
+  {% else %}
+  <div class="ai-gen" data-ai-block data-endpoint="/report/ai-seo" data-domain="{{ r.domain }}" data-job="{{ job_id }}">
+    <button type="button" class="btn-ai">✨ AI-аналіз SEO</button>
+    <span class="ai-hint">якісний висновок по контенту, меті, семантиці (Claude)</span>
+    <div class="ai-slot"></div>
   </div>
   {% endif %}
   </details>{# /rc-sect seo #}
@@ -693,6 +713,25 @@
 </script>
 
 <script>
+(function(){
+  document.querySelectorAll('[data-ai-block]').forEach(function(box){
+    var btn = box.querySelector('.btn-ai'), slot = box.querySelector('.ai-slot');
+    if(!btn || !slot) return;
+    btn.addEventListener('click', function(){
+      var url = box.dataset.endpoint + '?job=' + encodeURIComponent(box.dataset.job) + '&domain=' + encodeURIComponent(box.dataset.domain);
+      btn.disabled = true;
+      var t0 = Date.now(), tick;
+      slot.innerHTML = '<div class="ai-loading">✨ Claude аналізує… зазвичай 10–40 c</div>';
+      tick = setInterval(function(){ var e=slot.querySelector('.ai-loading'); if(e) e.textContent='✨ Claude аналізує… '+Math.round((Date.now()-t0)/1000)+' c'; }, 1000);
+      fetch(url, {method:'POST'}).then(function(r){return r.text();}).then(function(html){
+        clearInterval(tick); slot.innerHTML = html; btn.style.display='none';
+        var h = box.querySelector('.ai-hint'); if(h) h.style.display='none';
+      }).catch(function(){
+        clearInterval(tick); slot.innerHTML = '<div class="cro-err">Не вдалося отримати AI-аналіз. Спробуйте пізніше.</div>'; btn.disabled=false;
+      });
+    });
+  });
+})();
 (function(){
   var nf = new Intl.NumberFormat('uk-UA');
   var uah = function(n){ return nf.format(Math.round(n)) + ' ₴'; };
