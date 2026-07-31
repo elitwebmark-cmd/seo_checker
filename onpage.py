@@ -173,6 +173,33 @@ def _unavailable(note: str) -> dict:
             "contractor": None}
 
 
+_CHAT_MARKERS = ("intercom", "tawk.to", "crisp.chat", "jivosite", "jivo.chat", "livechat",
+                 "zendesk", "chatra", "smartsupp", "olark", "gorgias", "binotel",
+                 "callbackkiller", "callbackhunter", "customerchat", "messenger/plugins",
+                 "онлайн-чат", "онлайн чат", "hubspot", "chaport", "helpcrunch")
+_LOYAL_MARKERS = ("бонус", "кешбек", "кешбэк", "cashback", "програма лояльн", "программа лояльн",
+                  "накопичув", "накоплен", "loyalty", "бали за покупк", "баллы за покупк",
+                  "картка клієнт", "карта клиент")
+_APP_MARKERS = ("apps.apple.com", "play.google.com", "app store", "google play",
+                "мобільний застосунок", "мобильное приложение", "завантажити застосунок")
+_EMAIL_MARKERS = ("newsletter", "розсилк", "рассылк", "підписатися", "подписаться",
+                  "підпишіться", "подпишитесь", "subscribe")
+
+
+def _retention_signals(base: str, home_html: str) -> dict:
+    """Детект каналів утримання на головній (реальні сигнали, не поради)."""
+    h = (home_html or "").lower()
+    email = any(m in h for m in _EMAIL_MARKERS) or ('type="email"' in h and
+              any(m in h for m in ("підпис", "подпис", "subscribe", "розсилк", "рассылк")))
+    chat = any(m in h for m in _CHAT_MARKERS)
+    loyalty = any(m in h for m in _LOYAL_MARKERS)
+    app = any(m in h for m in _APP_MARKERS)
+    blog = bool(re.search(r'href=["\'][^"\']*/(blog|news|novyny|novosti|articles?|statt?i)', h)) \
+        or ">блог<" in h
+    return {"email_capture": email, "chat": chat, "loyalty": loyalty,
+            "app": app, "blog": blog}
+
+
 def analyze_site(domain: str) -> dict:
     sess = _session()
     base = domain if domain.startswith("http") else "https://" + domain
@@ -210,4 +237,5 @@ def analyze_site(domain: str) -> dict:
         "home": home, "categories": cats,
         "checked_pages": checked, "meta_pages_ok": meta_pages, "seo_text_pages": seo_text_pages,
         "contractor": _find_contractor(base, home_html),
+        "retention_signals": _retention_signals(base, home_html),
     }

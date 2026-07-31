@@ -441,6 +441,38 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
+{% if r.retention %}
+{% set rt = r.retention %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Retention — утримання клієнтів</h3> <span class="cnt">· LTV та повторні продажі</span></div>
+  <table style="width:100%;border-collapse:collapse;margin:4px 0 8px;text-align:center">
+    <tr>
+      <td style="border:1px solid var(--line);padding:10px;width:50%">
+        <div style="font-size:24px;font-weight:900;color:#B8860B">{{ rt.ltv_profit|sp }} ₴</div>
+        <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">LTV — прибуток з клієнта</div>
+      </td>
+      <td style="border:1px solid var(--line);padding:10px;width:50%">
+        <div style="font-size:24px;font-weight:900;color:#159A4B">+{{ rt.monthly_extra_profit|sp }} ₴/міс</div>
+        <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">потенціал програми (+{{ rt.uplift_pct }}% утримання)</div>
+      </td>
+    </tr>
+  </table>
+  <p style="font-size:10px;margin:4px 0">Повторні в ніші <b>{{ rt.repeat_rate }}%</b> · частота <b>{{ rt.freq }}/рік</b> · строк життя <b>{{ rt.life_months }} міс</b> · нових клієнтів <b>~{{ rt.monthly_customers }}/міс</b>. LTV-виручка {{ rt.ltv_revenue|sp }} ₴, апсайд утримання на клієнта {{ rt.upside_per_customer|sp }} ₴, за рік програма ≈ <b>+{{ rt.annual_extra_profit|sp }} ₴</b>.</p>
+  {% if rt.signals %}
+  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Канали утримання на сайті:</div>
+  <p style="font-size:10px">{% for s in rt.signals %}{{ '✓' if s.present else '✕' }} {{ s.name }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% if rt.quick_wins %}
+  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Точки зростання:</div>
+  <ul style="margin:2px 0 6px 16px;font-size:10px">{% for w in rt.quick_wins %}<li>{{ w }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if rt.channels %}
+  <div style="font-weight:800;font-size:11px;margin:6px 0 2px">Рекомендовані канали:</div>
+  <ul style="margin:2px 0 6px 16px;font-size:10px">{% for ch in rt.channels %}<li>{{ ch }}</li>{% endfor %}</ul>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if r.cro and r.cro.checked %}
 {% set pri_col = {'critical':'#C0341B','important':'#E8720E','improvement':'#8C8C95'} %}
 <div class="panel">

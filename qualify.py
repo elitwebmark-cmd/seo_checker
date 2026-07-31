@@ -325,6 +325,14 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         except Exception:
             social_info = {"checked": False, "note": "помилка перевірки"}
 
+    # --- Retention-маркетинг (моделювання; рахується завжди) ---
+    retention_info = None
+    try:
+        import retention
+        retention_info = retention.build(niche_info, benefit, overview, onp, social_info)
+    except Exception:
+        retention_info = None
+
     pos = commercial_count                       # комерційні запити на 4-20
     traf = overview["organic_traffic"]
     c1_full = pos >= config.COMMERCIAL_KW_MIN     # повна норма (300)
@@ -468,6 +476,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "kwplan_svg": charts.kwplan_svg(kwplan_info["trend"], kwplan_info["trend_labels"],
                                         theme="dark") if kwplan_info else "",
         "cro": cro_info,
+        "retention": retention_info,
         "paid": {"keywords": overview.get("adwords_keywords", 0),
                  "traffic": overview.get("adwords_traffic", 0),
                  "budget": overview.get("adwords_cost", 0)},

@@ -296,6 +296,22 @@ def _pages_msg(res: dict) -> str:
     return head + "\n<pre>" + html.escape("\n".join(rows)) + "</pre>"
 
 
+def _retention_pre(rt: dict) -> str:
+    if not rt or not rt.get("checked"):
+        return ""
+    lines = [f"🔁 <b>Retention (утримання):</b> LTV-прибуток {_fmtk(rt.get('ltv_profit',0))} ₴/клієнт"]
+    lines.append(f"   повторні {rt.get('repeat_rate')}% · частота {rt.get('freq')}/рік · строк {rt.get('life_months')} міс")
+    if rt.get("monthly_extra_profit"):
+        lines.append(f"   потенціал програми: <b>+{_fmtk(rt['monthly_extra_profit'])} ₴/міс</b> (+{rt.get('uplift_pct')}% утримання)")
+    sig = rt.get("signals") or []
+    if sig:
+        parts = [("✅" if s["present"] else "⛔") + " " + s["name"] for s in sig]
+        lines.append("   канали: " + " · ".join(parts))
+    for w in (rt.get("quick_wins") or [])[:3]:
+        lines.append(f"🎯 {html.escape(str(w))}")
+    return "\n".join(lines)
+
+
 def _cro_pre(cro: dict) -> str:
     if not cro or not cro.get("checked"):
         return ""
@@ -465,6 +481,10 @@ def fmt(res: dict) -> str:
         lines.append("\n🧩 <b>Підходить під послуги:</b>")
         for s in sv:
             lines.append(f"{mk.get(s['level'], '•')} {html.escape(s['name'])} — {html.escape(s['note'])}")
+    rtp = _retention_pre(res.get("retention"))
+    if rtp:
+        lines.append("")
+        lines.append(rtp)
     dq = res.get("dotisk_queries", [])
     if dq:
         lines.append(f"\n🎯 <b>Кандидати в ТОП-1</b> (топ {min(len(dq), 8)} з {len(dq)}):")

@@ -216,6 +216,24 @@ PODNISA_ALIAS = {
 }
 
 
+# --- Retention-бенчмарки по галузях: (repeat_rate %, покупок/рік, строк життя, міс) ---
+# Модельні оцінки для розрахунку LTV та потенціалу утримання (UA-ринок).
+NICHE_RETENTION = {
+    "FASH":   (35, 3.0, 24), "HOME":   (20, 1.3, 36), "ELEC":   (25, 1.6, 30),
+    "AUTO":   (35, 2.0, 36), "CONSTR": (15, 1.0, 24), "BEAUTY": (45, 4.0, 24),
+    "MED":    (50, 2.5, 36), "FOOD":   (60, 12.0, 24), "KIDS":  (45, 4.0, 30),
+    "INDB2B": (55, 6.0, 48), "PROF":   (30, 2.0, 36), "IT":     (70, 12.0, 24),
+    "EDU":    (30, 2.0, 18), "PERS":   (55, 6.0, 30), "TRAVEL": (30, 1.5, 36),
+    "SPEC":   (40, 6.0, 18), "OTHER":  (30, 2.0, 24),
+}
+
+
+def retention_bench(niche_info: dict):
+    """(repeat_rate %, покупок/рік, строк життя міс) за галуззю ніші (з фолбеком)."""
+    ind = (niche_info or {}).get("industry")
+    return NICHE_RETENTION.get(ind, NICHE_RETENTION["OTHER"])
+
+
 def hubspot_fields(niche_info: dict) -> dict:
     """{industria, nisa, podnisa} для полів діла (з аліасами назв)."""
     ni = niche_info or {}

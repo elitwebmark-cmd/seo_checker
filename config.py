@@ -20,6 +20,10 @@ KWPLAN_LANG = os.getenv("KWPLAN_LANG", "1013")      # 1013 = укр., 1031 = р�
 KWPLAN_LIMIT = int(os.getenv("KWPLAN_LIMIT", "15")) # скільки топ-запитів лишати у звіті
 KWPLAN_TIMEOUT = int(os.getenv("KWPLAN_TIMEOUT", "30"))
 
+# --- Retention-маркетинг (моделювання; зовнішніх API не потребує) ---
+# Наскільки retention-програма підіймає захоплену частку повторного прибутку (частка від upside).
+RETENTION_PROGRAM_UPLIFT = float(os.getenv("RETENTION_PROGRAM_UPLIFT", "0.15"))  # 15%
+
 # --- CRO-аудитор (окремий сервіс Elit-Web, інтеграція через його API) ---
 CRO_BASE_URL = os.getenv("CRO_BASE_URL", "https://cro-auditor-production.up.railway.app")
 CRO_LOGIN_USER = os.getenv("CRO_LOGIN_USER", "")       # username для /api/login

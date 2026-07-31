@@ -349,6 +349,59 @@
   {% endif %}
   </details>{# /rc-sect meta #}
   {% endif %}
+  {% if r.retention %}
+  {% set rt = r.retention %}
+  <details class="rc-sect ret">
+  <summary class="rc-sect-h"><span class="rc-sect-badge s-ret">Retention</span>Утримання клієнтів — LTV та повторні продажі</summary>
+    <div class="ret-scores">
+      <div class="ret-card">
+        <div class="ret-num">{{ '{:,}'.format(rt.ltv_profit).replace(',',' ') }} ₴</div>
+        <div class="ret-cap">LTV — прибуток з клієнта за весь час</div>
+      </div>
+      <div class="ret-card">
+        <div class="ret-num" style="color:#28C76F">+{{ '{:,}'.format(rt.monthly_extra_profit).replace(',',' ') }} ₴/міс</div>
+        <div class="ret-cap">потенціал retention-програми (+{{ rt.uplift_pct }}% утримання)</div>
+      </div>
+    </div>
+    <div class="ret-meta">
+      <span>повторні в ніші: <b>{{ rt.repeat_rate }}%</b></span>
+      <span>частота: <b>{{ rt.freq }}/рік</b></span>
+      <span>строк життя: <b>{{ rt.life_months }} міс</b></span>
+      <span>нових клієнтів: <b>~{{ rt.monthly_customers }}/міс</b></span>
+    </div>
+    <div class="ret-econ">
+      LTV-виручка <b>{{ '{:,}'.format(rt.ltv_revenue).replace(',',' ') }} ₴</b> · перша покупка (прибуток) <b>{{ '{:,}'.format(rt.first_profit).replace(',',' ') }} ₴</b> · апсайд утримання на клієнта <b>{{ '{:,}'.format(rt.upside_per_customer).replace(',',' ') }} ₴</b> · за рік програма ≈ <b style="color:#28C76F">+{{ '{:,}'.format(rt.annual_extra_profit).replace(',',' ') }} ₴</b>
+    </div>
+
+    {% if rt.audience %}
+    <div class="creatives-h">Власна аудиторія (база для утримання)</div>
+    <div class="ret-meta">
+      {% if rt.audience.ig_followers %}<span>Instagram: <b>~{{ rt.audience.ig_followers }}</b></span>{% endif %}
+      <span>органічний трафік: <b>~{{ rt.audience.monthly_traffic }}/міс</b></span>
+    </div>
+    {% endif %}
+
+    {% if rt.signals %}
+    <div class="creatives-h">Канали утримання на сайті</div>
+    <div class="ret-signals">
+      {% for s in rt.signals %}
+      <div class="ret-sig {{ 'on' if s.present else 'off' }}">{{ '✓' if s.present else '✕' }} {{ s.name }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if rt.quick_wins %}
+    <div class="creatives-h">🎯 Точки зростання</div>
+    <ul class="ret-list">{% for w in rt.quick_wins %}<li>{{ w }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if rt.channels %}
+    <div class="creatives-h">Рекомендовані канали й сценарії</div>
+    <ul class="ret-list ret-ch">{% for ch in rt.channels %}<li>{{ ch }}</li>{% endfor %}</ul>
+    {% endif %}
+    <div class="trend-kw">модель на основі економіки ніші та галузевих retention-бенчмарків</div>
+  </details>{# /rc-sect ret #}
+  {% endif %}
   {% if r.services %}
   <details class="rc-sect serv">
   <summary class="rc-sect-h"><span class="rc-sect-badge s-serv">Послуги</span>Під які послуги підходить</summary>
