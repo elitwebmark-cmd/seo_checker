@@ -47,6 +47,28 @@ def _complete(system: str, prompt: str, max_tokens: int = 1100) -> str:
     return None
 
 
+def debug() -> dict:
+    """Діагностика моделей: чи є ключ і які моделі відповідають."""
+    out = {"has_key": bool(config.ANTHROPIC_API_KEY),
+           "model": config.AI_REVIEW_MODEL, "fallback": config.AI_REVIEW_FALLBACK_MODEL}
+    if not config.ANTHROPIC_API_KEY:
+        out["error"] = "ANTHROPIC_API_KEY не заданий"
+        return out
+    headers = {"x-api-key": config.ANTHROPIC_API_KEY,
+               "anthropic-version": "2023-06-01", "content-type": "application/json"}
+    for label, model in (("primary", config.AI_REVIEW_MODEL), ("fallback", config.AI_REVIEW_FALLBACK_MODEL)):
+        try:
+            r = requests.post(ANTHROPIC_URL, headers=headers, timeout=20,
+                              json={"model": model, "max_tokens": 20,
+                                    "messages": [{"role": "user", "content": "ping"}]})
+            out[label] = {"model": model, "status": r.status_code,
+                          "ok": r.status_code < 400,
+                          "body": (None if r.status_code < 400 else r.text[:200])}
+        except Exception as e:
+            out[label] = {"model": model, "error": str(e)[:200]}
+    return out
+
+
 def _parse_json(text: str):
     if not text:
         return None

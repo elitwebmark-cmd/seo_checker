@@ -298,6 +298,19 @@ def _find_job_result(job_id, domain):
     return None
 
 
+@app.route("/debug/ai")
+def debug_ai():
+    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    try:
+        import ai_review
+        data = ai_review.debug()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:300]}), 500
+    import json as _json
+    return Response(_json.dumps(data, ensure_ascii=False, indent=2), mimetype="application/json")
+
+
 @app.route("/report/ai-seo", methods=["POST", "GET"])
 @login_required
 def report_ai_seo():
