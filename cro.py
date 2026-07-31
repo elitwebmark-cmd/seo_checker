@@ -107,17 +107,28 @@ def _shape(a, j, ps):
              "важливо": "important", "important": "important", "medium": "important",
              "покращення": "improvement", "improvement": "improvement", "low": "improvement"}
     _LABEL = {"critical": "Критично", "important": "Важливо", "improvement": "Покращення"}
+    raw_issues = [it for it in (a.get("issues") or []) if isinstance(it, dict)]
+    id2title = {str(it.get("id")): it.get("title") for it in raw_issues if it.get("id")}
     issues = []
-    for it in (a.get("issues") or []):   # усі помилки
-        if isinstance(it, dict):
-            praw = (it.get("priority") or "").strip().lower()
-            slug = _SLUG.get(praw, "improvement")
-            issues.append({"category": it.get("category"),
-                           "priority": slug,                       # critical|important|improvement
-                           "priority_label": _LABEL[slug],
-                           "title": it.get("title"), "problem": it.get("problem"),
-                           "impact": it.get("impact"), "benchmark": it.get("benchmark"),
-                           "recommendation": it.get("recommendation")})
+    for it in raw_issues:   # усі помилки
+        praw = (it.get("priority") or "").strip().lower()
+        slug = _SLUG.get(praw, "improvement")
+        issues.append({"category": it.get("category"),
+                       "priority": slug,                       # critical|important|improvement
+                       "priority_label": _LABEL[slug],
+                       "title": it.get("title"), "problem": it.get("problem"),
+                       "impact": it.get("impact"), "benchmark": it.get("benchmark"),
+                       "recommendation": it.get("recommendation")})
+
+    # top_quick_wins повертає ID проблем — мапимо в заголовки (точки зростання).
+    growth = []
+    for q in (a.get("top_quick_wins") or []):
+        t = id2title.get(str(q))
+        if t:
+            growth.append(t)
+    if not growth:   # фолбек — заголовки критичних
+        growth = [i["title"] for i in issues if i["priority"] == "critical" and i["title"]][:3]
+
     tot = a.get("score_total")
     return {
         "checked": True,
@@ -125,7 +136,7 @@ def _shape(a, j, ps):
         "score_label": _score_label(tot),
         "categories": {k: _cat(k) for k in ("speed", "ux", "cta", "trust")},
         "summary": a.get("summary") or "",
-        "quick_wins": [w for w in (a.get("top_quick_wins") or []) if w],
+        "quick_wins": growth,
         "issues": issues,
         "issues_total": len(issues),
         "domain": j.get("url") or "",
