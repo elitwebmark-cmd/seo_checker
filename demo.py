@@ -278,7 +278,8 @@ def demo_result() -> dict:
         "kwplan_svg": charts.kwplan_svg(_kwplan()["trend"], _kwplan()["trend_labels"], theme="dark"),
         "cro": _cro_demo(),
         "retention": {
-            "checked": True, "repeat_rate": 50, "freq": 2.5, "life_months": 36,
+            "checked": True, "avg_check": 2500, "avg_margin": 40,
+            "repeat_rate": 50, "freq": 2.5, "life_months": 36,
             "ltv_revenue": 22500, "ltv_profit": 9000, "first_profit": 1000,
             "upside_per_customer": 8000, "monthly_customers": 340,
             "monthly_extra_profit": 34000, "annual_extra_profit": 408000, "uplift_pct": 15,

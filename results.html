@@ -399,6 +399,44 @@
     <div class="creatives-h">Рекомендовані канали й сценарії</div>
     <ul class="ret-list ret-ch">{% for ch in rt.channels %}<li>{{ ch }}</li>{% endfor %}</ul>
     {% endif %}
+
+    <details class="ret-calc" data-ret-calc>
+      <summary class="ret-calc-sum">🧮 Калькулятор retention <span class="ret-calc-hint">вписати розмір бази й порахувати</span></summary>
+      <div class="ret-calc-body">
+        <div class="ret-calc-in">
+          <label>Розмір бази (контактів)</label>
+          <input type="number" class="rc-f" data-k="base" value="10000" min="0" step="100">
+          <label>Середній чек, ₴</label>
+          <input type="number" class="rc-f" data-k="check" value="{{ rt.avg_check }}" min="0" step="50">
+          <div class="rc-row"><span>Маржа</span><span data-o="margin">{{ rt.avg_margin }}%</span></div>
+          <input type="range" class="rc-f" data-k="margin" min="5" max="90" value="{{ rt.avg_margin }}" step="1">
+          <div class="rc-row"><span>Розсилок на місяць</span><span data-o="sends">4</span></div>
+          <input type="range" class="rc-f" data-k="sends" min="1" max="30" value="4" step="1">
+          <div class="rc-row"><span>Open rate</span><span data-o="open">25%</span></div>
+          <input type="range" class="rc-f" data-k="open" min="1" max="70" value="25" step="1">
+          <div class="rc-row"><span>CTR (від відкриттів)</span><span data-o="ctr">8%</span></div>
+          <input type="range" class="rc-f" data-k="ctr" min="1" max="40" value="8" step="1">
+          <div class="rc-row"><span>Конверсія кліку в покупку</span><span data-o="conv">3%</span></div>
+          <input type="range" class="rc-f" data-k="conv" min="1" max="30" value="3" step="1">
+        </div>
+        <div class="ret-calc-out">
+          <div class="rc-cards">
+            <div class="rc-card rc-warn"><div class="rc-cap">Прибуток / місяць</div><div class="rc-v" data-r="profitM">—</div></div>
+            <div class="rc-card rc-ok"><div class="rc-cap">Прибуток / рік</div><div class="rc-v" data-r="profitY">—</div></div>
+            <div class="rc-card"><div class="rc-cap">Виручка / місяць</div><div class="rc-v" data-r="revM">—</div></div>
+            <div class="rc-card"><div class="rc-cap">Замовлень / місяць</div><div class="rc-v" data-r="ordM">—</div></div>
+          </div>
+          <div class="rc-detail">
+            <div><span>Охоплення / розсилку</span><b data-r="reach">—</b></div>
+            <div><span>Замовлень / розсилку</span><b data-r="ordSend">—</b></div>
+            <div><span>Куплять із бази / місяць</span><b data-r="share">—</b></div>
+            <div><span>Виручка / рік</span><b data-r="revY">—</b></div>
+          </div>
+          <div class="trend-kw">модель: база → відкриття → кліки → покупки. Підставте реальні open/CTR/конверсію.</div>
+        </div>
+      </div>
+    </details>
+
     <div class="trend-kw">модель на основі економіки ніші та галузевих retention-бенчмарків</div>
   </details>{# /rc-sect ret #}
   {% endif %}
@@ -650,6 +688,38 @@
         });
       });
     });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  var nf = new Intl.NumberFormat('uk-UA');
+  var uah = function(n){ return nf.format(Math.round(n)) + ' ₴'; };
+  document.querySelectorAll('[data-ret-calc]').forEach(function(box){
+    var f = {}; box.querySelectorAll('.rc-f').forEach(function(i){ f[i.dataset.k]=i; });
+    var out = {}; box.querySelectorAll('[data-r]').forEach(function(e){ out[e.dataset.r]=e; });
+    var o = {}; box.querySelectorAll('[data-o]').forEach(function(e){ o[e.dataset.o]=e; });
+    function calc(){
+      var base=+f.base.value||0, check=+f.check.value||0, margin=(+f.margin.value)/100,
+          sends=+f.sends.value||0, open=(+f.open.value)/100, ctr=(+f.ctr.value)/100, conv=(+f.conv.value)/100;
+      if(o.margin) o.margin.textContent=f.margin.value+'%';
+      if(o.sends) o.sends.textContent=f.sends.value;
+      if(o.open) o.open.textContent=f.open.value+'%';
+      if(o.ctr) o.ctr.textContent=f.ctr.value+'%';
+      if(o.conv) o.conv.textContent=f.conv.value+'%';
+      var reach=base*open, ordSend=reach*ctr*conv, ordM=ordSend*sends, revM=ordM*check, profM=revM*margin;
+      out.profitM.textContent=uah(profM);
+      out.profitY.textContent=uah(profM*12);
+      out.revM.textContent=uah(revM);
+      out.ordM.textContent=nf.format(Math.round(ordM));
+      out.reach.textContent=nf.format(Math.round(reach));
+      out.ordSend.textContent=nf.format(Math.round(ordSend));
+      out.share.textContent=base?(Math.round(ordM/base*1000)/10)+'%':'—';
+      out.revY.textContent=uah(revM*12);
+    }
+    box.querySelectorAll('.rc-f').forEach(function(i){ i.addEventListener('input', calc); });
+    calc();
   });
 })();
 </script>

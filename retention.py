@@ -96,6 +96,8 @@ def build(niche_info: dict, benefit: dict, overview: dict,
 
     return {
         "checked": True,
+        "avg_check": int(round(check)),
+        "avg_margin": int(round(margin)),
         "repeat_rate": repeat_rate,          # % повторних (бенчмарк ніші)
         "freq": round(freq, 1),              # покупок/рік
         "life_months": life_m,               # строк життя клієнта
