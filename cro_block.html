@@ -31,13 +31,14 @@
   {# --- категорії --- #}
   {% if cro.categories %}
   <div class="cro-cats">
-    {% for key, name in [('speed','Швидкість'),('ux','UX'),('cta','CTA'),('trust','Довіра')] %}
+    {% for key, name in [('speed','Швидкість'),('ux','UX / Навігація'),('cta','CTA & Конверсія'),('trust','Контент & Довіра')] %}
     {% set c = cro.categories.get(key) %}
     {% if c %}
+    {% set col = '#28C76F' if (c.score or 0) >= 70 else '#FFC85A' if (c.score or 0) >= 50 else '#FD3A1F' %}
     <div class="cro-cat">
-      <div class="v" style="color:{{ '#28C76F' if (c.score or 0) >= 70 else '#FFC85A' if (c.score or 0) >= 50 else '#FD3A1F' }}">{{ c.score if c.score is not none else '—' }}</div>
       <div class="l">{{ name }}</div>
-      {% if c.label %}<div class="l" style="text-transform:none;color:#b7b7c0">{{ c.label }}</div>{% endif %}
+      <div class="v" style="color:{{ col }}">{{ c.score if c.score is not none else '—' }}</div>
+      <div class="cro-catbar"><div class="cro-catbar-fill" style="width:{{ c.score or 0 }}%;background:{{ col }}"></div></div>
     </div>
     {% endif %}
     {% endfor %}
