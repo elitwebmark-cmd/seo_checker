@@ -9,8 +9,11 @@ API (розвідано з фронта CRO):
 """
 from __future__ import annotations
 import time
+import logging
 import requests
 import config
+
+log = logging.getLogger("cro")
 
 _CACHE = {}
 _TOKEN = {"v": None, "exp": 0}
@@ -32,9 +35,9 @@ def _cached(key, producer):
     return val
 
 
-def _login() -> str:
+def _login(force: bool = False) -> str:
     now = time.time()
-    if _TOKEN["v"] and now < _TOKEN["exp"]:
+    if not force and _TOKEN["v"] and now < _TOKEN["exp"]:
         return _TOKEN["v"]
     r = requests.post(
         config.CRO_BASE_URL.rstrip("/") + "/api/login",
@@ -43,7 +46,7 @@ def _login() -> str:
     r.raise_for_status()
     tok = (r.json() or {}).get("token")
     _TOKEN["v"] = tok
-    _TOKEN["exp"] = now + 3000   # ~50 хв
+    _TOKEN["exp"] = now + 900    # 15 хв (токен може інвалідуватись раніше)
     return tok
 
 
@@ -73,20 +76,33 @@ def audit(domain: str, lang: str = None) -> dict:
     return _cached(f"cro:{domain}", lambda: _fetch(domain, lang))
 
 
+def _audit_call(domain: str, lang: str, force_login: bool):
+    tok = _login(force=force_login)
+    if not tok:
+        return None
+    return requests.post(
+        config.CRO_BASE_URL.rstrip("/") + "/api/audit",
+        json={"url": _clean_domain(domain), "lang": lang},
+        headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"},
+        timeout=config.CRO_AUDIT_TIMEOUT)
+
+
 def _fetch(domain: str, lang: str) -> dict:
     try:
-        tok = _login()
-        if not tok:
+        r = _audit_call(domain, lang, force_login=False)
+        if r is None:
+            log.warning("CRO: логін не вдався для %s", domain)
             return None
-        r = requests.post(
-            config.CRO_BASE_URL.rstrip("/") + "/api/audit",
-            json={"url": _clean_domain(domain), "lang": lang},
-            headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"},
-            timeout=config.CRO_AUDIT_TIMEOUT)
-        if r.status_code >= 400:
+        # токен протух/інвалідований -> перелогін і одна повторна спроба
+        if r.status_code in (401, 403):
+            log.info("CRO: %s -> %s, перелогін і повтор", domain, r.status_code)
+            r = _audit_call(domain, lang, force_login=True)
+        if r is None or r.status_code >= 400:
+            log.warning("CRO: аудит %s -> HTTP %s", domain, getattr(r, "status_code", "None"))
             return None
         j = r.json()
-    except Exception:
+    except Exception as e:
+        log.warning("CRO: помилка аудиту %s: %s", domain, str(e)[:160])
         return None
     a = (j or {}).get("audit") or {}
     if not a:
