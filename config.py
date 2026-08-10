@@ -18,7 +18,7 @@ GOOGLE_ADS_CLIENT_SECRET = os.getenv("GOOGLE_ADS_CLIENT_SECRET", "")
 GOOGLE_ADS_REFRESH_TOKEN = os.getenv("GOOGLE_ADS_REFRESH_TOKEN", "")
 GOOGLE_ADS_LOGIN_CUSTOMER_ID = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "")  # MCC, 10 цифр без дефісів
 GOOGLE_ADS_CUSTOMER_ID = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "")             # акаунт для запиту (можна = MCC)
-GOOGLE_ADS_API_VERSION = os.getenv("GOOGLE_ADS_API_VERSION", "v21")
+GOOGLE_ADS_API_VERSION = os.getenv("GOOGLE_ADS_API_VERSION", "v22")
 KWPLAN_GEO = os.getenv("KWPLAN_GEO", "2804")        # 2804 = Україна (geoTargetConstants)
 KWPLAN_LANG = os.getenv("KWPLAN_LANG", "1013")      # 1013 = укр., 1031 = рос. (languageConstants)
 KWPLAN_LIMIT = int(os.getenv("KWPLAN_LIMIT", "15")) # скільки топ-запитів лишати у звіті
