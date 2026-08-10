@@ -150,7 +150,15 @@ def debug(domain: str) -> dict:
         out["error"] = "не всі ключі задані (developer_token/client_id/secret/refresh_token/customer_id)"
         return out
     try:
-        _access_token()
+        tr = requests.post(_TOKEN_URL, data={
+            "client_id": config.GOOGLE_ADS_CLIENT_ID,
+            "client_secret": config.GOOGLE_ADS_CLIENT_SECRET,
+            "refresh_token": config.GOOGLE_ADS_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        }, timeout=config.KWPLAN_TIMEOUT)
+        if tr.status_code >= 400:
+            out["access_token_error"] = {"status": tr.status_code, "body": tr.json()}
+            return out
         out["access_token"] = "OK"
     except Exception as e:
         out["access_token_error"] = str(e)[:400]
