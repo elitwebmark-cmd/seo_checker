@@ -144,8 +144,13 @@ def _fetch(domain: str) -> dict:
 
 def debug(domain: str) -> dict:
     """Сира діагностика: чи готові ключі, чи проходить токен, що повертає API."""
+    cid = config.GOOGLE_ADS_CLIENT_ID or ""
+    rt = config.GOOGLE_ADS_REFRESH_TOKEN or ""
     out = {"ready": _ready(), "customer_id": bool(config.GOOGLE_ADS_CUSTOMER_ID),
-           "login_customer_id": bool(config.GOOGLE_ADS_LOGIN_CUSTOMER_ID)}
+           "login_customer_id": bool(config.GOOGLE_ADS_LOGIN_CUSTOMER_ID),
+           "client_id_tail": cid[-30:] if cid else None,
+           "client_secret_len": len(config.GOOGLE_ADS_CLIENT_SECRET or ""),
+           "refresh_token_prefix": rt[:12] if rt else None}
     if not _ready():
         out["error"] = "не всі ключі задані (developer_token/client_id/secret/refresh_token/customer_id)"
         return out
