@@ -324,7 +324,7 @@
       <span class="dot dot-red"></span>
       <span class="sig-v">Працює · <span class="u">{{ r.meta_ads.count }}</span> активних крео</span>
       {% if r.meta_ads.page %}<span class="sig-sub">сторінка: {{ r.meta_ads.page }}</span>{% endif %}
-      {% if r.meta_ads.by_keyword %}<span class="sig-sub">⚠ пошук за ключовим словом — можливі й інші рекламодавці</span>{% endif %}
+      {% if r.meta_ads.by_keyword %}<span class="meta-kw-warn">⚠ пошук за ключовим словом — можливі й інші рекламодавці, треба обов'язково перевірити руками.</span>{% endif %}
       {% if r.meta_ads.platforms %}<span class="sig-sub">майданчики: {% if r.meta_ads.platforms.facebook %}<b class="fmt-on">FB {{ r.meta_ads.platforms.facebook }}</b>{% else %}<span class="fmt-off">FB —</span>{% endif %} · {% if r.meta_ads.platforms.instagram %}<b class="fmt-on">IG {{ r.meta_ads.platforms.instagram }}</b>{% else %}<span class="fmt-off">IG —</span>{% endif %} · {% if r.meta_ads.platforms.messenger %}<b class="fmt-on">Messenger {{ r.meta_ads.platforms.messenger }}</b>{% else %}<span class="fmt-off">Messenger —</span>{% endif %} · {% if r.meta_ads.platforms.audience_network %}<b class="fmt-on">AN {{ r.meta_ads.platforms.audience_network }}</b>{% else %}<span class="fmt-off">AN —</span>{% endif %}</span>{% endif %}
       {% else %}
       <span class="dot dot-off"></span>
