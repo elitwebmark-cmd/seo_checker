@@ -410,21 +410,6 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 </div>
 {% endif %}
 
-{% if r.cases %}
-<div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Схожі кейси Elit-Web</h3></div>
-  <table class="tbl">
-    <colgroup><col style="width:40%"><col style="width:35%"><col style="width:25%"></colgroup>
-    <thead><tr><th>Проєкт</th><th style="text-align:left">Послуга</th><th style="text-align:left">Ніша / країна</th></tr></thead>
-    <tbody>
-    {% for c in r.cases[:10] %}
-      <tr><td>{{ c.domain }}</td><td class="chip">{{ c.service }}</td><td style="text-align:left">{{ c.country or '—' }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
-
 {% if r.services %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Рекомендовані напрямки просування</h3></div>
