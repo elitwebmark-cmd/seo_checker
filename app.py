@@ -449,10 +449,21 @@ def hubspot_deal_hook():
     secret = request.args.get("secret") or request.headers.get("X-Webhook-Secret", "")
     if not config.HUBSPOT_WEBHOOK_SECRET or secret != config.HUBSPOT_WEBHOOK_SECRET:
         return jsonify({"ok": False, "error": "forbidden"}), 403
-    data = request.get_json(force=True, silent=True) or {}
+    data = request.get_json(force=True, silent=True)
+    if not isinstance(data, dict):
+        # тіло не JSON (напр. form-encoded) — пробуємо form/values
+        data = request.form.to_dict() or {}
     deal_id = hubspot_sync.extract_deal_id(data, request.args)
     if not deal_id:
-        return jsonify({"ok": False, "error": "no deal id"}), 400
+        # діагностика для Performance history HubSpot: що саме прийшло
+        try:
+            _keys = list(data.keys()) if isinstance(data, dict) else []
+            _raw = request.get_data(as_text=True)[:600]
+        except Exception:
+            _keys, _raw = [], ""
+        return jsonify({"ok": False, "error": "no deal id",
+                        "received_keys": _keys, "content_type": request.content_type,
+                        "raw_sample": _raw}), 400
     # Діагностика: синхронний прогін із поверненням помилки (для налаштування)
     if request.args.get("debug") == "1":
         _nocro = request.args.get("nocro") == "1"

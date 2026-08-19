@@ -24,20 +24,58 @@ def _headers():
             "Content-Type": "application/json"}
 
 
+_ID_KEYS = ("deal_id", "dealId", "objectId", "object_id", "hs_object_id", "vid", "id",
+            "recordId", "record_id", "hs_object_id__value")
+
+
+def _unwrap(v):
+    # HubSpot інколи кладе значення як {"value": ...}
+    if isinstance(v, dict) and "value" in v:
+        return v.get("value")
+    return v
+
+
+def _deep_find_id(obj, depth=0):
+    """Рекурсивний пошук id-подібного поля у довільному тілі вебхука HubSpot."""
+    if depth > 6:
+        return None
+    if isinstance(obj, dict):
+        for k in _ID_KEYS:
+            if k in obj:
+                val = _unwrap(obj[k])
+                if val not in (None, "", 0, "0"):
+                    return str(val)
+        for v in obj.values():
+            r = _deep_find_id(v, depth + 1)
+            if r:
+                return r
+    elif isinstance(obj, list):
+        for it in obj:
+            r = _deep_find_id(it, depth + 1)
+            if r:
+                return r
+    return None
+
+
 def extract_deal_id(data: dict, args: dict) -> str | None:
-    keys = ("deal_id", "dealId", "objectId", "hs_object_id", "vid", "id")
-    for k in keys:
-        v = (args or {}).get(k) or (data.get(k) if isinstance(data, dict) else None)
+    # 1) з query-параметрів (ручний тригер / кастомний URL)
+    for k in _ID_KEYS:
+        v = (args or {}).get(k)
         if v:
             return str(v)
+    # 2) верхній рівень тіла
+    for k in _ID_KEYS:
+        v = data.get(k) if isinstance(data, dict) else None
+        if v:
+            return str(_unwrap(v))
+    # 3) properties.hs_object_id ({value:...} або просто значення)
     props = data.get("properties") if isinstance(data, dict) else None
     if isinstance(props, dict):
-        hs = props.get("hs_object_id")
-        if isinstance(hs, dict):
-            hs = hs.get("value")
+        hs = _unwrap(props.get("hs_object_id"))
         if hs:
             return str(hs)
-    return None
+    # 4) глибокий рекурсивний пошук (нативний формат HubSpot «Send a webhook»)
+    return _deep_find_id(data)
 
 
 def get_deal(deal_id: str) -> dict:
