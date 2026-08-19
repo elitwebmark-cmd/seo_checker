@@ -575,12 +575,15 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
     return "<br>".join(p)
 
 
-def process_deal_debug(deal_id: str, do_cro=None) -> dict:
+def process_deal_debug(deal_id: str, do_cro=None, fast=False) -> dict:
     """Синхронний прогін із поверненням точної помилки на кроці, де вона сталась.
-    do_cro=None -> береться з конфігу; False -> швидкий прогін без CRO."""
+    do_cro=None -> береться з конфігу; False -> без CRO.
+    fast=True -> лише SEO+on-page (без ads/Meta/social/CRO), щоб вкластися у 30с."""
     if do_cro is None:
         do_cro = config.HUBSPOT_DO_CRO
-    out = {"deal_id": deal_id, "do_cro": bool(do_cro)}
+    if fast:
+        do_cro = False
+    out = {"deal_id": deal_id, "do_cro": bool(do_cro), "fast": bool(fast)}
     if not config.HUBSPOT_TOKEN:
         return {**out, "error": "no HUBSPOT_TOKEN"}
     try:
@@ -593,8 +596,9 @@ def process_deal_debug(deal_id: str, do_cro=None) -> dict:
     if not domain:
         return {**out, "step": "domain", "error": "empty domain"}
     try:
+        _enrich = (False if fast else config.HUBSPOT_ENRICH)
         res = qualify.qualify(domain, do_onpage=True,
-                              do_ads=config.HUBSPOT_ENRICH, do_social=config.HUBSPOT_ENRICH,
+                              do_ads=_enrich, do_social=_enrich,
                               do_cro=do_cro)
         out["verdict"] = res.get("verdict")
     except Exception as e:
