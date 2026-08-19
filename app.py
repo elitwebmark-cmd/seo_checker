@@ -542,6 +542,32 @@ def debug_meta():
                     mimetype="application/json")
 
 
+@app.route("/debug/kw")
+def debug_kw():
+    """Діагностика resolve ключа: сирі відповіді SemRush phrase_this/phrase_organic."""
+    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    kw = (request.args.get("keyword") or "").strip()
+    domain = (request.args.get("domain") or "").strip().lower().replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    if not kw:
+        return jsonify({"ok": False, "error": "no keyword"}), 400
+    out = {"keyword": kw, "domain": domain, "db": config.SEMRUSH_DB}
+    try:
+        out["keyword_data"] = semrush.keyword_data(kw)
+    except Exception as e:
+        out["keyword_data_err"] = repr(e)[:300]
+    try:
+        out["position"] = semrush.keyword_position(domain, kw) if domain else None
+    except Exception as e:
+        out["position_err"] = repr(e)[:300]
+    try:
+        out["resolve"] = semrush.resolve_keyword(domain, kw)
+    except Exception as e:
+        out["resolve_err"] = repr(e)[:300]
+    import json as _json
+    return Response(_json.dumps(out, ensure_ascii=False, indent=2), mimetype="application/json")
+
+
 @app.route("/debug/ads")
 def debug_ads():
     if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:

@@ -396,7 +396,7 @@ def keyword_data(keyword: str, db: str = None) -> Dict[str, Any]:
             "type": "phrase_this",
             "phrase": kw,
             "database": _db(db),
-            "export_columns": "Ph,Nq,Cp,Co,Nr,In",
+            "export_columns": "Ph,Nq,Cp,Co,Nr",
         })
     except SemrushError:
         return {}
@@ -409,7 +409,7 @@ def keyword_data(keyword: str, db: str = None) -> Dict[str, Any]:
         "volume": _safe_int(r.get("Search Volume")),
         "cpc": _safe_float(r.get("CPC")),
         "competition": _safe_float(r.get("Competition")),
-        "intent": (r.get("Intents", "") or "").split(",")[0].strip(),
+        "intent": "",
     }
 
 
