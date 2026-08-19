@@ -126,8 +126,10 @@ def _ym(d: str) -> str:
     return f"{d[:4]}-{d[4:6]}" if len(d) >= 6 else (d or "—")
 
 
-_TD = 'style="padding:3px 10px;border-bottom:1px solid #e6e6e6;white-space:nowrap"'
-_TH = 'style="padding:3px 10px;border-bottom:2px solid #d0d0d0;text-align:left"'
+_TD = ('style="padding:3px 12px;border-bottom:1px solid #e6e6e6;'
+       'border-right:1px solid #ececec;white-space:nowrap"')
+_TH = ('style="padding:3px 12px;border-bottom:2px solid #d0d0d0;'
+       'border-right:1px solid #d0d0d0;text-align:left"')
 
 
 def _arrow(cur, prev) -> str:
