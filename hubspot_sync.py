@@ -269,6 +269,15 @@ def _lbl(label, value):
     return f"<b>{label}:</b> {value}"
 
 
+def _safe(fn, res) -> list:
+    """Обгортка: якщо блок падає на реальних даних — не ламаємо всю нотатку."""
+    try:
+        return fn(res)
+    except Exception as e:
+        log.warning("note block %s failed: %s", getattr(fn, "__name__", "?"), str(e)[:200])
+        return [f"<i>(блок {getattr(fn, '__name__', '')} тимчасово недоступний)</i>", SEP, ""]
+
+
 def _meta_block(res) -> list:
     """META-реклама (Facebook/Instagram) через Apify Ad Library."""
     me = res.get("meta_ads") or {}
@@ -536,14 +545,14 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         _dyn_ppc(hist), "",
         _lbl("Висновок по PPC", _ppc_conclusion(res)),
         SEP, "",
-        *_meta_block(res),
+        *_safe(_meta_block, res),
         "<b>SMM ІНФОРМАЦІЯ</b>",
         _lbl("Instagram", ig_line),
         _lbl("Регулярність", reg_line),
         _lbl("Висновок по SMM", _smm_conclusion(res)),
         SEP, "",
-        *_cro_block(res),
-        *_retention_block(res),
+        *_safe(_cro_block, res),
+        *_safe(_retention_block, res),
         "<b>Під які послуги підходить:</b>",
         svc,
         SEP, "",
@@ -553,9 +562,12 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
     return "<br>".join(p)
 
 
-def process_deal_debug(deal_id: str) -> dict:
-    """Синхронний прогін із поверненням точної помилки на кроці, де вона сталась."""
-    out = {"deal_id": deal_id}
+def process_deal_debug(deal_id: str, do_cro=None) -> dict:
+    """Синхронний прогін із поверненням точної помилки на кроці, де вона сталась.
+    do_cro=None -> береться з конфігу; False -> швидкий прогін без CRO."""
+    if do_cro is None:
+        do_cro = config.HUBSPOT_DO_CRO
+    out = {"deal_id": deal_id, "do_cro": bool(do_cro)}
     if not config.HUBSPOT_TOKEN:
         return {**out, "error": "no HUBSPOT_TOKEN"}
     try:
@@ -570,7 +582,7 @@ def process_deal_debug(deal_id: str) -> dict:
     try:
         res = qualify.qualify(domain, do_onpage=True,
                               do_ads=config.HUBSPOT_ENRICH, do_social=config.HUBSPOT_ENRICH,
-                              do_cro=config.HUBSPOT_DO_CRO)
+                              do_cro=do_cro)
         out["verdict"] = res.get("verdict")
     except Exception as e:
         return {**out, "step": "qualify", "error": repr(e)[:400]}

@@ -455,7 +455,9 @@ def hubspot_deal_hook():
         return jsonify({"ok": False, "error": "no deal id"}), 400
     # Діагностика: синхронний прогін із поверненням помилки (для налаштування)
     if request.args.get("debug") == "1":
-        return jsonify(hubspot_sync.process_deal_debug(deal_id))
+        _nocro = request.args.get("nocro") == "1"
+        return jsonify(hubspot_sync.process_deal_debug(
+            deal_id, do_cro=(False if _nocro else None)))
     # Відповідаємо миттєво, аналіз — у фоні (HubSpot чекає лише кілька секунд)
     threading.Thread(target=hubspot_sync.process_deal, args=(deal_id,), daemon=True).start()
     return jsonify({"ok": True, "deal_id": deal_id})
