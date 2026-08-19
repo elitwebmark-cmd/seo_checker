@@ -155,7 +155,9 @@ def _table(header_cells, rows) -> str:
         return "н/д"
     head = "".join(f"<th {_TH}>{c}</th>" for c in header_cells)
     body = "".join("<tr>" + "".join(f"<td {_TD}>{c}</td>" for c in r) + "</tr>" for r in rows)
-    return f'<table style="border-collapse:collapse;font-size:13px"><tr>{head}</tr>{body}</table>'
+    # border="1" cellpadding — старий HTML-атрибут, який HubSpot не вирізає (inline-CSS border він чистить)
+    return (f'<table border="1" cellpadding="6" cellspacing="0" '
+            f'style="border-collapse:collapse;font-size:13px"><tr>{head}</tr>{body}</table>')
 
 
 def _dyn_seo(hist) -> str:
