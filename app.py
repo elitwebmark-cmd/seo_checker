@@ -443,7 +443,7 @@ def api_analyze():
     return jsonify({"results": out})
 
 
-@app.route("/hooks/hubspot-deal", methods=["POST"])
+@app.route("/hooks/hubspot-deal", methods=["POST", "GET"])
 def hubspot_deal_hook():
     # Захист: секрет з ?secret= або заголовка. Порожній секрет = endpoint закритий.
     secret = request.args.get("secret") or request.headers.get("X-Webhook-Secret", "")
