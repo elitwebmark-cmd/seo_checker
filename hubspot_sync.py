@@ -832,6 +832,94 @@ def process_deal_async(deal_id: str):
     log.info("queue: deal %s поставлено в чергу", deal_id)
 
 
+# --- Полінг нових угод -------------------------------------------------------
+# Доставка вебхука HubSpot нестабільна (запити часто не долітають до сервера).
+# Тому сервіс сам періодично питає HubSpot: «які нові угоди в DRP ще без нотатки?»
+# і ставить їх у ту саму чергу. Це не залежить від вебхука взагалі.
+_POLL_DONE = set()            # deal_id, які вже мають нотатку — не чіпаємо
+_POLL_STARTED = False
+_POLL_LOCK = threading.Lock()
+
+
+def _poll_recent_deals():
+    """Угоди у тестовій воронці, створені за останні LOOKBACK хв."""
+    since_ms = int((time.time() - config.HUBSPOT_POLL_LOOKBACK_MIN * 60) * 1000)
+    url = f"{config.HUBSPOT_API_BASE}/crm/v3/objects/deals/search"
+    body = {"filterGroups": [{"filters": [
+        {"propertyName": "pipeline", "operator": "EQ",
+         "value": config.HUBSPOT_TEST_PIPELINE_ID},
+        {"propertyName": "createdate", "operator": "GTE", "value": str(since_ms)}]}],
+        "properties": ["dealname"],
+        "sorts": [{"propertyName": "createdate", "direction": "DESCENDING"}],
+        "limit": 50}
+    r = requests.post(url, headers=_headers(), json=body, timeout=20)
+    if r.status_code != 200:
+        log.warning("poll: пошук угод %s: %s", r.status_code, r.text[:200])
+        return []
+    return r.json().get("results", [])
+
+
+def _deal_note_count(deal_id: str):
+    """Скільки нотаток асоційовано з угодою (None = перевірка не вдалася)."""
+    url = f"{config.HUBSPOT_API_BASE}/crm/v3/objects/deals/{deal_id}/associations/notes"
+    try:
+        r = requests.get(url, headers=_headers(), timeout=15)
+        if r.status_code != 200:
+            return None
+        return len(r.json().get("results", []))
+    except Exception:
+        return None
+
+
+def _poll_once():
+    if not config.HUBSPOT_TOKEN:
+        return
+    for d in _poll_recent_deals():
+        did = str(d.get("id"))
+        if not did or did in _POLL_DONE:
+            continue
+        with _INFLIGHT_LOCK:
+            busy = did in _INFLIGHT or did in list(_DEAL_QUEUE.queue)
+        if busy:
+            continue
+        cnt = _deal_note_count(did)
+        if cnt is None:
+            continue                      # не змогли перевірити — не чіпаємо цикл
+        if cnt > 0:
+            _POLL_DONE.add(did)           # нотатка вже є — готово
+            continue
+        name = (d.get("properties") or {}).get("dealname") or "?"
+        log.info("poll: угода %s (%s) без нотатки — ставлю в чергу", did, name)
+        process_deal_async(did)
+    if len(_POLL_DONE) > 2000:            # не тримати нескінченно (поза вікном пошуку)
+        _POLL_DONE.clear()
+
+
+def _poll_loop():
+    time.sleep(10)                        # дати застосунку піднятись
+    while True:
+        try:
+            _poll_once()
+        except Exception:
+            log.exception("poll: цикл впав")
+        time.sleep(config.HUBSPOT_POLL_INTERVAL)
+
+
+def start_poller():
+    """Запускає фоновий полінг (один раз на процес)."""
+    global _POLL_STARTED
+    if (_POLL_STARTED or not config.HUBSPOT_POLL_ENABLED
+            or not config.HUBSPOT_TOKEN):
+        return
+    with _POLL_LOCK:
+        if _POLL_STARTED:
+            return
+        threading.Thread(target=_poll_loop, name="deal-poller", daemon=True).start()
+        _POLL_STARTED = True
+        log.info("poll: фоновий полінг запущено (кожні %sс, вікно %s хв)",
+                 config.HUBSPOT_POLL_INTERVAL, config.HUBSPOT_POLL_LOOKBACK_MIN)
+
+
 def _process_deal_inner(deal_id: str):
     if not config.HUBSPOT_TOKEN:
         return

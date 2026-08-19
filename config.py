@@ -96,6 +96,11 @@ HUBSPOT_ENRICH = os.getenv("HUBSPOT_ENRICH", "1") not in ("0", "false", "False",
 HUBSPOT_DO_CRO = os.getenv("HUBSPOT_DO_CRO", "1") not in ("0", "false", "False", "")
 # Автозаповнення полів-списків діла: Индустрия/Ниша/Подниша
 HUBSPOT_SET_NICHE = os.getenv("HUBSPOT_SET_NICHE", "1") not in ("0", "false", "False", "")
+# Полінг: сервіс сам шукає нові угоди DRP без нотатки (надійний fallback до вебхука,
+# доставка якого від HubSpot нестабільна). 0 = вимкнути.
+HUBSPOT_POLL_ENABLED = os.getenv("HUBSPOT_POLL_ENABLED", "1") not in ("0", "false", "False", "")
+HUBSPOT_POLL_INTERVAL = int(os.getenv("HUBSPOT_POLL_INTERVAL", "60"))        # секунд між опитуваннями
+HUBSPOT_POLL_LOOKBACK_MIN = int(os.getenv("HUBSPOT_POLL_LOOKBACK_MIN", "45"))  # вікно «нових» угод, хв
 
 # --- Manus (глибока якісна аналітика, асинхронно) ---
 MANUS_API_KEY = os.getenv("MANUS_API_KEY", "")

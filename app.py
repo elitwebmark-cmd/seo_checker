@@ -17,6 +17,12 @@ WORKERS = int(os.getenv("WORKERS", "6"))
 JOB_TIMEOUT = int(os.getenv("JOB_TIMEOUT", "240"))       # межа на весь джоб, c
 DOMAIN_TIMEOUT = int(os.getenv("DOMAIN_TIMEOUT", "90"))  # орієнтир на 1 домен, c
 
+# Фоновий полінг угод HubSpot (надійний fallback до вебхука). Стартує раз на процес.
+try:
+    hubspot_sync.start_poller()
+except Exception:
+    log.exception("не вдалося запустити полінг HubSpot")
+
 JOBS = {}
 JOBS_LOCK = threading.Lock()
 
