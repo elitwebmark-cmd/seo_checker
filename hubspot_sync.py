@@ -779,6 +779,59 @@ def process_deal(deal_id: str):
             _INFLIGHT.discard(deal_id)
 
 
+# --- Фонова черга обробки ---------------------------------------------------
+# Вебхук HubSpot ("Send a webhook") чекає на відповідь лише ~10с і рве з'єднання.
+# Повний прогін (SEO+Meta+CRO) триває 4-5 хв, тож синхронна обробка НЕ встигає:
+# HubSpot відвалюється по таймауту, а обрив з'єднання вбиває прогін до створення
+# нотатки. Рішення: вебхук миттєво ставить deal_id у чергу і повертає 200, а
+# постійний фоновий потік-споживач (стартує один раз при імпорті, живе весь час
+# роботи процесу gunicorn --workers 1) обробляє діла послідовно.
+import queue as _queue
+
+_DEAL_QUEUE: "_queue.Queue[str]" = _queue.Queue()
+_WORKER_STARTED = False
+_WORKER_LOCK = threading.Lock()
+
+
+def _deal_queue_worker():
+    while True:
+        deal_id = _DEAL_QUEUE.get()
+        try:
+            log.info("queue: старт обробки deal %s (у черзі ще %d)",
+                     deal_id, _DEAL_QUEUE.qsize())
+            process_deal(deal_id)
+            log.info("queue: завершено deal %s", deal_id)
+        except Exception:
+            log.exception("queue: process_deal впав для %s", deal_id)
+        finally:
+            _DEAL_QUEUE.task_done()
+
+
+def _ensure_worker():
+    global _WORKER_STARTED
+    if _WORKER_STARTED:
+        return
+    with _WORKER_LOCK:
+        if not _WORKER_STARTED:
+            threading.Thread(target=_deal_queue_worker,
+                             name="deal-queue-worker", daemon=True).start()
+            _WORKER_STARTED = True
+            log.info("queue: фоновий воркер запущено")
+
+
+def process_deal_async(deal_id: str):
+    """Ставить діло в чергу і миттєво повертає керування (вебхук HubSpot отримує
+    200 за <1с). Дедуп: не додаємо той самий deal_id, якщо він уже обробляється
+    або вже стоїть у черзі."""
+    _ensure_worker()
+    with _INFLIGHT_LOCK:
+        if deal_id in _INFLIGHT or deal_id in list(_DEAL_QUEUE.queue):
+            log.info("queue: deal %s вже в роботі/черзі — пропуск", deal_id)
+            return
+    _DEAL_QUEUE.put(deal_id)
+    log.info("queue: deal %s поставлено в чергу", deal_id)
+
+
 def _process_deal_inner(deal_id: str):
     if not config.HUBSPOT_TOKEN:
         return
