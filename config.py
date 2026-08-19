@@ -72,7 +72,7 @@ APIFY_META_ACTOR = os.getenv("APIFY_META_ACTOR", "apify~facebook-ads-scraper")
 APIFY_META_INPUT = os.getenv(
     "APIFY_META_INPUT",
     '{"startUrls":[{"url":"{url}"}],"count":{count},"activeStatus":"active"}')
-APIFY_TIMEOUT = int(os.getenv("APIFY_TIMEOUT", "90"))        # таймаут актора (сек); з maxItems завершується швидше
+APIFY_TIMEOUT = int(os.getenv("APIFY_TIMEOUT", "150"))       # таймаут актора (сек); FB-скрапер часто >90с → TIMED_OUT
 META_ADS_LIMIT = int(os.getenv("META_ADS_LIMIT", "30"))      # кеп результатів для точного пошуку за FB-сторінкою
 META_KEYWORD_LIMIT = int(os.getenv("META_KEYWORD_LIMIT", "10"))  # менший кеп для keyword-пошуку (чужі крео, дорого)
 META_ADS_COUNTRY = os.getenv("META_ADS_COUNTRY", "ALL")   # ALL = усі країни (не відсікати таргет на інші гео)

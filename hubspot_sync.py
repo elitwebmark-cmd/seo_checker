@@ -440,6 +440,11 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
                                     for k in ("search", "youtube", "shopping", "maps", "play"))
     else:
         platforms_line = "—"
+    # посилання на кабінет Google Ads Transparency — лише коли реклама знайдена/крутиться
+    _alink = ad.get("link") if (ad.get("checked") and ad.get("running") and ad.get("link")) else None
+    ppc_link_rows = ([_lbl("Google Ads Transparency",
+                           f'<a href="{_html.escape(str(_alink))}">{_html.escape(str(_alink))}</a>')]
+                     if _alink else [])
     sh = res.get("shopping") or {}
     if sh.get("checked") and sh.get("uses"):
         shop = f" · магазин «{sh.get('shop_name')}»" if sh.get("shop_name") else ""
@@ -540,6 +545,7 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         SEP, "",
         "<b>PPC ІНФОРМАЦІЯ</b>",
         _lbl("Контекст (Transparency)", ads_line),
+        *ppc_link_rows,
         _lbl("Оголошення по платформах", platforms_line),
         _lbl("Google Shopping / PLA", shopping_line),
         _lbl("Контекст-бюджет (SemRush)", budget_line),
