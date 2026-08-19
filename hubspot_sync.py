@@ -497,9 +497,6 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
     mk = {"yes": "✅", "maybe": "🟡", "no": "⛔"}
     svc = "<br>".join(f"{mk.get(s['level'], '•')} {_html.escape(s['name'])}" for s in (res.get("services") or []))
 
-    def _lbl(label, value):
-        return f"<b>{label}:</b> {value}"
-
     econ_lines = []
     if bn.get("conv_pct") and bn.get("sales_uplift") is not None:
         q = (f" · комерц. якість трафіку {bn.get('conv_quality_pct')}%"
