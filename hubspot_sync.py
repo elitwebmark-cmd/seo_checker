@@ -753,7 +753,12 @@ def _process_deal_inner(deal_id: str):
         log.info("deal %s (%s) -> %s, note created", deal_id, domain, res.get("verdict"))
     except Exception:
         log.exception("create_note failed for %s", deal_id)
-    # CRO — окремою нотаткою (не блокує основну відписку)
-    maybe_cro(deal_id, domain)
+    # CRO — окремою нотаткою, синхронно (фонові потоки на Railway не доживають).
+    # Основна нотатка вже збережена вище, тож CRO лише додає другу нотатку.
+    if config.HUBSPOT_DO_CRO:
+        try:
+            _cro_worker(deal_id, domain)
+        except Exception:
+            log.exception("cro worker failed for %s", deal_id)
     # Глибока аналітика Manus (у фоні, лише Ідеально/Добре)
     maybe_manus(deal_id, domain, res)
