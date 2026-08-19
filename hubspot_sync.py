@@ -859,14 +859,38 @@ def _poll_recent_deals():
     return r.json().get("results", [])
 
 
-def _deal_note_count(deal_id: str):
-    """Скільки нотаток асоційовано з угодою (None = перевірка не вдалася)."""
-    url = f"{config.HUBSPOT_API_BASE}/crm/v3/objects/deals/{deal_id}/associations/notes"
+# Маркери НАШИХ нотаток (щоб відрізнити від рідних нотаток HubSpot: FB Lead Ads,
+# дублікати, ручні нотатки менеджерів тощо). Будь-який збіг = ми вже обробили.
+_OUR_NOTE_MARKERS = ("ЗАГАЛЬНА ІНФОРМАЦІЯ", "CRO-АУДИТ", "SEO Qualifier")
+
+
+def _has_our_note(deal_id: str):
+    """True, якщо в угоди вже є САМЕ НАША нотатка (за маркером у тілі).
+    False — наших нема (можна обробляти). None — перевірка не вдалася (пропустити цикл)."""
     try:
+        url = f"{config.HUBSPOT_API_BASE}/crm/v3/objects/deals/{deal_id}/associations/notes"
         r = requests.get(url, headers=_headers(), timeout=15)
         if r.status_code != 200:
             return None
-        return len(r.json().get("results", []))
+        ids = []
+        for x in (r.json().get("results") or []):
+            i = x.get("toObjectId") or x.get("id") or x.get("toObjectId".lower())
+            if i:
+                ids.append(str(i))
+        if not ids:
+            return False
+        rr = requests.post(
+            f"{config.HUBSPOT_API_BASE}/crm/v3/objects/notes/batch/read",
+            headers=_headers(),
+            json={"properties": ["hs_note_body"], "inputs": [{"id": i} for i in ids[:80]]},
+            timeout=20)
+        if rr.status_code != 200:
+            return None
+        for res in (rr.json().get("results") or []):
+            body = (res.get("properties") or {}).get("hs_note_body") or ""
+            if any(mk in body for mk in _OUR_NOTE_MARKERS):
+                return True
+        return False
     except Exception:
         return None
 
@@ -882,14 +906,14 @@ def _poll_once():
             busy = did in _INFLIGHT or did in list(_DEAL_QUEUE.queue)
         if busy:
             continue
-        cnt = _deal_note_count(did)
-        if cnt is None:
+        has = _has_our_note(did)          # саме НАШОЇ нотатки, не будь-якої
+        if has is None:
             continue                      # не змогли перевірити — не чіпаємо цикл
-        if cnt > 0:
-            _POLL_DONE.add(did)           # нотатка вже є — готово
+        if has:
+            _POLL_DONE.add(did)           # ми вже обробили — готово
             continue
         name = (d.get("properties") or {}).get("dealname") or "?"
-        log.info("poll: угода %s (%s) без нотатки — ставлю в чергу", did, name)
+        log.info("poll: угода %s (%s) без нашої нотатки — ставлю в чергу", did, name)
         process_deal_async(did)
     if len(_POLL_DONE) > 2000:            # не тримати нескінченно (поза вікном пошуку)
         _POLL_DONE.clear()
