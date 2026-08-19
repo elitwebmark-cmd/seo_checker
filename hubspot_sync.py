@@ -265,6 +265,113 @@ def _smm_conclusion(res) -> str:
     return f"Профіль слабкий ({base}) — треба розвивати."
 
 
+def _lbl(label, value):
+    return f"<b>{label}:</b> {value}"
+
+
+def _meta_block(res) -> list:
+    """META-реклама (Facebook/Instagram) через Apify Ad Library."""
+    me = res.get("meta_ads") or {}
+    if me.get("checked") and me.get("running"):
+        pm = me.get("platforms") or {}
+        plats = " · ".join(f"{lbl} {pm.get(k, 0)}" for k, lbl in
+                           (("facebook", "FB"), ("instagram", "IG"),
+                            ("messenger", "Msg"), ("audience_network", "AN")))
+        line = f"працює, {me.get('count', 0)} активних крео"
+        concl = "Уже крутить платний таргет — є бюджет і намір; можна вести/масштабувати."
+    elif me.get("checked"):
+        line = "не знайдено активної реклами"
+        concl = "Платний таргет не виявлено — канал вільний для запуску."
+        plats = "—"
+    else:
+        line = me.get("note") or "не перевірялось"
+        concl = "—"
+        plats = "—"
+    rows = [
+        "<b>META-РЕКЛАМА (Facebook / Instagram)</b>",
+        _lbl("Ad Library (Apify)", line),
+    ]
+    if me.get("checked") and me.get("running"):
+        rows.append(_lbl("Майданчики", plats))
+        if me.get("page"):
+            rows.append(_lbl("Сторінка", _html.escape(str(me.get("page")))))
+        if me.get("by_keyword"):
+            rows.append("⚠️ пошук за ключовим словом — можливі й інші рекламодавці, перевірити руками")
+    rows.append(_lbl("Висновок по Meta", concl))
+    rows += [SEP, ""]
+    return rows
+
+
+def _cro_block(res) -> list:
+    """CRO-аудит (окремий сервіс Elit-Web): бал, категорії, PageSpeed, точки зростання."""
+    cr = res.get("cro") or {}
+    if not cr.get("checked"):
+        return ["<b>CRO-АУДИТ (юзабіліті / швидкість)</b>",
+                _lbl("Статус", "не виконувався"), SEP, ""]
+    cats = cr.get("categories") or {}
+    _cn = {"speed": "Швидкість", "ux": "Юзабіліті", "cta": "Заклики (CTA)", "trust": "Довіра"}
+    cat_line = " · ".join(f"{_cn[k]} {(cats.get(k) or {}).get('score', '—')}/100"
+                          for k in ("speed", "ux", "cta", "trust"))
+    ps = cr.get("pagespeed") or {}
+    ps_bits = []
+    for key, lab in (("lcp", "LCP"), ("cls", "CLS"), ("tbt", "TBT"), ("fcp", "FCP")):
+        if ps.get(key) is not None:
+            ps_bits.append(f"{lab} {ps.get(key)}")
+    rows = [
+        "<b>CRO-АУДИТ (юзабіліті / швидкість)</b>",
+        _lbl("Загальний бал", f"{cr.get('score_total', '—')}/100 ({cr.get('score_label', '—')})"),
+        _lbl("Категорії", cat_line),
+    ]
+    if ps.get("score") is not None:
+        rows.append(_lbl("PageSpeed", f"{ps.get('score')}/100" + (f" · {' · '.join(ps_bits)}" if ps_bits else "")))
+    if cr.get("summary"):
+        rows.append(_lbl("Резюме", _html.escape(str(cr.get("summary"))[:400])))
+    wins = [w for w in (cr.get("quick_wins") or []) if w][:5]
+    if wins:
+        rows.append("<b>Точки зростання (критичні):</b>")
+        rows.append("<br>".join(f"• {_html.escape(str(w))}" for w in wins))
+    crit = [i for i in (cr.get("issues") or []) if i.get("priority") == "critical"]
+    if crit:
+        rows.append(_lbl("Критичних помилок", f"{len(crit)} із {cr.get('issues_total', 0)} усього"))
+    rows += [SEP, ""]
+    return rows
+
+
+def _retention_block(res) -> list:
+    """Retention-маркетинг: LTV-економіка, сигнали каналів, рекомендації, апсайд."""
+    rt = res.get("retention") or {}
+    if not rt.get("checked"):
+        return ["<b>RETENTION-МАРКЕТИНГ (LTV / утримання)</b>",
+                _lbl("Статус", "не змодельовано (немає економіки ніші)"), SEP, ""]
+    rows = [
+        "<b>RETENTION-МАРКЕТИНГ (LTV / утримання)</b>",
+        _lbl("Економіка ніші",
+             f"сер. чек {_fmt(rt.get('avg_check'))} ₴ · маржа {rt.get('avg_margin')}% · "
+             f"повторних {rt.get('repeat_rate')}% · частота {rt.get('freq')}/рік · "
+             f"строк життя {rt.get('life_months')} міс"),
+        _lbl("LTV — прибуток з клієнта", f"{_fmt(rt.get('ltv_profit'))} ₴"),
+        _lbl("Апсайд утримання на клієнта", f"+{_fmt(rt.get('upside_per_customer'))} ₴"),
+        _lbl("Потенціал програми",
+             f"+{_fmt(rt.get('monthly_extra_profit'))} ₴/міс · "
+             f"+{_fmt(rt.get('annual_extra_profit'))} ₴/рік (утримання +{rt.get('uplift_pct')}%)"),
+    ]
+    sig = rt.get("signals")
+    if sig:
+        rows.append("<b>Сигнали каналів утримання на сайті:</b>")
+        rows.append("<br>".join(f"{'✅' if s.get('present') else '❌'} {_html.escape(s.get('name', ''))}"
+                                for s in sig))
+    ch = [c for c in (rt.get("channels") or []) if c][:6]
+    if ch:
+        rows.append("<b>Рекомендовані канали:</b>")
+        rows.append("<br>".join(f"• {_html.escape(str(c))}" for c in ch))
+    wins = [w for w in (rt.get("quick_wins") or []) if w][:5]
+    if wins:
+        rows.append("<b>Quick wins (утримання):</b>")
+        rows.append("<br>".join(f"• {_html.escape(str(w))}" for w in wins))
+    rows += [SEP, ""]
+    return rows
+
+
 def find_duplicate_deals(domain: str, exclude_id: str):
     """Інші угоди з тим самим доменом у HubSpot. None = перевірка не вдалася."""
     try:
@@ -429,11 +536,14 @@ def _note_html(domain: str, res: dict, dups=None) -> str:
         _dyn_ppc(hist), "",
         _lbl("Висновок по PPC", _ppc_conclusion(res)),
         SEP, "",
+        *_meta_block(res),
         "<b>SMM ІНФОРМАЦІЯ</b>",
         _lbl("Instagram", ig_line),
         _lbl("Регулярність", reg_line),
         _lbl("Висновок по SMM", _smm_conclusion(res)),
         SEP, "",
+        *_cro_block(res),
+        *_retention_block(res),
         "<b>Під які послуги підходить:</b>",
         svc,
         SEP, "",
@@ -459,7 +569,8 @@ def process_deal_debug(deal_id: str) -> dict:
         return {**out, "step": "domain", "error": "empty domain"}
     try:
         res = qualify.qualify(domain, do_onpage=True,
-                              do_ads=config.HUBSPOT_ENRICH, do_social=config.HUBSPOT_ENRICH)
+                              do_ads=config.HUBSPOT_ENRICH, do_social=config.HUBSPOT_ENRICH,
+                              do_cro=config.HUBSPOT_DO_CRO)
         out["verdict"] = res.get("verdict")
     except Exception as e:
         return {**out, "step": "qualify", "error": repr(e)[:400]}
@@ -526,7 +637,8 @@ def process_deal(deal_id: str):
     try:
         res = qualify.qualify(domain, do_onpage=True,
                               do_ads=config.HUBSPOT_ENRICH,
-                              do_social=config.HUBSPOT_ENRICH)
+                              do_social=config.HUBSPOT_ENRICH,
+                              do_cro=config.HUBSPOT_DO_CRO)
     except Exception as e:
         log.exception("qualify failed for %s (%s)", domain, deal_id)
         try:
