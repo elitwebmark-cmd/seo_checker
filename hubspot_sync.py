@@ -592,6 +592,10 @@ def process_deal_debug(deal_id: str, do_cro=None, fast=False) -> dict:
         props = get_deal(deal_id)
         out["pipeline"] = props.get("pipeline")
         out["domain"] = props.get(config.HUBSPOT_DEAL_DOMAIN_PROP)
+        # діагностика гейту по воронці (саме він може мовчки скіпати async-шлях)
+        out["config_pipeline"] = config.HUBSPOT_TEST_PIPELINE_ID
+        out["would_skip_async"] = bool(config.HUBSPOT_TEST_PIPELINE_ID
+                                       and props.get("pipeline") != config.HUBSPOT_TEST_PIPELINE_ID)
     except Exception as e:
         return {**out, "step": "get_deal", "error": repr(e)[:400]}
     domain = (props.get(config.HUBSPOT_DEAL_DOMAIN_PROP) or "").strip()
