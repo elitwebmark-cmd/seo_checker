@@ -386,6 +386,72 @@ def organic_keywords(domain: str, pos_min: int, pos_max: int,
     return collected
 
 
+def keyword_data(keyword: str, db: str = None) -> Dict[str, Any]:
+    """Обсяг/CPC/intent по одному запиту (phrase_this). {} якщо не знайдено."""
+    kw = (keyword or "").strip()
+    if not kw:
+        return {}
+    try:
+        text = _request({
+            "type": "phrase_this",
+            "phrase": kw,
+            "database": _db(db),
+            "export_columns": "Ph,Nq,Cp,Co,Nr,In",
+        })
+    except SemrushError:
+        return {}
+    rows = _parse_csv(text)
+    if not rows:
+        return {}
+    r = rows[0]
+    return {
+        "keyword": r.get("Keyword", kw) or kw,
+        "volume": _safe_int(r.get("Search Volume")),
+        "cpc": _safe_float(r.get("CPC")),
+        "competition": _safe_float(r.get("Competition")),
+        "intent": (r.get("Intents", "") or "").split(",")[0].strip(),
+    }
+
+
+def keyword_position(domain: str, keyword: str, db: str = None, top: int = 100):
+    """Позиція домену в органіці по запиту (phrase_organic). None = не в топ-{top}."""
+    kw = (keyword or "").strip()
+    dom = (domain or "").strip().lower().replace("https://", "").replace("http://", "").strip("/")
+    dom = dom.split("/")[0]
+    if dom.startswith("www."):
+        dom = dom[4:]
+    if not kw or not dom:
+        return None
+    try:
+        text = _request({
+            "type": "phrase_organic",
+            "phrase": kw,
+            "database": _db(db),
+            "display_limit": int(top),
+            "export_columns": "Dn,Ur",
+        })
+    except SemrushError:
+        return None
+    for i, r in enumerate(_parse_csv(text), start=1):
+        dn = (r.get("Domain", "") or "").strip().lower()
+        if dn.startswith("www."):
+            dn = dn[4:]
+        if dn == dom or dn.endswith("." + dom) or dom.endswith("." + dn):
+            return i
+    return None
+
+
+def resolve_keyword(domain: str, keyword: str, db: str = None) -> Dict[str, Any]:
+    """{keyword, volume, cpc, intent, position, url} для довільного запиту.
+    position=None → домен не ранжується в топ-100 по цьому запиту (трафік зараз ~0)."""
+    d = keyword_data(keyword, db)
+    if not d or not d.get("keyword") or not d.get("volume"):
+        return {}
+    d["position"] = keyword_position(domain, keyword, db)
+    d["url"] = ""
+    return d
+
+
 def _safe_int(v):
     try:
         return int(float(v or 0))

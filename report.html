@@ -402,7 +402,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
     <thead><tr><th>Запит</th><th>Позиція</th><th>Частотність</th><th>Трафік у ТОП-1</th></tr></thead>
     <tbody>
     {% for q in r.dotisk_queries[:15] %}
-      <tr><td>{{ q.keyword }}</td><td class="pos">{{ q.position }}</td>
+      <tr><td>{{ q.keyword }}</td><td class="pos">{{ q.position if q.position else '—' }}</td>
           <td>{{ q.volume|sp }}</td><td class="pot">{{ q.traffic_top1|sp }}</td></tr>
     {% endfor %}
     </tbody>

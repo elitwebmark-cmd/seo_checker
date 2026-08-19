@@ -487,11 +487,90 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "dotisk_queries": [
             {"keyword": k["keyword"], "position": k["position"],
              "volume": k["volume"], "cpc": k["cpc"], "url": k.get("url", ""),
+             "intent": k.get("intent", ""),
              "traffic_now": int(round((k.get("volume") or 0) * _ctr(k.get("position")))),
              "traffic_top1": int(round((k.get("volume") or 0) * config.CTR_BY_POS[1]))}
             for k in dotisk
         ],
+        "dotisk_funnel": recompute_dotisk(
+            [{"keyword": k["keyword"], "position": k["position"], "volume": k["volume"],
+              "cpc": k.get("cpc"), "intent": k.get("intent", ""), "url": k.get("url", "")}
+             for k in dotisk],
+            {"conv_pct": niche_info.get("conv_pct"), "avg_check": niche_info.get("avg_check"),
+             "avg_margin": niche_info.get("avg_margin"), "close_pct": niche_info.get("close_pct"),
+             "conv_type": niche_info.get("conv_type")},
+        )["funnel"],
         "onpage": onp if do_onpage else None,
+    }
+
+
+def _ctr_pos(p):
+    """CTR за позицією (модульний хелпер для перерахунку по явних ключах)."""
+    return config.CTR_BY_POS.get(int(p or 99), config.CTR_FLOOR)
+
+
+def recompute_dotisk(keywords, econ=None):
+    """Перерахунок блоку «дотиск у ТОП-1» по явному списку ключів (макс. 15).
+    keywords: [{keyword, position, volume, cpc?, intent?}] (position=None → не ранжується).
+    econ: {conv_pct, avg_check, avg_margin, close_pct} — для воронки (може бути None).
+    Повертає {rows, count, total_now, total_top1, uplift_traffic, funnel}."""
+    ctr1 = config.CTR_BY_POS[1]
+    econ = econ or {}
+    rows, total_now, total_top1 = [], 0, 0
+    w_now = w_t1 = 0.0
+    for k in (keywords or [])[:15]:
+        vol = int(k.get("volume") or 0)
+        pos = k.get("position")
+        has_pos = pos not in (None, "", 0)
+        ctr = _ctr_pos(pos) if has_pos else 0.0
+        tn = int(round(vol * ctr))
+        tt1 = int(round(vol * ctr1))
+        total_now += tn
+        total_top1 += tt1
+        w = _conv_weight(k)
+        w_now += vol * ctr * w
+        w_t1 += vol * ctr1 * w
+        rows.append({
+            "keyword": k.get("keyword", ""),
+            "position": pos if has_pos else None,
+            "volume": vol,
+            "cpc": k.get("cpc"),
+            "url": k.get("url", ""),
+            "intent": k.get("intent", ""),
+            "traffic_now": tn,
+            "traffic_top1": tt1,
+        })
+
+    funnel = None
+    conv = econ.get("conv_pct")
+    check = econ.get("avg_check")
+    if conv and check:
+        margin = econ.get("avg_margin")
+        close = econ.get("close_pct")
+        cf = (close / 100.0) if close else 1.0
+        w_uplift = max(0.0, w_t1 - w_now)
+        apps_up = w_uplift * conv / 100.0
+        sales_up = apps_up * cf
+        rev_up = sales_up * check
+        funnel = {
+            "conv_pct": conv, "avg_check": check,
+            "avg_margin": margin, "close_pct": close,
+            "conv_type": econ.get("conv_type"),
+            "w_uplift": int(round(w_uplift)),
+            "apps_uplift": int(round(apps_up)),
+            "sales_uplift": int(round(sales_up)),
+            "revenue_uplift": int(round(rev_up)),
+        }
+        if margin:
+            funnel["profit_uplift"] = int(round(rev_up * margin / 100.0))
+
+    return {
+        "rows": rows,
+        "count": len(rows),
+        "total_now": total_now,
+        "total_top1": total_top1,
+        "uplift_traffic": total_top1 - total_now,
+        "funnel": funnel,
     }
 
 

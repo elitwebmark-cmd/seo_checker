@@ -269,6 +269,8 @@ def demo_result() -> dict:
         "top_pages_traffic": top_pages_traffic,
         "top_pages_seo": [],
         "dotisk_queries": dotisk,
+        "dotisk_funnel": qualify.recompute_dotisk(
+            dotisk, {"conv_pct": 3.5, "avg_check": 4000, "avg_margin": 60, "close_pct": 40})["funnel"],
         "niche_trend": {"points": _trend_points(),
                         "keywords": ["лазерна епіляція", "косметологія київ", "ботокс",
                                      "чистка обличчя", "мезотерапія"],

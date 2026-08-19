@@ -304,6 +304,44 @@ def _find_job_result(job_id, domain):
     return None
 
 
+@app.route("/report/dotisk", methods=["POST"])
+@login_required
+def report_dotisk():
+    """Перерахунок блоку «дотиск у ТОП-1» під редагований список запитів.
+    Нові запити (без volume) підтягуються з SemRush наживо. Кеп — 15."""
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower()
+    domain = domain.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    r = _find_job_result(job_id, domain)
+    if not r:
+        return jsonify({"ok": False, "error": "результат не знайдено"}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    items = data.get("keywords") or []
+    resolved, errors, seen = [], [], set()
+    for it in items[:15]:
+        if isinstance(it, str):
+            it = {"keyword": it}
+        kw = (it.get("keyword") or "").strip()
+        low = kw.lower()
+        if not kw or low in seen:
+            continue
+        seen.add(low)
+        if it.get("volume"):                       # дані вже є (наявний/раніше доданий)
+            resolved.append(it)
+            continue
+        try:
+            rk = semrush.resolve_keyword(domain, kw)
+        except Exception:
+            rk = None
+        if not rk:
+            errors.append(kw)
+            continue
+        resolved.append(rk)
+    out = qualify.recompute_dotisk(resolved, r.get("benefit") or {})
+    r["dotisk_queries"] = out["rows"]              # зберігаємо для перезавантаження/PDF
+    return jsonify({"ok": True, "errors": errors, **out})
+
+
 @app.route("/debug/ai")
 def debug_ai():
     if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
