@@ -552,6 +552,17 @@ def debug_kw():
     if not kw:
         return jsonify({"ok": False, "error": "no keyword"}), 400
     out = {"keyword": kw, "domain": domain, "db": config.SEMRUSH_DB}
+    # сира відповідь SemRush phrase_this (щоб бачити ERROR/NOTHING FOUND/доступ)
+    for rtype, cols in (("phrase_this", "Ph,Nq,Cp,Co,Nr"),
+                        ("phrase_these", "Ph,Nq,Cp,Co")):
+        try:
+            import requests as _rq
+            _p = {"type": rtype, "phrase": kw, "database": config.SEMRUSH_DB,
+                  "export_columns": cols, "key": config.SEMRUSH_API_KEY}
+            _r = _rq.get(config.SEMRUSH_BASE, params=_p, timeout=20)
+            out["raw_" + rtype] = {"http": _r.status_code, "text": _r.text[:400]}
+        except Exception as e:
+            out["raw_" + rtype + "_err"] = repr(e)[:300]
     try:
         out["keyword_data"] = semrush.keyword_data(kw)
     except Exception as e:
