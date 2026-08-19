@@ -585,7 +585,8 @@ def process_deal_debug(deal_id: str, do_cro=None, fast=False) -> dict:
         do_cro = config.HUBSPOT_DO_CRO
     if fast:
         do_cro = False
-    out = {"deal_id": deal_id, "do_cro": bool(do_cro), "fast": bool(fast)}
+    out = {"deal_id": deal_id, "do_cro": bool(do_cro), "fast": bool(fast),
+           "build": "sync-idempotent-t600"}   # маркер версії коду для перевірки деплою
     if not config.HUBSPOT_TOKEN:
         return {**out, "error": "no HUBSPOT_TOKEN"}
     try:
