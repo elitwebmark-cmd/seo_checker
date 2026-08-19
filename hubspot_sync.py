@@ -369,6 +369,19 @@ def _cro_block(res) -> list:
     crit = [i for i in (cr.get("issues") or []) if i.get("priority") == "critical"]
     if crit:
         rows.append(_lbl("Критичних помилок", f"{len(crit)} із {cr.get('issues_total', 0)} усього"))
+        rows.append("<b>Критичні помилки:</b>")
+        parts = []
+        for i in crit[:6]:
+            title = _html.escape(str(i.get("title") or "").strip())
+            prob = _html.escape(str(i.get("problem") or "").strip()[:220])
+            rec = _html.escape(str(i.get("recommendation") or "").strip()[:220])
+            line = f"🔴 <b>{title}</b>" if title else "🔴"
+            if prob:
+                line += f"<br>&nbsp;&nbsp;<i>Проблема:</i> {prob}"
+            if rec:
+                line += f"<br>&nbsp;&nbsp;<i>Рішення:</i> {rec}"
+            parts.append(line)
+        rows.append("<br>".join(parts))
     rows += [SEP, ""]
     return rows
 

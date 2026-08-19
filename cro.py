@@ -196,9 +196,21 @@ def debug(domain: str) -> dict:
         out["audit_status"] = ar.status_code
         try:
             j = ar.json()
+            a = (j or {}).get("audit") or {}
             out["audit_top_keys"] = list((j or {}).keys())
-            out["has_audit_obj"] = bool((j or {}).get("audit"))
-            out["score_total"] = ((j or {}).get("audit") or {}).get("score_total")
+            out["audit_obj_keys"] = list(a.keys())
+            out["has_audit_obj"] = bool(a)
+            out["score_total"] = a.get("score_total")
+            # шукаємо новий блок «Потенціал росту» (uplift/conversion/revenue)
+            import re as _re, json as _json
+            _blob = _json.dumps(j, ensure_ascii=False)
+            _hit_keys = sorted(set(_re.findall(
+                r'"([a-zA-Z_]*(?:uplift|potential|revenue|conversion|conv|leads|check|traffic|after|before|growth)[a-zA-Z_]*)"',
+                _blob, _re.I)))
+            out["uplift_like_keys"] = _hit_keys[:40]
+            for k in ("potential", "uplift", "growth", "revenue_potential", "conversion_uplift", "forecast"):
+                if k in a:
+                    out[f"sample_{k}"] = a.get(k)
         except Exception:
             out["audit_body"] = ar.text[:200]
     except Exception as e:
