@@ -362,6 +362,14 @@ def _cro_block(res) -> list:
         rows.append(_lbl("PageSpeed", f"{ps.get('score')}/100" + (f" · {' · '.join(ps_bits)}" if ps_bits else "")))
     if cr.get("summary"):
         rows.append(_lbl("Резюме", _html.escape(str(cr.get("summary"))[:400])))
+    pot = cr.get("potential")
+    if pot:
+        rows.append("<b>Потенціал росту (після CRO-оптимізації):</b>")
+        rows.append(_lbl("Конверсія", f"{pot.get('conv_before')}% → {pot.get('conv_after')}%"))
+        rows.append(_lbl("Покупок/лідів", f"{_fmt(pot.get('leads_before'))} → {_fmt(pot.get('leads_after'))}/міс"))
+        rows.append(_lbl("Виторг", f"{_fmt(pot.get('revenue_before'))} → {_fmt(pot.get('revenue_after'))} ₴/міс"))
+        rows.append(_lbl("Приріст виторгу",
+                         f"+{_fmt(pot.get('revenue_uplift'))} ₴/міс (+{pot.get('uplift_pct')}%)"))
     wins = [w for w in (cr.get("quick_wins") or []) if w][:5]
     if wins:
         rows.append("<b>Точки зростання (критичні):</b>")

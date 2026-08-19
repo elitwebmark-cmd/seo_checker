@@ -55,6 +55,37 @@
   </div>
   {% endif %}
 
+  {# --- потенціал росту після CRO --- #}
+  {% if cro.potential %}
+  {% set p = cro.potential %}
+  <div class="cro-pot">
+    <div class="cro-pot-h">📈 Потенціал росту після CRO-оптимізації</div>
+    <div class="cro-pot-note">Взяті середні значення по ніші (трафік, конверсія, чек).</div>
+    <div class="cro-pot-grid">
+      <div class="cro-pot-col before">
+        <div class="cro-pot-col-h">ДО CRO</div>
+        <div class="cro-pot-row"><span>Поточний трафік</span><b>{{ "{:,}".format(p.traffic).replace(",", " ") }}</b></div>
+        <div class="cro-pot-row"><span>Конверсія, %</span><b>{{ p.conv_before }}</b></div>
+        <div class="cro-pot-row"><span>Покупок / лідів</span><b>{{ "{:,}".format(p.leads_before).replace(",", " ") }}</b></div>
+        <div class="cro-pot-row"><span>Середній чек, ₴</span><b>{{ "{:,}".format(p.avg_check).replace(",", " ") }}</b></div>
+        <div class="cro-pot-row"><span>Виторг, ₴</span><b>{{ "{:,}".format(p.revenue_before).replace(",", " ") }}</b></div>
+      </div>
+      <div class="cro-pot-col after">
+        <div class="cro-pot-col-h">ПІСЛЯ CRO</div>
+        <div class="cro-pot-row"><span>Поточний трафік</span><b>{{ "{:,}".format(p.traffic).replace(",", " ") }}</b></div>
+        <div class="cro-pot-row"><span>Конверсія, %</span><b>{{ p.conv_after }}</b></div>
+        <div class="cro-pot-row"><span>Покупок / лідів</span><b>{{ "{:,}".format(p.leads_after).replace(",", " ") }}</b></div>
+        <div class="cro-pot-row"><span>Середній чек, ₴</span><b>{{ "{:,}".format(p.avg_check).replace(",", " ") }}</b></div>
+        <div class="cro-pot-row"><span>Виторг, ₴</span><b>{{ "{:,}".format(p.revenue_after).replace(",", " ") }}</b></div>
+      </div>
+    </div>
+    <div class="cro-pot-total">
+      <span>Приріст виторгу після CRO</span>
+      <b>+{{ "{:,}".format(p.revenue_uplift).replace(",", " ") }} ₴ <span class="cro-pot-pct">+{{ p.uplift_pct }}%</span></b>
+    </div>
+  </div>
+  {% endif %}
+
   {# --- усі помилки під розкривним блоком --- #}
   {% if cro.issues %}
   <details class="cro-issues" data-cro-issues>

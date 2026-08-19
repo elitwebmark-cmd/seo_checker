@@ -110,6 +110,44 @@ def _fetch(domain: str, lang: str) -> dict:
     return _shape(a, j, j.get("pagespeed") or {})
 
 
+def _potential(j, score):
+    """Блок «Потенціал росту» (як на фронті CRO): конверсія до/після, виторг, приріст.
+    Приріст конверсії = (100 − CRO-бал)/2 %, у діапазоні 5–40%.
+    Інгредієнти беремо з відповіді CRO: traffic + niche.conversion + niche.avg_check."""
+    niche = (j or {}).get("niche") or {}
+    traffic = (j or {}).get("traffic") if (j or {}).get("traffic") is not None else niche.get("traffic")
+    conv = niche.get("conversion")
+    check = niche.get("avg_check")
+    try:
+        traffic = float(traffic); conv = float(conv); check = float(check)
+    except (TypeError, ValueError):
+        return None
+    if not (traffic > 0 and conv > 0 and check > 0):
+        return None
+    if conv < 1:                       # частка (0.018) -> у відсотки (1.8)
+        conv *= 100
+    try:
+        sc = float(score)
+    except (TypeError, ValueError):
+        sc = 50.0
+    uplift = max(5.0, min(40.0, (100.0 - sc) / 2.0)) / 100.0
+    conv_after = round(conv * (1 + uplift), 1)
+    leads_before = int(round(traffic * conv / 100.0))
+    leads_after = int(round(traffic * conv_after / 100.0))
+    rev_before = int(round(leads_before * check))
+    rev_after = int(round(leads_after * check))
+    rev_up = rev_after - rev_before
+    up_pct = round((rev_after / rev_before - 1) * 100) if rev_before else 0
+    return {
+        "traffic": int(round(traffic)),
+        "conv_before": round(conv, 2), "conv_after": conv_after,
+        "avg_check": int(round(check)),
+        "leads_before": leads_before, "leads_after": leads_after,
+        "revenue_before": rev_before, "revenue_after": rev_after,
+        "revenue_uplift": rev_up, "uplift_pct": up_pct,
+    }
+
+
 def _shape(a, j, ps):
     cats = a.get("categories") or {}
 
@@ -155,6 +193,7 @@ def _shape(a, j, ps):
         "quick_wins": growth,
         "issues": issues,
         "issues_total": len(issues),
+        "potential": _potential(j, tot),
         "domain": j.get("url") or "",
         "pagespeed": {
             "score": ps.get("score"),

@@ -520,6 +520,19 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
   <div style="font-weight:800;font-size:11px;margin:8px 0 2px">🏆 Quick wins:</div>
   <ul style="margin:2px 0 6px 16px;font-size:11px">{% for w in r.cro.quick_wins %}<li>{{ w }}</li>{% endfor %}</ul>
   {% endif %}
+  {% if r.cro.potential %}
+  {% set p = r.cro.potential %}
+  <div style="font-weight:800;font-size:11px;margin:10px 0 4px">📈 Потенціал росту після CRO-оптимізації:</div>
+  <table class="tbl" style="width:100%;font-size:10.5px">
+    <thead><tr><th style="text-align:left">Показник</th><th style="text-align:right">До CRO</th><th style="text-align:right">Після CRO</th></tr></thead>
+    <tbody>
+      <tr><td>Конверсія, %</td><td style="text-align:right">{{ p.conv_before }}</td><td style="text-align:right">{{ p.conv_after }}</td></tr>
+      <tr><td>Покупок / лідів, міс</td><td style="text-align:right">{{ "{:,}".format(p.leads_before).replace(",", " ") }}</td><td style="text-align:right">{{ "{:,}".format(p.leads_after).replace(",", " ") }}</td></tr>
+      <tr><td>Виторг, ₴/міс</td><td style="text-align:right">{{ "{:,}".format(p.revenue_before).replace(",", " ") }}</td><td style="text-align:right">{{ "{:,}".format(p.revenue_after).replace(",", " ") }}</td></tr>
+    </tbody>
+  </table>
+  <div style="margin:4px 0 6px;font-size:11px;font-weight:800;color:#159A4B">Приріст виторгу: +{{ "{:,}".format(p.revenue_uplift).replace(",", " ") }} ₴/міс (+{{ p.uplift_pct }}%)</div>
+  {% endif %}
   {% if r.cro.issues %}
   <div style="font-weight:800;font-size:11px;margin:8px 0 4px">Помилки ({{ r.cro.issues_total }}):</div>
   {% for it in r.cro.issues %}
