@@ -459,8 +459,10 @@ def hubspot_deal_hook():
         _fast = request.args.get("fast") == "1"
         return jsonify(hubspot_sync.process_deal_debug(
             deal_id, do_cro=(False if _nocro else None), fast=_fast))
-    # Відповідаємо миттєво, аналіз — у фоні (HubSpot чекає лише кілька секунд)
-    threading.Thread(target=hubspot_sync.process_deal, args=(deal_id,), daemon=True).start()
+    # Обробляємо синхронно: на цьому хостингу фонові daemon-потоки не доживають
+    # до створення нотатки. gthread-воркер (8 потоків, timeout 180с) тримає інші
+    # запити паралельно; ідемпотентність у process_deal захищає від дублів.
+    hubspot_sync.process_deal(deal_id)
     return jsonify({"ok": True, "deal_id": deal_id})
 
 

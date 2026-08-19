@@ -682,10 +682,30 @@ def maybe_cro(deal_id: str, domain: str):
     threading.Thread(target=_cro_worker, args=(deal_id, domain), daemon=True).start()
 
 
+_INFLIGHT = set()
+_INFLIGHT_LOCK = threading.Lock()
+
+
 def process_deal(deal_id: str):
-    """Викликається у фоні. Тихо ігнорує діли не з тестової воронки."""
+    """Обробка діла. Ідемпотентна: паралельний/повторний виклик того самого
+    deal_id пропускається (захист від дублів нотаток при ретраях вебхука)."""
     if not config.HUBSPOT_TOKEN:
         log.warning("HUBSPOT_TOKEN не заданий — пропускаю")
+        return
+    with _INFLIGHT_LOCK:
+        if deal_id in _INFLIGHT:
+            log.info("deal %s вже обробляється — пропуск (дедуп)", deal_id)
+            return
+        _INFLIGHT.add(deal_id)
+    try:
+        _process_deal_inner(deal_id)
+    finally:
+        with _INFLIGHT_LOCK:
+            _INFLIGHT.discard(deal_id)
+
+
+def _process_deal_inner(deal_id: str):
+    if not config.HUBSPOT_TOKEN:
         return
     try:
         props = get_deal(deal_id)
