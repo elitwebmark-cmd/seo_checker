@@ -306,6 +306,10 @@ def _meta_block(res) -> list:
             rows.append(_lbl("Сторінка", _html.escape(str(me.get("page")))))
         if me.get("by_keyword"):
             rows.append("⚠️ пошук за ключовим словом — можливі й інші рекламодавці, перевірити руками")
+    _mlink = me.get("link") or me.get("url")
+    if _mlink:
+        _u = _html.escape(str(_mlink))
+        rows.append(_lbl("Meta Ad Library", f'<a href="{_u}">{_u}</a>'))
     rows.append(_lbl("Висновок по Meta", concl))
     rows += [SEP, ""]
     return rows
