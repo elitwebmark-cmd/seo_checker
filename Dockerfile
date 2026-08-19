@@ -26,4 +26,7 @@ COPY . .
 # Веб (gunicorn). Воркер-бот запускається через Custom Start Command сервіса:
 #   python -u bot.py
 ENV PORT=8080
-CMD gunicorn app:app --workers 1 --threads 8 --timeout 600 --bind 0.0.0.0:${PORT:-8080}
+# 2 воркери: поки один зайнятий фоновою обробкою/manus, другий миттєво відповідає
+# вебхуку HubSpot (перша спроба HubSpot таймаутила, коли єдиний воркер був зайнятий).
+# access/error логи в stdout — щоб у Railway було видно кожен вхідний запит.
+CMD gunicorn app:app --workers 2 --threads 4 --timeout 600 --graceful-timeout 30 --access-logfile - --error-logfile - --bind 0.0.0.0:${PORT:-8080}
