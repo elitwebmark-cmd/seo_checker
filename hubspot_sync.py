@@ -150,13 +150,28 @@ def _url_short(url: str) -> str:
     return _html.escape(path[:48])
 
 
+_SEP_TH = 'style="padding:3px 6px;color:#b9b9b9;text-align:center"'
+_SEP_TD = 'style="padding:3px 6px;color:#d0d0d0;text-align:center"'
+
+
+def _row_cells(cells, td_style, sep_style) -> str:
+    """Клітинки рядка з текстовим роздільником │ між стовпцями.
+    HubSpot вирізає CSS/HTML-рамки таблиць, тож єдиний надійний спосіб —
+    символ-роздільник у самому контенті."""
+    out = []
+    for i, c in enumerate(cells):
+        if i > 0:
+            out.append(f"<td {sep_style}>│</td>")
+        out.append(f"<td {td_style}>{c}</td>")
+    return "".join(out)
+
+
 def _table(header_cells, rows) -> str:
     if not rows:
         return "н/д"
-    head = "".join(f"<th {_TH}>{c}</th>" for c in header_cells)
-    body = "".join("<tr>" + "".join(f"<td {_TD}>{c}</td>" for c in r) + "</tr>" for r in rows)
-    # border="1" cellpadding — старий HTML-атрибут, який HubSpot не вирізає (inline-CSS border він чистить)
-    return (f'<table border="1" cellpadding="6" cellspacing="0" '
+    head = _row_cells(header_cells, _TH, _SEP_TH).replace("<td ", "<th ").replace("</td>", "</th>")
+    body = "".join("<tr>" + _row_cells(r, _TD, _SEP_TD) + "</tr>" for r in rows)
+    return (f'<table cellpadding="6" cellspacing="0" '
             f'style="border-collapse:collapse;font-size:13px"><tr>{head}</tr>{body}</table>')
 
 
