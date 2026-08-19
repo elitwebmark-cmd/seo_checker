@@ -26,4 +26,4 @@ COPY . .
 # Веб (gunicorn). Воркер-бот запускається через Custom Start Command сервіса:
 #   python -u bot.py
 ENV PORT=8080
-CMD gunicorn app:app --workers 1 --threads 8 --timeout 180 --bind 0.0.0.0:${PORT:-8080}
+CMD gunicorn app:app --workers 1 --threads 8 --timeout 600 --bind 0.0.0.0:${PORT:-8080}
