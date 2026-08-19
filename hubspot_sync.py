@@ -320,6 +320,10 @@ def _meta_block(res) -> list:
 def _cro_block(res) -> list:
     """CRO-аудит (окремий сервіс Elit-Web): бал, категорії, PageSpeed, точки зростання."""
     cr = res.get("cro") or {}
+    if cr.get("deferred"):
+        return ["<b>CRO-АУДИТ (юзабіліті / швидкість)</b>",
+                _lbl("Статус", "виконується окремо — додасться наступною нотаткою за 1–3 хв"),
+                SEP, ""]
     if not cr.get("checked"):
         return ["<b>CRO-АУДИТ (юзабіліті / швидкість)</b>",
                 _lbl("Статус", "не виконувався"), SEP, ""]
@@ -630,6 +634,44 @@ def maybe_manus(deal_id: str, domain: str, res: dict):
     threading.Thread(target=_manus_worker, args=(deal_id, domain, res), daemon=True).start()
 
 
+def _cro_note_html(domain: str, cro: dict) -> str:
+    """Окрема нотатка CRO (щоб не блокувати основну відписку повільним аудитом)."""
+    rows = _cro_block({"cro": cro})
+    link = (cro or {}).get("link")
+    if link:
+        rows = rows[:-2] + [_lbl("CRO-сервіс", f'<a href="{_html.escape(str(link))}">{_html.escape(str(link))}</a>')]
+    head = f"<b>CRO-АУДИТ · {_html.escape(domain)}</b><br>"
+    return head + "<br>".join(r for r in rows if r != "")
+
+
+def _cro_worker(deal_id: str, domain: str):
+    """Фоновий CRO-аудит з окремою нотаткою. Ізольований від основної відписки."""
+    try:
+        import cro
+        data = cro.audit(domain)
+    except Exception:
+        log.exception("cro audit failed for %s (%s)", domain, deal_id)
+        return
+    if not data or not data.get("checked"):
+        try:
+            create_note(deal_id, f"<b>CRO-АУДИТ · {_html.escape(domain)}</b><br>Не вдалося виконати аудит (сервіс недоступний або тайм-аут).")
+        except Exception:
+            log.exception("cro fail-note failed for %s", deal_id)
+        return
+    try:
+        create_note(deal_id, _cro_note_html(domain, data))
+        log.info("cro note created for deal %s (%s)", deal_id, domain)
+    except Exception:
+        log.exception("cro note failed for %s", deal_id)
+
+
+def maybe_cro(deal_id: str, domain: str):
+    """Запускає CRO-аудит окремим фоновим потоком (не блокує основну нотатку)."""
+    if not config.HUBSPOT_DO_CRO:
+        return
+    threading.Thread(target=_cro_worker, args=(deal_id, domain), daemon=True).start()
+
+
 def process_deal(deal_id: str):
     """Викликається у фоні. Тихо ігнорує діли не з тестової воронки."""
     if not config.HUBSPOT_TOKEN:
@@ -656,10 +698,12 @@ def process_deal(deal_id: str):
         return
 
     try:
+        # CRO НЕ рахуємо тут: він повільний/зовнішній і блокував основну нотатку.
+        # Виноситься в окрему нотатку через maybe_cro (нижче).
         res = qualify.qualify(domain, do_onpage=True,
                               do_ads=config.HUBSPOT_ENRICH,
                               do_social=config.HUBSPOT_ENRICH,
-                              do_cro=config.HUBSPOT_DO_CRO)
+                              do_cro=False)
     except Exception as e:
         log.exception("qualify failed for %s (%s)", domain, deal_id)
         try:
@@ -668,6 +712,10 @@ def process_deal(deal_id: str):
             pass
         return
 
+    # Позначаємо CRO як «виконується окремо», щоб у блоці був коректний статус
+    if config.HUBSPOT_DO_CRO:
+        res["cro"] = {"deferred": True}
+
     try:
         dups = find_duplicate_deals(domain, deal_id)
         create_note(deal_id, _note_html(domain, res, dups))
@@ -675,5 +723,7 @@ def process_deal(deal_id: str):
         log.info("deal %s (%s) -> %s, note created", deal_id, domain, res.get("verdict"))
     except Exception:
         log.exception("create_note failed for %s", deal_id)
+    # CRO — окремою нотаткою (не блокує основну відписку)
+    maybe_cro(deal_id, domain)
     # Глибока аналітика Manus (у фоні, лише Ідеально/Добре)
     maybe_manus(deal_id, domain, res)
