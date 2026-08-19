@@ -532,15 +532,24 @@
       <script type="application/json" class="dotisk-seed">{{ {"rows": r.dotisk_queries, "funnel": r.dotisk_funnel|default(none)}|tojson }}</script>
       </div>
     </details>{% endif %}
-    {% if r.top_pages_traffic %}<details><summary>ТОП-15 комерційних сторінок по трафіку ({{ r.top_pages_traffic|length }})</summary>
-      <div class="dtbl-wrap"><table class="dtbl">
-        <thead><tr><th>Сторінка</th><th class="r">Запити</th><th class="r">У ТОП 4–20</th><th class="r">Трафік зараз</th><th class="r">Потенц. трафік</th></tr></thead>
-        <tbody>
+    {% if r.top_pages_traffic %}<details class="pages-details"><summary>ТОП комерційних сторінок по трафіку <span class="pgk-count">{{ r.top_pages_traffic|length }}/15</span></summary>
+      <div class="pages-box" data-job="{{ job_id }}" data-domain="{{ r.domain }}">
+      <div class="dtbl-wrap"><table class="dtbl pages-table">
+        <thead><tr><th>Сторінка</th><th class="r">Запити</th><th class="r">У ТОП 4–20</th><th class="r">Трафік зараз</th><th class="r">Потенц. трафік</th><th class="dtk-x"></th></tr></thead>
+        <tbody class="pages-body">
         {% for p in r.top_pages_traffic %}
-          <tr><td class="kw">{{ p.url.replace('https://','').replace('http://','') }}</td><td class="r">{{ p.keywords }}</td><td class="r pos">{{ p.q_4_20 }}</td><td class="r">{{ "{:,}".format(p.traffic or 0).replace(",", " ") }}</td><td class="r pot">{{ "{:,}".format(p.traffic_pot or 0).replace(",", " ") }}</td></tr>
+          <tr><td class="kw">{{ p.url.replace('https://','').replace('http://','') }}</td><td class="r">{{ p.keywords }}</td><td class="r pos">{{ p.q_4_20 }}</td><td class="r">{{ "{:,}".format(p.traffic or 0).replace(",", " ") }}</td><td class="r pot">{{ "{:,}".format(p.traffic_pot or 0).replace(",", " ") }}</td><td class="dtk-x"></td></tr>
         {% endfor %}
         </tbody>
+        <tfoot><tr><td>Разом</td><td></td><td></td><td class="r pages-sum-tr">{{ "{:,}".format(r.top_pages_traffic|sum(attribute='traffic')).replace(",", " ") }}</td><td class="r pot pages-sum-pot">{{ "{:,}".format(r.top_pages_traffic|sum(attribute='traffic_pot')).replace(",", " ") }}</td><td class="dtk-x"></td></tr></tfoot>
       </table></div>
+      <div class="dotisk-add">
+        <input type="text" class="pages-input" placeholder="Додати сторінку (URL або шлях)…" maxlength="300" autocomplete="off">
+        <button type="button" class="pages-add-btn">＋ Додати</button>
+        <span class="pages-status small"></span>
+      </div>
+      <script type="application/json" class="pages-seed">{{ {"rows": r.top_pages_traffic}|tojson }}</script>
+      </div>
     </details>{% endif %}
     {% if r.cases %}
     <details class="cases-acc">
@@ -698,6 +707,72 @@
     if(addBtn) addBtn.addEventListener('click',add);
     if(input) input.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); add(); } });
     render({funnel:seed.funnel});
+  });
+})();
+</script>
+
+<script>
+/* --- інтерактивний блок «ТОП комерційних сторінок»: додати/прибрати сторінки --- */
+(function(){
+  function fmt(n){ n=Math.round(n||0); return n.toLocaleString('en-US').replace(/,/g,' '); }
+  function shortU(u){ return (u||'').replace(/^https?:\/\//,''); }
+  function norm(u){ return shortU(u).toLowerCase().replace(/\/+$/,''); }
+  document.querySelectorAll('.pages-box').forEach(function(box){
+    var job=box.dataset.job||'', domain=box.dataset.domain||'';
+    var body=box.querySelector('.pages-body');
+    var input=box.querySelector('.pages-input');
+    var addBtn=box.querySelector('.pages-add-btn');
+    var statusEl=box.querySelector('.pages-status');
+    var det=box.closest('.pages-details');
+    var countEl=det?det.querySelector('.pgk-count'):null;
+    var seed={rows:[]}; try{ seed=JSON.parse(box.querySelector('.pages-seed').textContent)||seed; }catch(e){}
+    var state=(seed.rows||[]).slice();
+    function setStatus(t,cls){ if(!statusEl)return; statusEl.textContent=t||''; statusEl.className='pages-status small'+(cls?(' '+cls):''); }
+    function render(){
+      body.innerHTML='';
+      var st=0,sp=0;
+      state.forEach(function(p,i){
+        st+=p.traffic||0; sp+=p.traffic_pot||0;
+        var tr=document.createElement('tr');
+        for(var c=0;c<6;c++) tr.appendChild(document.createElement('td'));
+        tr.children[0].className='kw'; tr.children[0].textContent=shortU(p.url);
+        tr.children[1].className='r'; tr.children[1].textContent=fmt(p.keywords);
+        tr.children[2].className='r pos'; tr.children[2].textContent=fmt(p.q_4_20);
+        tr.children[3].className='r'; tr.children[3].textContent=fmt(p.traffic);
+        tr.children[4].className='r pot'; tr.children[4].textContent=fmt(p.traffic_pot);
+        tr.children[5].className='dtk-x';
+        var x=document.createElement('button'); x.type='button'; x.className='dtk-del'; x.title='Прибрати'; x.textContent='✕';
+        x.addEventListener('click',function(){ state.splice(i,1); recalc(); });
+        tr.children[5].appendChild(x);
+        body.appendChild(tr);
+      });
+      var eT=box.querySelector('.pages-sum-tr'), eP=box.querySelector('.pages-sum-pot');
+      if(eT) eT.textContent=fmt(st); if(eP) eP.textContent=fmt(sp);
+      if(countEl) countEl.textContent=state.length+'/15';
+      if(addBtn) addBtn.disabled=state.length>=15;
+      if(input) input.disabled=state.length>=15;
+    }
+    function recalc(){
+      setStatus('рахую…');
+      fetch('/report/pages?job='+encodeURIComponent(job)+'&domain='+encodeURIComponent(domain),{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pages:state})
+      }).then(function(r){return r.json();}).then(function(out){
+        if(!out||!out.ok){ setStatus((out&&out.error)||'помилка','err'); return; }
+        state=out.rows||state; render();
+        if(out.errors&&out.errors.length){ setStatus('не знайдено в SemRush: '+out.errors.map(shortU).join(', '),'err'); }
+        else setStatus('');
+      }).catch(function(){ setStatus('помилка мережі','err'); });
+    }
+    function add(){
+      var u=(input.value||'').trim();
+      if(!u) return;
+      if(state.length>=15){ setStatus('максимум 15 сторінок','err'); return; }
+      if(state.some(function(p){ return norm(p.url)===norm(u); })){ setStatus('така сторінка вже є','err'); return; }
+      state.push({url:u}); input.value=''; recalc();
+    }
+    if(addBtn) addBtn.addEventListener('click',add);
+    if(input) input.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); add(); } });
+    render();
   });
 })();
 </script>

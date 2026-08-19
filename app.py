@@ -342,6 +342,46 @@ def report_dotisk():
     return jsonify({"ok": True, "errors": errors, **out})
 
 
+@app.route("/report/pages", methods=["POST"])
+@login_required
+def report_pages():
+    """Перерахунок блоку «ТОП комерційних сторінок» під редагований список URL.
+    Нові сторінки (без даних) підтягуються з SemRush (url_organic) наживо. Кеп — 15."""
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower()
+    domain = domain.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    r = _find_job_result(job_id, domain)
+    if not r:
+        return jsonify({"ok": False, "error": "результат не знайдено"}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    items = data.get("pages") or []
+    rows, errors, seen = [], [], set()
+    for it in items[:15]:
+        if isinstance(it, str):
+            it = {"url": it}
+        url = (it.get("url") or "").strip()
+        low = url.lower().rstrip("/")
+        if not url or low in seen:
+            continue
+        seen.add(low)
+        if it.get("keywords"):                     # дані вже є (наявна/раніше додана)
+            rows.append(it)
+            continue
+        try:
+            rp = semrush.resolve_page(domain, url)
+        except Exception:
+            rp = None
+        if not rp:
+            errors.append(url)
+            continue
+        rows.append(rp)
+    total_traffic = sum(int(p.get("traffic") or 0) for p in rows)
+    total_pot = sum(int(p.get("traffic_pot") or 0) for p in rows)
+    r["top_pages_traffic"] = rows                  # зберігаємо для перезавантаження/PDF
+    return jsonify({"ok": True, "errors": errors, "rows": rows, "count": len(rows),
+                    "total_traffic": total_traffic, "total_pot": total_pot})
+
+
 @app.route("/debug/ai")
 def debug_ai():
     if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:

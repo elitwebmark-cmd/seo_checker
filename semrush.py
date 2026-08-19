@@ -452,6 +452,65 @@ def resolve_keyword(domain: str, keyword: str, db: str = None) -> Dict[str, Any]
     return d
 
 
+def _full_url(domain: str, url: str) -> str:
+    """Нормалізує введений URL до повного (для url_organic)."""
+    u = (url or "").strip()
+    dom = (domain or "").strip().lower().replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    if not u:
+        return ""
+    if u.startswith("http://") or u.startswith("https://"):
+        return u
+    u = u.lstrip("/")
+    if dom and u.lower().startswith(dom):
+        return "https://" + u
+    if not dom:
+        return "https://" + u
+    return "https://" + dom + "/" + u
+
+
+def page_keywords(url: str, db: str = None, limit: int = 1000) -> List[Dict[str, Any]]:
+    """Органічні запити конкретної сторінки (url_organic)."""
+    u = (url or "").strip()
+    if not u:
+        return []
+    try:
+        text = _request({
+            "type": "url_organic",
+            "url": u,
+            "database": _db(db),
+            "display_limit": int(limit),
+            "display_sort": "tr_desc",
+            "export_columns": "Ph,Po,Nq,Cp",
+        })
+    except SemrushError:
+        return []
+    out = []
+    for row in _parse_csv(text):
+        out.append({
+            "keyword": row.get("Keyword", ""),
+            "position": _safe_int(row.get("Position")),
+            "volume": _safe_int(row.get("Search Volume")),
+            "cpc": _safe_float(row.get("CPC")),
+            "url": u,
+        })
+    return out
+
+
+def resolve_page(domain: str, url: str, db: str = None) -> Dict[str, Any]:
+    """{url, keywords, q_4_20, traffic, traffic_pot} для довільної сторінки.
+    {} якщо сторінка не ранжується в SemRush."""
+    full = _full_url(domain, url)
+    rows = page_keywords(full, db)
+    if not rows:
+        return {}
+    agg = pages_from(rows, limit=1)
+    if not agg:
+        return {}
+    p = agg[0]
+    p["url"] = full
+    return p
+
+
 def _safe_int(v):
     try:
         return int(float(v or 0))
