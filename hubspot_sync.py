@@ -673,9 +673,10 @@ def process_deal_debug(deal_id: str, do_cro=None, fast=False) -> dict:
                                        and props.get("pipeline") != config.HUBSPOT_TEST_PIPELINE_ID)
     except Exception as e:
         return {**out, "step": "get_deal", "error": repr(e)[:400]}
-    domain = (props.get(config.HUBSPOT_DEAL_DOMAIN_PROP) or "").strip()
+    domain = clean_domain(props.get(config.HUBSPOT_DEAL_DOMAIN_PROP))
     if not domain:
-        return {**out, "step": "domain", "error": "empty domain"}
+        return {**out, "step": "domain",
+                "error": f"невалідний домен: {props.get(config.HUBSPOT_DEAL_DOMAIN_PROP)!r}"}
     try:
         _enrich = (False if fast else config.HUBSPOT_ENRICH)
         res = qualify.qualify(domain, do_onpage=True,
@@ -944,6 +945,37 @@ def start_poller():
                  config.HUBSPOT_POLL_INTERVAL, config.HUBSPOT_POLL_LOOKBACK_MIN)
 
 
+# Валідація поля Domain на угоді: інколи там не сайт, а відписка («сайта нет»,
+# «без сайта») або посилання на соцмережу — такі не аналізуємо.
+_SOCIAL_HOSTS = (
+    "instagram.com", "instagr.am", "facebook.com", "fb.com", "fb.me", "m.facebook.com",
+    "t.me", "telegram.me", "telegram.org", "tiktok.com", "youtube.com", "youtu.be",
+    "linkedin.com", "twitter.com", "x.com", "pinterest.com", "threads.net",
+    "wa.me", "api.whatsapp.com", "viber.com", "olx.ua", "prom.ua", "rozetka.com.ua",
+)
+_DOMAIN_RE = re.compile(r"^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?(?:\.[a-z0-9\-]{2,})+$")
+
+
+def clean_domain(raw: str):
+    """Повертає нормалізований домен, або None якщо це не валідний сайт
+    (відписка/текст/соцмережа/маркетплейс)."""
+    s = (raw or "").strip().lower()
+    if not s:
+        return None
+    s = s.replace("https://", "").replace("http://", "")
+    s = s.split("/")[0].split("?")[0].split("#")[0].strip().strip(".")
+    if s.startswith("www."):
+        s = s[4:]
+    if not s or " " in s or "@" in s:
+        return None
+    if not _DOMAIN_RE.match(s):          # не схоже на домен (немає крапки/є кирилиця/спецсимволи)
+        return None
+    for h in _SOCIAL_HOSTS:              # соцмережі/маркетплейси — не наш кейс
+        if s == h or s.endswith("." + h):
+            return None
+    return s
+
+
 def _process_deal_inner(deal_id: str):
     if not config.HUBSPOT_TOKEN:
         return
@@ -958,13 +990,17 @@ def _process_deal_inner(deal_id: str):
         log.info("deal %s pipeline=%s — не тестова, пропуск", deal_id, pipeline)
         return
 
-    domain = (props.get(config.HUBSPOT_DEAL_DOMAIN_PROP) or "").strip()
+    raw_domain = (props.get(config.HUBSPOT_DEAL_DOMAIN_PROP) or "").strip()
+    domain = clean_domain(raw_domain)
     if not domain:
-        log.info("deal %s — немає домену, пропуск", deal_id)
+        log.info("deal %s — поле Domain невалідне (%r), пропуск", deal_id, raw_domain[:60])
         try:
-            create_note(deal_id, "⚠️ <b>SEO Qualifier:</b> у ділі не заповнене поле Domain — оцінку не виконано.")
+            _val = _html.escape(raw_domain[:80]) if raw_domain else "порожнє"
+            create_note(deal_id,
+                        f"⚠️ <b>SEO Qualifier:</b> поле Domain не містить валідного сайту "
+                        f"(«{_val}») — SEO-аналіз пропущено. Заповніть коректний домен для оцінки.")
         except Exception:
-            log.exception("note (no domain) failed for %s", deal_id)
+            log.exception("note (invalid domain) failed for %s", deal_id)
         return
 
     try:

@@ -93,7 +93,7 @@ HUBSPOT_VERDICT_PROP = os.getenv("HUBSPOT_VERDICT_PROP", "")
 # Тягнути в оцінку контекст+соцмережі (SerpApi-квота). 0 = лише SemRush+onpage
 HUBSPOT_ENRICH = os.getenv("HUBSPOT_ENRICH", "1") not in ("0", "false", "False", "")
 # Тягнути CRO-аудит (окремий сервіс Elit-Web; повільніше). 0 = вимкнути
-HUBSPOT_DO_CRO = os.getenv("HUBSPOT_DO_CRO", "1") not in ("0", "false", "False", "")
+HUBSPOT_DO_CRO = os.getenv("HUBSPOT_DO_CRO", "0") not in ("0", "false", "False", "")
 # Автозаповнення полів-списків діла: Индустрия/Ниша/Подниша
 HUBSPOT_SET_NICHE = os.getenv("HUBSPOT_SET_NICHE", "1") not in ("0", "false", "False", "")
 # Полінг: сервіс сам шукає нові угоди DRP без нотатки (надійний fallback до вебхука,
