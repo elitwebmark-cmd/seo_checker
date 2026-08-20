@@ -582,6 +582,23 @@ def debug_meta():
                     mimetype="application/json")
 
 
+@app.route("/debug/config")
+def debug_config():
+    """Миттєва діагностика ключових налаштувань лід-скорингу (без обробки)."""
+    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    return jsonify({
+        "ok": True,
+        "config_pipeline": config.HUBSPOT_TEST_PIPELINE_ID,
+        "do_cro": config.HUBSPOT_DO_CRO,
+        "enrich": config.HUBSPOT_ENRICH,
+        "poll_interval": config.HUBSPOT_POLL_INTERVAL,
+        "poll_lookback_min": config.HUBSPOT_POLL_LOOKBACK_MIN,
+        "poll_enabled": config.HUBSPOT_POLL_ENABLED,
+        "domain_prop": config.HUBSPOT_DEAL_DOMAIN_PROP,
+    })
+
+
 @app.route("/debug/kw")
 def debug_kw():
     """Діагностика resolve ключа: сирі відповіді SemRush phrase_this/phrase_organic."""
