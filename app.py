@@ -636,6 +636,43 @@ def debug_kw():
     return Response(_json.dumps(out, ensure_ascii=False, indent=2), mimetype="application/json")
 
 
+@app.route("/debug/toppages")
+def debug_toppages():
+    """Топ сторінок за органічним трафіком по списку доменів (SemRush).
+    ?secret=..&domains=a.com,b.com&limit=15&scan=1000&db=ua — усе одним JSON."""
+    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    domains = [d.strip().lower().replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+               for d in (request.args.get("domains") or "").split(",") if d.strip()]
+    if not domains:
+        return jsonify({"ok": False, "error": "no domains"}), 400
+    limit = int(request.args.get("limit", "15"))
+    scan = int(request.args.get("scan", "1000"))
+    db = request.args.get("db") or None
+
+    def _one(d):
+        try:
+            ov = semrush.domain_overview(d, db=db)
+        except Exception:
+            ov = {}
+        try:
+            pages = semrush.top_pages(d, db=db, limit=limit, kw_scan=scan)
+        except Exception as e:
+            return d, {"error": str(e)[:160], "pages": []}
+        return d, {"organic_traffic": ov.get("organic_traffic", 0),
+                   "organic_keywords": ov.get("organic_keywords", 0),
+                   "pages": pages}
+
+    out = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as ex:
+        for d, r in ex.map(_one, domains):
+            out[d] = r
+    import json as _json
+    return Response(_json.dumps({"ok": True, "db": db or config.SEMRUSH_DB,
+                                 "limit": limit, "scan": scan, "results": out},
+                                ensure_ascii=False), mimetype="application/json")
+
+
 @app.route("/debug/ads")
 def debug_ads():
     if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
