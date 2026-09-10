@@ -263,7 +263,7 @@ def demo_result() -> dict:
         "segments": segments,
         "history": hist,
         "traffic_svg": charts.traffic_svg(hist, months=12, theme="dark"),
-        "forecast_svg": charts.forecast_svg(hist, benefit["traffic_top1"], theme="dark"),
+        "forecast_svg": charts.forecast_svg(hist, benefit["traffic_top1"], theme="dark", baseline=benefit.get("traffic_now")),
         "benefit": benefit,
         "media_plan": media_plan,
         "top_pages_traffic": top_pages_traffic,

@@ -212,11 +212,16 @@ def _kwplan_pre(kp: dict) -> str:
     return out
 
 
-def _forecast_pre(hist: list, target) -> str:
-    """Прогноз зростання: 3 останні фактичні міс + 4 прогнозовані до цілі."""
+def _forecast_pre(hist: list, target, baseline=None) -> str:
+    """Прогноз зростання: 3 останні фактичні міс + 4 прогнозовані до цілі.
+    baseline — комерційний «трафік зараз»; масштабуємо факт-лінію під нього,
+    щоб порівнювати в одній шкалі з ціллю (traffic_top1)."""
     import charts
     pts = [h for h in list(reversed(hist))[-3:] if h.get("date")]
     vals = [max(0, int(h.get("org_traffic", 0) or 0)) for h in pts]
+    if baseline and baseline > 0 and vals and vals[-1] > 0:
+        f = baseline / vals[-1]
+        vals = [max(0, int(round(v * f))) for v in vals]
     tgt = int(target or 0)
     if not vals or tgt <= vals[-1]:
         return ""
@@ -408,7 +413,7 @@ def fmt(res: dict) -> str:
     if bn.get("queries"):
         lines.append("")
         lines.append(_potential_pre(bn))
-        fp = _forecast_pre(res.get("history") or [], bn.get("traffic_top1"))
+        fp = _forecast_pre(res.get("history") or [], bn.get("traffic_top1"), bn.get("traffic_now"))
         if fp:
             lines.append("")
             lines.append(fp)

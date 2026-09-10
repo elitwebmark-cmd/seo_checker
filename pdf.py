@@ -43,7 +43,8 @@ def render_html(res: dict) -> str:
     hist = res.get("history") or []
     chart_svg = charts.traffic_svg(hist, theme="light")
     forecast_svg = charts.forecast_svg(
-        hist, (res.get("benefit") or {}).get("traffic_top1"), theme="light")
+        hist, (res.get("benefit") or {}).get("traffic_top1"), theme="light",
+        baseline=(res.get("benefit") or {}).get("traffic_now"))
     nt = res.get("niche_trend") or {}
     trend_svg = charts.trend_svg(nt.get("points"), theme="light") if nt.get("points") else ""
     kp = res.get("kwplan") or {}

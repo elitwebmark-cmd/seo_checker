@@ -317,10 +317,17 @@ def _short_lbl(label) -> str:
 
 
 def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark",
-                 actual_months: int = 3, gradient_id: str = "fgrad") -> str:
+                 actual_months: int = 3, gradient_id: str = "fgrad",
+                 baseline: int = None) -> str:
     """Компактний графік прогнозу зростання: останні `actual_months` фактичних
     місяців + 4 прогнозовані (крива FORECAST_CURVE) до цільового трафіку `target`.
-    Для правої колонки блоку «Потенціал». Порожньо, якщо ціль не вища за поточний."""
+    Для правої колонки блоку «Потенціал». Порожньо, якщо ціль не вища за поточний.
+
+    `baseline` — комерційний «трафік зараз» (benefit.traffic_now). Якщо заданий,
+    фактичну лінію масштабуємо так, щоб її остання точка дорівнювала baseline —
+    тоді і лінія, і ціль (traffic_top1) в одній комерційній шкалі. Без цього
+    графік порівнював ЗАГАЛЬНИЙ органічний трафік (може бути > цілі) з комерційною
+    ціллю й не будувався для сайтів із великим загальним трафіком (напр. anabel-arto.com)."""
     if not history:
         return ""
     T = _THEMES.get(theme, _THEMES["dark"])
@@ -329,6 +336,10 @@ def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark"
     vals = [max(0, int(p.get("org_traffic", 0) or 0)) for p in pts]
     if len(vals) < 1 or max(vals) <= 0:
         return ""
+    # Масштабуємо фактичну лінію під комерційний baseline (зберігаючи форму тренду)
+    if baseline and baseline > 0 and vals[-1] > 0:
+        f = baseline / vals[-1]
+        vals = [max(0, int(round(v * f))) for v in vals]
     tgt = int(target or 0)
     last_v = vals[-1]
     if not tgt or tgt <= last_v:
