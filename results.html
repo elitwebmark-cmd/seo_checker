@@ -99,11 +99,17 @@
         </div>
         {% endif %}
       </div>
-      {% if r.forecast_svg %}
+      {% if r.forecast_svg or r.forecast_svg_all %}
+      {% set fc_def = 'comm' if r.forecast_svg else 'all' %}
       <div class="ben-colR">
         <div class="ben-fc-title">📈 Прогноз зростання трафіку</div>
-        <div class="ben-fc-sub">3 останні міс + 4 прогнозовані (вихід у ТОП-1)</div>
-        <div class="ben-fc-chart">{{ r.forecast_svg|safe }}</div>
+        <div class="ben-fc-switch">
+          <button type="button" class="fc-tab{% if fc_def=='comm' %} on{% endif %}" data-fc="comm"{% if not r.forecast_svg %} disabled{% endif %}>Комерційні запити</button>
+          <button type="button" class="fc-tab{% if fc_def=='all' %} on{% endif %}" data-fc="all"{% if not r.forecast_svg_all %} disabled{% endif %}>Весь трафік</button>
+        </div>
+        <div class="ben-fc-sub js-fc-sub">{% if fc_def=='comm' %}трафік комерц. запитів → ТОП-1{% else %}весь трафік → +приріст комерції у ТОП-1{% endif %}</div>
+        {% if r.forecast_svg %}<div class="ben-fc-chart fc-pane fc-comm"{% if fc_def!='comm' %} style="display:none"{% endif %}>{{ r.forecast_svg|safe }}</div>{% endif %}
+        {% if r.forecast_svg_all %}<div class="ben-fc-chart fc-pane fc-all"{% if fc_def!='all' %} style="display:none"{% endif %}>{{ r.forecast_svg_all|safe }}</div>{% endif %}
         <div class="ben-fc-legend"><span class="fc-lg"><i class="fc-sw"></i>факт</span><span class="fc-lg"><i class="fc-sw fc"></i>прогноз</span></div>
       </div>
       {% endif %}
@@ -975,5 +981,22 @@ function bindCroFilter(root){
     });
   });
 })();
+</script>
+<script>
+// Перемикач прогнозу: Комерційні запити ↔ Весь трафік
+document.addEventListener('click', function(e){
+  var b = e.target.closest('.fc-tab');
+  if(!b || b.disabled) return;
+  var box = b.closest('.ben-colR'); if(!box) return;
+  box.querySelectorAll('.fc-tab').forEach(function(x){ x.classList.toggle('on', x === b); });
+  var m = b.dataset.fc;
+  var comm = box.querySelector('.fc-comm'), all = box.querySelector('.fc-all');
+  if(comm) comm.style.display = (m === 'comm') ? '' : 'none';
+  if(all)  all.style.display  = (m === 'all')  ? '' : 'none';
+  var sub = box.querySelector('.js-fc-sub');
+  if(sub) sub.textContent = (m === 'comm')
+    ? 'трафік комерц. запитів → ТОП-1'
+    : 'весь трафік → +приріст комерції у ТОП-1';
+}, false);
 </script>
 {% endblock %}

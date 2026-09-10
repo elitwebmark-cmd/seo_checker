@@ -316,18 +316,18 @@ def _short_lbl(label) -> str:
     return s.split()[0][:3] if s else ""
 
 
-def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark",
+def forecast_svg(history: List[Dict[str, Any]], target: int = None, theme: str = "dark",
                  actual_months: int = 3, gradient_id: str = "fgrad",
-                 baseline: int = None) -> str:
+                 baseline: int = None, uplift: int = None) -> str:
     """Компактний графік прогнозу зростання: останні `actual_months` фактичних
-    місяців + 4 прогнозовані (крива FORECAST_CURVE) до цільового трафіку `target`.
-    Для правої колонки блоку «Потенціал». Порожньо, якщо ціль не вища за поточний.
+    місяців + 4 прогнозовані (крива FORECAST_CURVE). Для правої колонки блоку «Потенціал».
 
-    `baseline` — комерційний «трафік зараз» (benefit.traffic_now). Якщо заданий,
-    фактичну лінію масштабуємо так, щоб її остання точка дорівнювала baseline —
-    тоді і лінія, і ціль (traffic_top1) в одній комерційній шкалі. Без цього
-    графік порівнював ЗАГАЛЬНИЙ органічний трафік (може бути > цілі) з комерційною
-    ціллю й не будувався для сайтів із великим загальним трафіком (напр. anabel-arto.com)."""
+    Два режими:
+    • КОМЕРЦІЙНИЙ (за замовч.): `baseline`=traffic_now, `target`=traffic_top1 —
+      фактичну лінію масштабуємо під комерційний «трафік зараз», ціль — комерційний ТОП-1.
+    • ЗАГАЛЬНИЙ: `uplift`=приріст комерції — лінія лишається реальним ВЕСЬ трафіком,
+      ціль = останній весь трафік + uplift.
+    Порожньо, якщо ціль не вища за поточне."""
     if not history:
         return ""
     T = _THEMES.get(theme, _THEMES["dark"])
@@ -336,14 +336,19 @@ def forecast_svg(history: List[Dict[str, Any]], target: int, theme: str = "dark"
     vals = [max(0, int(p.get("org_traffic", 0) or 0)) for p in pts]
     if len(vals) < 1 or max(vals) <= 0:
         return ""
-    # Масштабуємо фактичну лінію під комерційний baseline (зберігаючи форму тренду)
-    if baseline and baseline > 0 and vals[-1] > 0:
+    if baseline and baseline > 0 and vals[-1] > 0:      # комерційний режим: масштаб під baseline
         f = baseline / vals[-1]
         vals = [max(0, int(round(v * f))) for v in vals]
-    tgt = int(target or 0)
     last_v = vals[-1]
-    if not tgt or tgt <= last_v:
-        return ""
+    if uplift is not None:                              # загальний режим: весь трафік + приріст
+        add = int(uplift or 0)
+        if add <= 0:
+            return ""
+        tgt = last_v + add
+    else:
+        tgt = int(target or 0)
+        if not tgt or tgt <= last_v:
+            return ""
 
     base, gap = last_v, tgt - last_v
     last_date = pts[-1].get("date")
