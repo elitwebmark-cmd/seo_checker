@@ -4,7 +4,7 @@ import os, uuid, threading, concurrent.futures, functools, time, logging
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session, Response)
 
-import qualify, config, hubspot_sync, manus, semrush
+import qualify, config, hubspot_sync, semrush
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -724,30 +724,6 @@ def debug_cro():
                     mimetype="application/json")
 
 
-@app.route("/hooks/manus-test")
-def manus_test():
-    # Тест Manus без діла: створює задачу по домену, повертає посилання на неї.
-    if not config.MANUS_API_KEY:
-        return jsonify({"ok": False, "error": "MANUS_API_KEY не заданий"}), 400
-    if request.args.get("secret") != config.HUBSPOT_WEBHOOK_SECRET:
-        return jsonify({"ok": False, "error": "forbidden"}), 403
-    domain = (request.args.get("domain") or "").strip().lower().replace("https://", "").replace("http://", "").strip("/")
-    if not domain:
-        return jsonify({"ok": False, "error": "no domain"}), 400
-    try:
-        res = qualify.qualify(domain, do_onpage=False)
-    except Exception as e:
-        res = {"domain": domain, "verdict": "?", "metrics": {}, "niche": {}}
-        log.warning("manus-test qualify failed: %s", e)
-    try:
-        task_id = manus.create_task(domain, res)
-        return jsonify({"ok": True, "task_id": task_id,
-                        "task_url": f"https://manus.im/app/{task_id}",
-                        "verdict": res.get("verdict")})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)[:400]})
-
-
 @app.route("/traffic", methods=["POST"])
 def traffic():
     # Пакетний збір органічного трафіку/ключів по списку доменів (серверний SemRush-ключ).
@@ -798,7 +774,7 @@ def debug_overview():
 @app.route("/healthz")
 def healthz():
     return {"ok": True, "has_key": bool(config.SEMRUSH_API_KEY),
-            "hubspot": bool(config.HUBSPOT_TOKEN), "manus": bool(config.MANUS_API_KEY)}
+            "hubspot": bool(config.HUBSPOT_TOKEN)}
 
 
 if __name__ == "__main__":

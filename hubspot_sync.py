@@ -12,7 +12,6 @@ import requests
 import config
 import qualify
 import niche
-import manus
 
 log = logging.getLogger("hubspot-sync")
 
@@ -700,26 +699,6 @@ def process_deal_debug(deal_id: str, do_cro=None, fast=False) -> dict:
     return out
 
 
-def _manus_worker(deal_id: str, domain: str, res: dict):
-    data = manus.run(domain, res)
-    if not data:
-        return
-    try:
-        create_note(deal_id, manus.format_html(domain, data))
-        log.info("manus note created for deal %s (%s)", deal_id, domain)
-    except Exception:
-        log.exception("manus note failed for %s", deal_id)
-
-
-def maybe_manus(deal_id: str, domain: str, res: dict):
-    """Запускає Manus у фоні лише для перспективних лідів (Ідеально/Добре)."""
-    if not config.MANUS_API_KEY:
-        return
-    if res.get("verdict") not in config.MANUS_VERDICTS:
-        return
-    threading.Thread(target=_manus_worker, args=(deal_id, domain, res), daemon=True).start()
-
-
 def _cro_note_html(domain: str, cro: dict) -> str:
     """Окрема нотатка CRO (щоб не блокувати основну відписку повільним аудитом)."""
     rows = _cro_block({"cro": cro})
@@ -1036,5 +1015,3 @@ def _process_deal_inner(deal_id: str):
             _cro_worker(deal_id, domain)
         except Exception:
             log.exception("cro worker failed for %s", deal_id)
-    # Глибока аналітика Manus (у фоні, лише Ідеально/Добре)
-    maybe_manus(deal_id, domain, res)
