@@ -574,17 +574,12 @@ def _competitors(domain: str, db: str, lim: int) -> List[Dict[str, Any]]:
 # Порядок каналів у графіку (як у Traffic Analytics-дашборді SemRush).
 TA_CHANNELS = ["Direct", "Organic", "Paid", "AI", "Social", "Referral", "Other"]
 
-# Внутрішні ключі каналів (semrush_ta) -> підписи графіка.
-_TA_LABEL = {"direct": "Direct", "search": "Organic", "paid": "Paid",
-             "ai": "AI", "social": "Social", "referral": "Referral", "other": "Other"}
-
-
 def traffic_channels(targets, db: str = None, country: str = None) -> Dict[str, Any]:
-    """Трафік по каналах для списку доменів. Канали (Direct/Organic/AI/Social/
-    Referral/Other) рахуються з Traffic Analytics (ендпоінт sources — класифікація
-    джерел за фактичними візитами), Paid — окремо зі стандартного AdWords-трафіку.
-    Organic тут = реальні візити з пошуку (TA), не keyword-оцінка з SEO-секції.
-    Якщо TA недоступний — available=False (блок деградує м'яко)."""
+    """Трафік по каналах для списку доменів. Organic і Paid беруться зі стандартного
+    API SemRush (той самий реальний показник, що в Domain Overview / SEO-секції),
+    а Direct/AI/Social/Referral/Other — з Traffic Analytics (ендпоінт sources,
+    класифікація джерел за фактичними візитами). Якщо TA недоступний — лишаються
+    хоча б Organic + Paid зі стандартного API."""
     if isinstance(targets, str):
         targets = [targets]
     doms = []
@@ -599,32 +594,39 @@ def traffic_channels(targets, db: str = None, country: str = None) -> Dict[str, 
 
 def _traffic_channels_ta(doms: List[str], db: str) -> Dict[str, Any]:
     import semrush_ta
-    domains, errs = [], []
+    domains = []
     for d in doms:
         try:
-            paid = _safe_int(domain_overview(d, db=db).get("adwords_traffic"))
+            ov = domain_overview(d, db=db)
         except Exception:
-            paid = 0
+            ov = {}
+        org = _safe_int(ov.get("organic_traffic"))     # реальний Organic Traffic (як у Domain Overview)
+        paid = _safe_int(ov.get("adwords_traffic"))    # реальний Paid Traffic (AdWords)
         try:
-            cm = semrush_ta.channel_matrix(d, paid_traffic=paid)
-        except Exception as e:
+            cm = semrush_ta.channel_matrix(d, paid_traffic=0)   # беремо лише TA-канали, paid додаємо самі
+        except Exception:
             cm = None
-            errs.append(f"{d}: {str(e)[:80]}")
-        if not cm:
+        tach = (cm.get("channels") if cm else {}) or {}
+        channels = {
+            "Direct": int(tach.get("direct", 0)),
+            "Organic": org,                            # зі стандартного API, не з TA-search
+            "Paid": paid,                              # зі стандартного API
+            "AI": int(tach.get("ai", 0)),
+            "Social": int(tach.get("social", 0)),
+            "Referral": int(tach.get("referral", 0)),
+            "Other": int(tach.get("other", 0)),
+        }
+        channels = {lbl: channels.get(lbl, 0) for lbl in TA_CHANNELS}   # фікс. порядок
+        if sum(channels.values()) <= 0:
             continue
-        ch = {}
-        for k, v in (cm.get("channels") or {}).items():
-            ch[_TA_LABEL.get(k, k.title())] = int(v or 0)
-        channels = {lbl: ch.get(lbl, 0) for lbl in TA_CHANNELS}   # повний набір, фікс. порядок
-        total = cm.get("total") or sum(channels.values())
-        domains.append({"domain": d, "visits": total, "channels": channels})
+        domains.append({"domain": d, "visits": sum(channels.values()), "channels": channels})
     if not domains:
         return {"available": False, "domains": [], "channels": TA_CHANNELS,
-                "error": "; ".join(errs) or "Traffic Analytics недоступний для цих доменів"}
+                "error": "Немає даних для цих доменів"}
     return {
         "available": True, "channels": TA_CHANNELS, "domains": domains,
-        "note": ("Канали — з Traffic Analytics за фактичними візитами; "
-                 "Paid — зі стандартного AdWords-трафіку SemRush."),
+        "note": ("Organic і Paid — зі стандартного API SemRush (як у Domain Overview); "
+                 "Direct/AI/Social/Referral/Other — з Traffic Analytics за фактичними візитами."),
     }
 
 
