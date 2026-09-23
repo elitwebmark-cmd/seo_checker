@@ -33,33 +33,6 @@
   </div>
   {% endif %}
   {% endif %}
-  {% if not r.error %}
-  <div class="cmp-block" data-competitors-block data-domain="{{ r.domain }}" data-job="{{ job_id }}">
-    <div class="cmp-h">🥊 Конкурентний аналіз — трафік по каналах</div>
-    <div class="cmp-grid">
-      <label class="cmp-you">Ви (аналізований)<input type="text" value="{{ r.domain }}" readonly></label>
-      {% for i in range(5) %}
-      {% set c = r.competitors[i] if (r.competitors and r.competitors|length > i) else none %}
-      <label class="cmp-inp">Конкурент {{ i + 1 }}<input type="text" data-cmp-input value="{{ c.domain if c else '' }}" placeholder="домен конкурента"></label>
-      {% endfor %}
-    </div>
-    <button type="button" class="btn-ai cmp-run">📊 Побудувати графік порівняння</button>
-    <div class="cmp-status small"></div>
-    <div class="cmp-result" hidden>
-      <div class="cmp-canvas-wrap"><canvas class="cmp-bar"></canvas></div>
-      <div class="cmp-legend"></div>
-      <div class="cmp-pie-block">
-        <div class="cmp-pie-head">🎯 Розподіл трафіку в каналі:
-          <select class="cmp-channel"></select>
-        </div>
-        <div class="cmp-pie-layout">
-          <div class="cmp-pie-wrap"><canvas class="cmp-pie"></canvas></div>
-          <div class="cmp-pie-table"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
   <details class="rc-sect seo" open>
   <summary class="rc-sect-h"><span class="rc-sect-badge s-seo">SEO</span>Органічний пошук — трафік, позиції, потенціал</summary>
   <div class="rc-stats">
@@ -229,6 +202,35 @@
   </div>
   {% endif %}
   </details>{# /rc-sect seo #}
+
+  {% if not r.error %}
+  <div class="cmp-block" data-competitors-block data-domain="{{ r.domain }}" data-job="{{ job_id }}">
+    <div class="cmp-h">🥊 Конкурентний аналіз — трафік по каналах</div>
+    <div class="cmp-grid">
+      <label class="cmp-you">Ви (аналізований)<input type="text" value="{{ r.domain }}" readonly></label>
+      {% for i in range(5) %}
+      {% set c = r.competitors[i] if (r.competitors and r.competitors|length > i) else none %}
+      <label class="cmp-inp">Конкурент {{ i + 1 }}<input type="text" data-cmp-input value="{{ c.domain if c else '' }}" placeholder="домен конкурента"></label>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn-ai cmp-run">📊 Побудувати графік порівняння</button>
+    <div class="cmp-status small"></div>
+    <div class="cmp-result" hidden>
+      <div class="cmp-canvas-wrap"><canvas class="cmp-bar"></canvas></div>
+      <div class="cmp-legend"></div>
+      <div class="cmp-pie-block">
+        <div class="cmp-pie-head">🎯 Розподіл трафіку в каналі:
+          <select class="cmp-channel"></select>
+        </div>
+        <div class="cmp-pie-layout">
+          <div class="cmp-pie-wrap"><canvas class="cmp-pie"></canvas></div>
+          <div class="cmp-pie-table"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if (r.ads and r.ads.checked) or (r.social and r.social.checked) or (r.paid and (r.paid.budget or r.paid.keywords)) or r.media_plan %}
   <details class="rc-sect ppc">
   <summary class="rc-sect-h"><span class="rc-sect-badge s-ppc">PPC</span>Контекстна реклама — присутність, медіаплан, креативи</summary>
