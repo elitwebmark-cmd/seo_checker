@@ -460,6 +460,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "benefit": benefit,
         "history": history,
         "segments": segments,
+        "position_history": _position_history_prefill(domain, db),
         "traffic_svg": charts.traffic_svg(history, months=config.HISTORY_MONTHS),
         "forecast_svg": charts.forecast_svg(history, benefit.get("traffic_top1"),
                                             theme="dark", baseline=benefit.get("traffic_now"),
@@ -507,6 +508,14 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         )["funnel"],
         "onpage": onp if do_onpage else None,
     }
+
+
+def _position_history_prefill(domain: str, db: str = None):
+    """Історія розподілу по сегментах позицій (тренд). [] при помилці SemRush."""
+    try:
+        return semrush.position_history(domain, db)
+    except Exception:
+        return []
 
 
 def _competitors_prefill(domain: str, db: str = None):

@@ -54,6 +54,7 @@ SEMRUSH_TA_COUNTRY = os.getenv("SEMRUSH_TA_COUNTRY", "UA")   # країна дл
 SEMRUSH_TA_CACHE_TTL = int(os.getenv("SEMRUSH_TA_CACHE_TTL", "604800"))
 SEMRUSH_TA_TIMEOUT = int(os.getenv("SEMRUSH_TA_TIMEOUT", "20"))
 COMPETITORS_LIMIT = int(os.getenv("COMPETITORS_LIMIT", "5")) # скільки конкурентів підтягувати
+SEG_HISTORY_MONTHS = int(os.getenv("SEG_HISTORY_MONTHS", "24"))  # глибина тренду по сегментах позицій
 
 # --- Авторизація веб-інтерфейсу ---
 APP_LOGIN_EMAIL = os.getenv("APP_LOGIN_EMAIL", "marketing@elit-web.ua")

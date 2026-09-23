@@ -67,6 +67,14 @@
     {% endif %}
   </div>
   {% endif %}
+  {% if r.position_history and r.position_history|length > 1 %}
+  <div class="seoviz">
+    <div class="viz-card viz-wide">
+      <div class="viz-h">📊 Динаміка ключів по сегментах позицій · {{ r.position_history|length }} міс</div>
+      <div class="poshist-wrap"><canvas class="poshist-canvas" data-poshist='{{ r.position_history|tojson }}'></canvas></div>
+    </div>
+  </div>
+  {% endif %}
   {% if r.benefit and r.benefit.queries %}
   <div class="benefit">
     <div class="benefit-l">{% if assets.ic_chart %}<img class="ic ic-inline" src="{{ url_for('static', filename=assets.ic_chart) }}" alt="">{% else %}💰 {% endif %}Потенціал · {% if r.benefit.modeled %}~{{ r.benefit.queries }} комерц. запитів ТОП 4–20 (модель на всю семантику){% else %}усі {{ r.benefit.queries }} комерц. запити ТОП 4–20{% endif %} (якщо вивести у ТОП-1)</div>
@@ -1179,6 +1187,64 @@ document.addEventListener('click', function(e){
   }
 
   document.querySelectorAll('[data-competitors-block]').forEach(initBlock);
+})();
+</script>
+
+<script>
+// --- Динаміка ключів по сегментах позицій (stacked bar, як Organic Keywords Trend) ---
+(function(){
+  var SEGS = [
+    {key:'top3',   label:'ТОП 3',   color:'#16C784'},
+    {key:'p4_10',  label:'4–10',    color:'#3AA0FF'},
+    {key:'p11_20', label:'11–20',   color:'#A855F7'},
+    {key:'p21_50', label:'21–50',   color:'#FFB020'},
+    {key:'p51_100',label:'51–100',  color:'#6B7280'}
+  ];
+  function mlabel(ym){
+    if(!ym || ym.length < 6) return ym || '';
+    return ym.slice(4,6) + '.' + ym.slice(2,4);   // MM.YY
+  }
+  function fmt(n){ return (Math.round(n)||0).toLocaleString('uk-UA').replace(/,/g,' '); }
+
+  document.querySelectorAll('.poshist-canvas').forEach(function(cv){
+    var data;
+    try { data = JSON.parse(cv.dataset.poshist || '[]'); } catch(e){ return; }
+    if(!data.length) return;
+    var labels = data.map(function(p){ return mlabel(p.date); });
+    var datasets = SEGS.map(function(s){
+      return {
+        label: s.label,
+        data: data.map(function(p){ return (p.segments && p.segments[s.key]) || 0; }),
+        backgroundColor: s.color,
+        borderWidth: 0,
+        stack: 'seg'
+      };
+    });
+    new Chart(cv.getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#c9c9d1', font: { weight: 700 }, boxWidth: 12 } },
+          tooltip: {
+            callbacks: {
+              label: function(c){ return c.dataset.label + ': ' + fmt(c.parsed.y); },
+              footer: function(items){
+                var t = items.reduce(function(a, x){ return a + x.parsed.y; }, 0);
+                return 'Всього: ' + fmt(t);
+              }
+            }
+          }
+        },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { color: '#8a8a94', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+          y: { stacked: true, grid: { color: '#2A2A31' }, ticks: { color: '#8a8a94', callback: function(v){ return fmt(v); } } }
+        }
+      }
+    });
+  });
 })();
 </script>
 {% endblock %}

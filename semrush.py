@@ -124,6 +124,50 @@ def _position_distribution(domain: str, db: str = None):
     return {"segments": seg, "labels": _SEG_LABELS, "total": total, "capped": False}
 
 
+def position_history(domain: str, db: str = None, months: int = None) -> List[Dict[str, Any]]:
+    """Історія розподілу органічних ключів по сегментах позицій (як Organic
+    Keywords Trend у SemRush). ОДИН запит domain_rank_history з колонками X0..XA
+    помісячно (історія в цьому звіті безкоштовна). Кешується по домену."""
+    m = int(months or getattr(config, "SEG_HISTORY_MONTHS", 24))
+    return _cached(f"poshist:{_db(db)}:{domain}:{m}", lambda: _position_history(domain, db, m))
+
+
+def _position_history(domain: str, db: str, months: int) -> List[Dict[str, Any]]:
+    cols = ["Dt", "Or", "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "XA"]
+    try:
+        text = _request({
+            "type": "domain_rank_history",
+            "domain": domain,
+            "database": _db(db),
+            "export_columns": ",".join(cols),
+            "display_sort": "dt_desc",
+            "display_limit": max(1, int(months)),
+        })
+    except SemrushError:
+        return []
+    out = []
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    for line in lines[1:]:                    # пропускаємо шапку
+        cells = line.split(";")
+        if len(cells) != len(cols):
+            continue
+        row = dict(zip(cols, cells))          # зіставляємо за позицією (надійно)
+        x = [_safe_int(row.get(f"X{n}")) for n in
+             ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A")]
+        total = sum(x)
+        if total <= 0:
+            continue
+        out.append({
+            "date": (row.get("Dt") or "")[:6],   # YYYYMM
+            "segments": {"top3": x[0], "p4_10": x[1], "p11_20": x[2],
+                         "p21_50": x[3] + x[4] + x[5],
+                         "p51_100": x[6] + x[7] + x[8] + x[9] + x[10]},
+            "total": total,
+        })
+    out.reverse()                              # від найстарішого до найновішого
+    return out
+
+
 def domain_shopping(domain: str, db: str = None) -> Dict[str, Any]:
     """Чи використовує домен Google Shopping / PLA (товарну рекламу).
     Звіт domain_shopping (PLA Positions). Кешується по домену."""
