@@ -460,7 +460,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         "benefit": benefit,
         "history": history,
         "segments": segments,
-        "position_history": _position_history_prefill(domain, db),
+        "position_history": _position_history_prefill(domain, db, segments),
         "traffic_svg": charts.traffic_svg(history, months=config.HISTORY_MONTHS),
         "forecast_svg": charts.forecast_svg(history, benefit.get("traffic_top1"),
                                             theme="dark", baseline=benefit.get("traffic_now"),
@@ -510,12 +510,26 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
     }
 
 
-def _position_history_prefill(domain: str, db: str = None):
-    """Історія розподілу по сегментах позицій (тренд). [] при помилці SemRush."""
+def _position_history_prefill(domain: str, db: str = None, current=None):
+    """Історія розподілу по сегментах позицій (тренд). Останньою точкою додаємо
+    поточний зріз (той самий, що у верхній матриці), бо domain_rank_history віддає
+    лише завершені місяці — так графік сходиться з блоком «Матриця позицій». [] при
+    помилці SemRush."""
     try:
-        return semrush.position_history(domain, db)
+        hist = semrush.position_history(domain, db) or []
     except Exception:
-        return []
+        hist = []
+    # Додаємо/оновлюємо поточний місяць даними з поточного зрізу матриці.
+    if isinstance(current, dict) and current.get("total") and current.get("segments"):
+        import datetime
+        cur_month = datetime.date.today().strftime("%Y%m")
+        point = {"date": cur_month, "segments": dict(current["segments"]),
+                 "total": current["total"]}
+        if hist and hist[-1].get("date") == cur_month:
+            hist[-1] = point                 # замінюємо, якщо історія вже має цей місяць
+        else:
+            hist = hist + [point]
+    return hist
 
 
 def _competitors_prefill(domain: str, db: str = None):
