@@ -570,73 +570,21 @@ def _competitors(domain: str, db: str, lim: int) -> List[Dict[str, Any]]:
     return out
 
 
-# --- Traffic Analytics (Trends): трафік по каналах --------------------------
-# Порядок каналів у графіку. Organic/Paid — зі стандартного API (як у Domain
-# Overview), решта — з Traffic Analytics.
-TA_CHANNELS = ["Organic", "Direct", "Paid", "Social", "Referral", "Other"]
+# --- Traffic Analytics: трафік по каналах -----------------------------------
+# Порядок каналів у графіку (як у Traffic Analytics-дашборді SemRush).
+TA_CHANNELS = ["Direct", "Organic", "Paid", "AI", "Social", "Referral", "Other"]
 
-
-def _ta_request(endpoint: str, params: Dict[str, Any]) -> str:
-    params = dict(params)
-    params["key"] = getattr(config, "SEMRUSH_TA_KEY", "") or config.SEMRUSH_API_KEY
-    base = getattr(config, "SEMRUSH_TA_BASE", "https://api.semrush.com/analytics/ta/api/v3/")
-    url = base.rstrip("/") + "/" + endpoint.lstrip("/")
-    r = requests.get(url, params=params, timeout=config.HTTP_TIMEOUT)
-    text = r.text.strip()
-    if r.status_code != 200:
-        raise SemrushError(f"HTTP {r.status_code}: {text[:200]}")
-    if text.startswith("ERROR"):
-        if "NOTHING FOUND" in text.upper():
-            return ""
-        raise SemrushError(text)
-    return text
-
-
-def _parse_csv_lc(text: str) -> List[Dict[str, str]]:
-    """Як _parse_csv, але ключі приводяться до нижнього регістру (для TA-звітів,
-    де заголовки — це коди колонок: target, visits, direct, ...)."""
-    if not text:
-        return []
-    lines = text.splitlines()
-    header = [h.strip().lower() for h in lines[0].split(";")]
-    out = []
-    for line in lines[1:]:
-        cells = line.split(";")
-        if len(cells) != len(header):
-            continue
-        out.append(dict(zip(header, cells)))
-    return out
-
-
-def _channel_split(visits: float, shares: Dict[str, float]) -> Dict[str, int]:
-    """Перетворює частки каналів у абсолютні візити. Автовизначає, чи це частки
-    (0..1), відсотки (0..100), чи вже абсолютні числа."""
-    vals = [v for v in shares.values() if v > 0]
-    s = sum(vals)
-    if s <= 0:
-        return {c: 0 for c in TA_CHANNELS}
-    if s <= 1.5:                 # частки 0..1
-        factor = visits
-    elif s <= 150:               # відсотки 0..100
-        factor = visits / 100.0
-    else:                        # вже абсолютні візити
-        factor = 1.0
-    ch = {
-        "Direct": shares.get("direct", 0) * factor,
-        "Organic": shares.get("search", 0) * factor,
-        "Paid": shares.get("paid", 0) * factor,
-        "Social": shares.get("social", 0) * factor,
-        "Referral": shares.get("referral", 0) * factor,
-    }
-    known = sum(ch.values())
-    ch["Other"] = max(0.0, visits - known)
-    return {k: int(round(v)) for k, v in ch.items()}
+# Внутрішні ключі каналів (semrush_ta) -> підписи графіка.
+_TA_LABEL = {"direct": "Direct", "search": "Organic", "paid": "Paid",
+             "ai": "AI", "social": "Social", "referral": "Referral", "other": "Other"}
 
 
 def traffic_channels(targets, db: str = None, country: str = None) -> Dict[str, Any]:
-    """Трафік по каналах для списку доменів (SemRush Trends / Traffic Analytics).
-    Повертає {available, country, domains:[{domain, visits, channels:{...}}], channels}.
-    Якщо Trends недоступний/помилка — available=False (блок деградує м'яко)."""
+    """Трафік по каналах для списку доменів. Канали (Direct/Organic/AI/Social/
+    Referral/Other) рахуються з Traffic Analytics (ендпоінт sources — класифікація
+    джерел за фактичними візитами), Paid — окремо зі стандартного AdWords-трафіку.
+    Organic тут = реальні візити з пошуку (TA), не keyword-оцінка з SEO-секції.
+    Якщо TA недоступний — available=False (блок деградує м'яко)."""
     if isinstance(targets, str):
         targets = [targets]
     doms = []
@@ -646,88 +594,38 @@ def traffic_channels(targets, db: str = None, country: str = None) -> Dict[str, 
             doms.append(d)
     if not doms:
         return {"available": False, "domains": [], "channels": TA_CHANNELS, "error": "no targets"}
-    ctry = (country or getattr(config, "SEMRUSH_TA_COUNTRY", "UA") or "").strip()
-    key = f"ta:{ctry}:{'|'.join(sorted(doms))}"
-    return _cached(key, lambda: _channels_or_fallback(doms, ctry))
+    return _cached(f"tac:{'|'.join(doms)}", lambda: _traffic_channels_ta(doms, db))
 
 
-def _channels_or_fallback(doms: List[str], ctry: str) -> Dict[str, Any]:
-    """Гібрид: Organic і Paid беремо зі стандартного API (той самий показник, що
-    SemRush показує в Domain Overview), а Direct/Social/Referral/Other — з Traffic
-    Analytics. Якщо TA недоступний — лишаємо тільки Organic + Paid (partial)."""
-    base = {}
+def _traffic_channels_ta(doms: List[str], db: str) -> Dict[str, Any]:
+    import semrush_ta
+    domains, errs = [], []
     for d in doms:
         try:
-            ov = domain_overview(d)
+            paid = _safe_int(domain_overview(d, db=db).get("adwords_traffic"))
         except Exception:
-            ov = {}
-        base[d] = {"Organic": _safe_int(ov.get("organic_traffic")),
-                   "Paid": _safe_int(ov.get("adwords_traffic"))}
-    ta = _ta_fetch(doms, ctry)
-    ta_ok = ta.get("available")
-
-    domains = []
-    for d in doms:
-        b = base.get(d, {})
-        ch = {"Organic": b.get("Organic", 0), "Paid": b.get("Paid", 0)}
-        if ta_ok and d in ta["rows"]:
-            ex = ta["rows"][d]
-            ch["Direct"] = ex.get("Direct", 0)
-            ch["Social"] = ex.get("Social", 0)
-            ch["Referral"] = ex.get("Referral", 0)
-            ch["Other"] = ex.get("Other", 0)
-        if sum(ch.values()) <= 0:
+            paid = 0
+        try:
+            cm = semrush_ta.channel_matrix(d, paid_traffic=paid)
+        except Exception as e:
+            cm = None
+            errs.append(f"{d}: {str(e)[:80]}")
+        if not cm:
             continue
-        domains.append({"domain": d, "visits": sum(ch.values()), "channels": ch})
-
+        ch = {}
+        for k, v in (cm.get("channels") or {}).items():
+            ch[_TA_LABEL.get(k, k.title())] = int(v or 0)
+        channels = {lbl: ch.get(lbl, 0) for lbl in TA_CHANNELS}   # повний набір, фікс. порядок
+        total = cm.get("total") or sum(channels.values())
+        domains.append({"domain": d, "visits": total, "channels": channels})
     if not domains:
         return {"available": False, "domains": [], "channels": TA_CHANNELS,
-                "country": ctry, "error": ta.get("error") or "no data"}
-    if ta_ok:
-        return {
-            "available": True, "country": ctry,
-            "channels": ["Organic", "Direct", "Paid", "Social", "Referral", "Other"],
-            "domains": domains,
-            "note": ("Organic і Paid — зі стандартного API SemRush (як у Domain "
-                     "Overview); Direct/Social/Referral/Other — з Traffic Analytics."),
-        }
+                "error": "; ".join(errs) or "Traffic Analytics недоступний для цих доменів"}
     return {
-        "available": True, "partial": True, "country": ctry,
-        "channels": ["Organic", "Paid"], "domains": domains,
-        "ta_error": ta.get("error"),
-        "note": ("Traffic Analytics недоступний — показано лише Organic і Paid зі "
-                 "стандартного API (як у Domain Overview). Direct/Social/Referral "
-                 "потребують Trends API."),
+        "available": True, "channels": TA_CHANNELS, "domains": domains,
+        "note": ("Канали — з Traffic Analytics за фактичними візитами; "
+                 "Paid — зі стандартного AdWords-трафіку SemRush."),
     }
-
-
-def _ta_fetch(doms: List[str], ctry: str) -> Dict[str, Any]:
-    """Сирий виклик Traffic Analytics summary. Повертає {available, rows, error},
-    де rows[domain] = {visits, Direct, Social, Referral, Other}."""
-    cols = "target,visits,direct,referral,search,social,paid"
-    params = {"targets": ",".join(doms), "export_columns": cols}
-    if ctry and ctry.lower() not in ("world", "global", ""):
-        params["country"] = ctry.lower()
-    try:
-        text = _ta_request("summary", params)
-    except SemrushError as e:
-        return {"available": False, "rows": {}, "error": str(e)[:200]}
-    parsed = _parse_csv_lc(text)
-    if not parsed:
-        return {"available": False, "rows": {}, "error": "no data"}
-    rows = {}
-    for r in parsed:
-        tgt = _norm_domain(r.get("target") or r.get("domain") or "")
-        if not tgt:
-            continue
-        visits = _safe_float(r.get("visits"))
-        shares = {k: _safe_float(r.get(k)) for k in
-                  ("direct", "referral", "search", "social", "paid")}
-        split = _channel_split(visits, shares)   # {Direct,Organic,Paid,Social,Referral,Other}
-        rows[tgt] = {"visits": int(round(visits)),
-                     "Direct": split["Direct"], "Social": split["Social"],
-                     "Referral": split["Referral"], "Other": split["Other"]}
-    return {"available": bool(rows), "rows": rows, "error": None}
 
 
 def _safe_int(v):

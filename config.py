@@ -51,6 +51,8 @@ SEMRUSH_BASE = "https://api.semrush.com/"
 SEMRUSH_TA_BASE = os.getenv("SEMRUSH_TA_BASE", "https://api-semrush.groupbuyseo.org/analytics/ta/api/v3/")
 SEMRUSH_TA_KEY = os.getenv("SEMRUSH_TA_KEY", "")            # якщо порожньо — береться SEMRUSH_API_KEY
 SEMRUSH_TA_COUNTRY = os.getenv("SEMRUSH_TA_COUNTRY", "UA")   # країна для Traffic Analytics
+SEMRUSH_TA_CACHE_TTL = int(os.getenv("SEMRUSH_TA_CACHE_TTL", "604800"))
+SEMRUSH_TA_TIMEOUT = int(os.getenv("SEMRUSH_TA_TIMEOUT", "20"))
 COMPETITORS_LIMIT = int(os.getenv("COMPETITORS_LIMIT", "5")) # скільки конкурентів підтягувати
 
 # --- Авторизація веб-інтерфейсу ---
