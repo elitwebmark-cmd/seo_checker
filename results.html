@@ -1149,7 +1149,12 @@ document.addEventListener('click', function(e){
           return;
         }
         state = d;
-        statusEl.textContent = 'Дані по країні: ' + (d.country || '—') + ' · доменів: ' + d.domains.length;
+        if(d.partial && d.note){
+          statusEl.className = 'cmp-status small';
+          statusEl.textContent = 'ℹ️ ' + d.note;
+        } else {
+          statusEl.textContent = 'Дані по країні: ' + (d.country || '—') + ' · доменів: ' + d.domains.length;
+        }
         resultEl.hidden = false;
         renderBar(d);
         selEl.innerHTML = (d.channels || []).map(function(ch){

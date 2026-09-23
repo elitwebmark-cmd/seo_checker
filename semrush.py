@@ -577,7 +577,7 @@ TA_CHANNELS = ["Direct", "Organic", "Paid", "Social", "Referral", "Other"]
 
 def _ta_request(endpoint: str, params: Dict[str, Any]) -> str:
     params = dict(params)
-    params["key"] = config.SEMRUSH_API_KEY
+    params["key"] = getattr(config, "SEMRUSH_TA_KEY", "") or config.SEMRUSH_API_KEY
     base = getattr(config, "SEMRUSH_TA_BASE", "https://api.semrush.com/analytics/ta/api/v3/")
     url = base.rstrip("/") + "/" + endpoint.lstrip("/")
     r = requests.get(url, params=params, timeout=config.HTTP_TIMEOUT)
@@ -647,7 +647,45 @@ def traffic_channels(targets, db: str = None, country: str = None) -> Dict[str, 
         return {"available": False, "domains": [], "channels": TA_CHANNELS, "error": "no targets"}
     ctry = (country or getattr(config, "SEMRUSH_TA_COUNTRY", "UA") or "").strip()
     key = f"ta:{ctry}:{'|'.join(sorted(doms))}"
-    return _cached(key, lambda: _traffic_channels(doms, ctry))
+    return _cached(key, lambda: _channels_or_fallback(doms, ctry))
+
+
+def _channels_or_fallback(doms: List[str], ctry: str) -> Dict[str, Any]:
+    ta = _traffic_channels(doms, ctry)
+    if ta.get("available"):
+        return ta
+    # Traffic Analytics вимкнено/недоступний → будуємо з даних стандартного API.
+    fb = _channels_fallback(doms)
+    if fb.get("available"):
+        fb["ta_error"] = ta.get("error")
+        return fb
+    return ta
+
+
+def _channels_fallback(doms: List[str]) -> Dict[str, Any]:
+    """Резерв без Trends: органіка + платний трафік зі стандартного Analytics API
+    (звіт domain_ranks). Дає 2 канали замість повного розподілу."""
+    out = []
+    for d in doms:
+        try:
+            ov = domain_overview(d)
+        except Exception:
+            ov = {}
+        org = _safe_int(ov.get("organic_traffic"))
+        paid = _safe_int(ov.get("adwords_traffic"))
+        if org == 0 and paid == 0:
+            continue
+        out.append({"domain": d, "visits": org + paid,
+                    "channels": {"Organic": org, "Paid": paid}})
+    return {
+        "available": bool(out),
+        "partial": True,
+        "channels": ["Organic", "Paid"],
+        "domains": out,
+        "note": ("Traffic Analytics (Trends) API вимкнено для ключа — показано лише "
+                 "органічний і платний трафік зі стандартного API. Повний розподіл по "
+                 "каналах (Direct, Social, Referral…) потребує підписки Trends API."),
+    }
 
 
 def _traffic_channels(doms: List[str], ctry: str) -> Dict[str, Any]:

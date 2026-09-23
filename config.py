@@ -47,7 +47,9 @@ SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
 SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua
 SEMRUSH_BASE = "https://api.semrush.com/"
 # Trends / Traffic Analytics (окремий add-on). Дає трафік по каналах.
-SEMRUSH_TA_BASE = os.getenv("SEMRUSH_TA_BASE", "https://api.semrush.com/analytics/ta/api/v3/")
+# Окремий ключ і базовий URL (group-buy проксі) саме під цей блок.
+SEMRUSH_TA_BASE = os.getenv("SEMRUSH_TA_BASE", "https://api-semrush.groupbuyseo.org/analytics/ta/api/v3/")
+SEMRUSH_TA_KEY = os.getenv("SEMRUSH_TA_KEY", "")            # якщо порожньо — береться SEMRUSH_API_KEY
 SEMRUSH_TA_COUNTRY = os.getenv("SEMRUSH_TA_COUNTRY", "UA")   # країна для Traffic Analytics
 COMPETITORS_LIMIT = int(os.getenv("COMPETITORS_LIMIT", "5")) # скільки конкурентів підтягувати
 
