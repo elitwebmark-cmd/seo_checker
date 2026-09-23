@@ -46,6 +46,10 @@ SHEETS_LOG_TIMEOUT = int(os.getenv("SHEETS_LOG_TIMEOUT", "10"))
 SEMRUSH_API_KEY = os.getenv("SEMRUSH_API_KEY", "")
 SEMRUSH_DB = os.getenv("SEMRUSH_DB", "ua")            # google.com.ua
 SEMRUSH_BASE = "https://api.semrush.com/"
+# Trends / Traffic Analytics (окремий add-on). Дає трафік по каналах.
+SEMRUSH_TA_BASE = os.getenv("SEMRUSH_TA_BASE", "https://api.semrush.com/analytics/ta/api/v3/")
+SEMRUSH_TA_COUNTRY = os.getenv("SEMRUSH_TA_COUNTRY", "UA")   # країна для Traffic Analytics
+COMPETITORS_LIMIT = int(os.getenv("COMPETITORS_LIMIT", "5")) # скільки конкурентів підтягувати
 
 # --- Авторизація веб-інтерфейсу ---
 APP_LOGIN_EMAIL = os.getenv("APP_LOGIN_EMAIL", "marketing@elit-web.ua")

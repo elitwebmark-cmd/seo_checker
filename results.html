@@ -33,6 +33,33 @@
   </div>
   {% endif %}
   {% endif %}
+  {% if not r.error %}
+  <div class="cmp-block" data-competitors-block data-domain="{{ r.domain }}" data-job="{{ job_id }}">
+    <div class="cmp-h">🥊 Конкурентний аналіз — трафік по каналах</div>
+    <div class="cmp-grid">
+      <label class="cmp-you">Ви (аналізований)<input type="text" value="{{ r.domain }}" readonly></label>
+      {% for i in range(5) %}
+      {% set c = r.competitors[i] if (r.competitors and r.competitors|length > i) else none %}
+      <label class="cmp-inp">Конкурент {{ i + 1 }}<input type="text" data-cmp-input value="{{ c.domain if c else '' }}" placeholder="домен конкурента"></label>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn-ai cmp-run">📊 Побудувати графік порівняння</button>
+    <div class="cmp-status small"></div>
+    <div class="cmp-result" hidden>
+      <div class="cmp-canvas-wrap"><canvas class="cmp-bar"></canvas></div>
+      <div class="cmp-legend"></div>
+      <div class="cmp-pie-block">
+        <div class="cmp-pie-head">🎯 Розподіл трафіку в каналі:
+          <select class="cmp-channel"></select>
+        </div>
+        <div class="cmp-pie-layout">
+          <div class="cmp-pie-wrap"><canvas class="cmp-pie"></canvas></div>
+          <div class="cmp-pie-table"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
   <details class="rc-sect seo" open>
   <summary class="rc-sect-h"><span class="rc-sect-badge s-seo">SEO</span>Органічний пошук — трафік, позиції, потенціал</summary>
   <div class="rc-stats">
@@ -998,5 +1025,157 @@ document.addEventListener('click', function(e){
     ? 'трафік комерц. запитів → ТОП-1'
     : 'весь трафік → +приріст комерції у ТОП-1';
 }, false);
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// --- Конкурентний аналіз: трафік по каналах (bar) + розподіл у каналі (pie) ---
+(function(){
+  var PALETTE = ['#FD3A1F','#3AA0FF','#39D98A','#FFB020','#A855F7','#22D3EE'];
+  function money(n){ return (Math.round(n)||0).toLocaleString('uk-UA').replace(/,/g,' '); }
+
+  function initBlock(box){
+    var runBtn = box.querySelector('.cmp-run');
+    var statusEl = box.querySelector('.cmp-status');
+    var resultEl = box.querySelector('.cmp-result');
+    var barCanvas = box.querySelector('.cmp-bar');
+    var pieCanvas = box.querySelector('.cmp-pie');
+    var legendEl = box.querySelector('.cmp-legend');
+    var selEl = box.querySelector('.cmp-channel');
+    var tableEl = box.querySelector('.cmp-pie-table');
+    var barChart = null, pieChart = null, state = null;
+
+    function domainList(){
+      var out = [];
+      box.querySelectorAll('[data-cmp-input]').forEach(function(inp){
+        var v = (inp.value || '').trim();
+        if(v) out.push(v);
+      });
+      return out;
+    }
+
+    function colorFor(i){ return PALETTE[i % PALETTE.length]; }
+
+    function renderBar(data){
+      var channels = data.channels || [];
+      var domains = data.domains || [];
+      var datasets = domains.map(function(d, i){
+        return {
+          label: d.domain,
+          data: channels.map(function(ch){ return (d.channels && d.channels[ch]) || 0; }),
+          backgroundColor: colorFor(i),
+          borderRadius: 4,
+          maxBarThickness: 34
+        };
+      });
+      if(barChart) barChart.destroy();
+      barChart = new Chart(barCanvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: channels, datasets: datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(c){ return c.dataset.label + ': ' + money(c.parsed.y) + ' візитів/міс'; } } }
+          },
+          scales: {
+            x: { grid: { color: '#2A2A31' }, ticks: { color: '#c9c9d1', font: { weight: 700 } } },
+            y: { grid: { color: '#2A2A31' }, ticks: { color: '#8a8a94', callback: function(v){ return money(v); } } }
+          }
+        }
+      });
+      legendEl.innerHTML = domains.map(function(d, i){
+        return '<span class="cmp-lg"><span class="dot" style="background:' + colorFor(i) + '"></span>' +
+               d.domain + ' <span class="v">' + money(d.visits) + ' візитів/міс</span></span>';
+      }).join('');
+    }
+
+    function renderPie(channel){
+      var domains = state.domains || [];
+      var vals = domains.map(function(d){ return (d.channels && d.channels[channel]) || 0; });
+      var total = vals.reduce(function(a, b){ return a + b; }, 0);
+      var colors = domains.map(function(_, i){ return colorFor(i); });
+      if(pieChart) pieChart.destroy();
+      pieChart = new Chart(pieCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: domains.map(function(d){ return d.domain; }),
+                datasets: [{ data: vals, backgroundColor: colors, borderColor: '#0E0E12', borderWidth: 2 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '58%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(c){
+              var pct = total ? (c.parsed / total * 100) : 0;
+              return c.label + ': ' + money(c.parsed) + ' (' + pct.toFixed(1) + '%)';
+            } } }
+          }
+        }
+      });
+      var rows = domains.map(function(d, i){
+        var v = (d.channels && d.channels[channel]) || 0;
+        var pct = total ? (v / total * 100) : 0;
+        return '<tr><td><span class="dot" style="background:' + colorFor(i) + '"></span>' + d.domain +
+               '</td><td class="n">' + money(v) + '</td><td class="s">' + pct.toFixed(1) + '%</td></tr>';
+      }).join('');
+      tableEl.innerHTML = '<table><tbody>' + rows +
+        '<tr><td><b>Разом</b></td><td class="n">' + money(total) + '</td><td class="s">100%</td></tr>' +
+        '</tbody></table>';
+    }
+
+    function run(){
+      var doms = domainList();
+      runBtn.disabled = true;
+      statusEl.className = 'cmp-status small';
+      statusEl.textContent = 'Тягнемо дані по каналах із SemRush Trends…';
+      fetch('/report/competitors?job=' + encodeURIComponent(box.dataset.job) +
+            '&domain=' + encodeURIComponent(box.dataset.domain), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domains: doms })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        runBtn.disabled = false;
+        if(!d.ok){
+          statusEl.className = 'cmp-status small err';
+          statusEl.textContent = 'Помилка: ' + (d.error || 'невідома');
+          return;
+        }
+        if(!d.available || !(d.domains && d.domains.length)){
+          statusEl.className = 'cmp-status small err';
+          statusEl.textContent = 'Trends не повернув даних для цих доменів' +
+            (d.error ? ' (' + d.error + ')' : '') + '. Перевірте написання доменів.';
+          return;
+        }
+        state = d;
+        statusEl.textContent = 'Дані по країні: ' + (d.country || '—') + ' · доменів: ' + d.domains.length;
+        resultEl.hidden = false;
+        renderBar(d);
+        selEl.innerHTML = (d.channels || []).map(function(ch){
+          return '<option value="' + ch + '">' + ch + '</option>';
+        }).join('');
+        // за замовч. — канал з найбільшим сумарним трафіком
+        var best = (d.channels || [])[0], bestSum = -1;
+        (d.channels || []).forEach(function(ch){
+          var s = d.domains.reduce(function(a, x){ return a + ((x.channels && x.channels[ch]) || 0); }, 0);
+          if(s > bestSum){ bestSum = s; best = ch; }
+        });
+        selEl.value = best;
+        renderPie(best);
+      })
+      .catch(function(e){
+        runBtn.disabled = false;
+        statusEl.className = 'cmp-status small err';
+        statusEl.textContent = 'Помилка запиту: ' + e;
+      });
+    }
+
+    runBtn.addEventListener('click', run);
+    selEl.addEventListener('change', function(){ if(state) renderPie(selEl.value); });
+  }
+
+  document.querySelectorAll('[data-competitors-block]').forEach(initBlock);
+})();
 </script>
 {% endblock %}

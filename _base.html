@@ -488,6 +488,35 @@ details.creatives-acc{margin:12px 0 4px}
 .foot{border-top:1px solid var(--bord);margin-top:30px}
 .foot-in{max-width:1200px;margin:0 auto;padding:18px 26px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--mute);font-size:12px;font-weight:600}
 .foot b{color:var(--white)}
+/* --- Конкурентний аналіз (трафік по каналах) --- */
+.cmp-block{background:var(--card2,#1E1E24);border:1px solid var(--bord);border-radius:14px;padding:18px 20px;margin:14px 0 18px}
+.cmp-h{font-weight:800;font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.cmp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px}
+.cmp-you,.cmp-inp{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--mute,#8a8a94);text-transform:uppercase}
+.cmp-you input,.cmp-inp input{background:var(--bg2);border:1px solid var(--bord);border-radius:10px;color:#fff;padding:10px 12px;font:700 14px 'Manrope';transition:border-color .15s}
+.cmp-inp input:focus{outline:none;border-color:var(--bordL,#37373f)}
+.cmp-you input{border-color:#FD3A1F;color:#ffd7cf;background:#241312;cursor:not-allowed}
+.cmp-run{margin:0}
+.cmp-status{margin-top:10px;color:var(--mute,#8a8a94)}
+.cmp-status.err{color:#ffb3a6}
+.cmp-result{margin-top:16px}
+.cmp-canvas-wrap{position:relative;height:340px;background:var(--bg2);border:1px solid var(--bord);border-radius:12px;padding:12px}
+.cmp-legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:14px 0 4px}
+.cmp-lg{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.cmp-lg .dot{width:12px;height:12px;border-radius:3px;flex:none}
+.cmp-lg .v{color:var(--mute,#8a8a94);font-weight:800}
+.cmp-pie-block{margin-top:18px;border-top:1px solid var(--bord);padding-top:16px}
+.cmp-pie-head{display:flex;align-items:center;gap:10px;font-weight:800;font-size:14px;margin-bottom:12px;flex-wrap:wrap}
+.cmp-channel{background:var(--bg2);border:1px solid var(--bordL,#37373f);border-radius:10px;color:#fff;padding:8px 12px;font:700 14px 'Manrope';cursor:pointer}
+.cmp-pie-layout{display:grid;grid-template-columns:280px 1fr;gap:18px;align-items:center}
+@media(max-width:640px){.cmp-pie-layout{grid-template-columns:1fr}}
+.cmp-pie-wrap{position:relative;height:260px}
+.cmp-pie-table{width:100%}
+.cmp-pie-table table{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-pie-table td{padding:7px 8px;border-bottom:1px solid var(--bord)}
+.cmp-pie-table td.n{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.cmp-pie-table td.s{text-align:right;color:var(--mute,#8a8a94);font-weight:700}
+.cmp-pie-table .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -509,4 +538,6 @@ details.creatives-acc{margin:12px 0 4px}
   <div><b>elitweb</b> · Кваліфікація сайтів під офер «SEO з оплатою за вихід у ТОП»</div>
   <div>Внутрішній інструмент відділу продажів</div>
 </div></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% block scripts %}{% endblock %}
 </body></html>

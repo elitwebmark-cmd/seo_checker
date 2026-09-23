@@ -469,6 +469,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
                                                 gradient_id="fgradA"),
         "top_pages_traffic": top_pages_traffic,
         "top_pages_seo": top_pages_seo,
+        "competitors": _competitors_prefill(domain, db),
         "contractor": onp.get("contractor") if do_onpage else None,
         "ads": ads_info,
         "shopping": shopping_info,
@@ -506,6 +507,15 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         )["funnel"],
         "onpage": onp if do_onpage else None,
     }
+
+
+def _competitors_prefill(domain: str, db: str = None):
+    """Список конкурентів для попереднього заповнення блоку конкурентного аналізу.
+    М'яко деградує до [] при будь-якій помилці SemRush."""
+    try:
+        return semrush.competitors(domain, db)
+    except Exception:
+        return []
 
 
 def _ctr_pos(p):

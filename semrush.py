@@ -511,6 +511,184 @@ def resolve_page(domain: str, url: str, db: str = None) -> Dict[str, Any]:
     return p
 
 
+def _norm_domain(d: str) -> str:
+    d = (d or "").strip().lower()
+    d = d.replace("https://", "").replace("http://", "").strip("/")
+    d = d.split("/")[0]
+    if d.startswith("www."):
+        d = d[4:]
+    return d
+
+
+# Загальні майданчики/агрегатори — не конкуренти в SEO-сенсі, прибираємо з видачі.
+_COMPETITOR_STOP = (
+    "youtube.com", "instagram.com", "facebook.com", "wikipedia.org", "twitter.com",
+    "x.com", "linkedin.com", "pinterest.com", "tiktok.com", "olx.ua", "rozetka.com.ua",
+    "prom.ua", "amazon.com", "aliexpress.com", "booking.com", "ua.all.biz", "flagma.ua",
+)
+
+
+def competitors(domain: str, db: str = None, limit: int = None) -> List[Dict[str, Any]]:
+    """Список органічних конкурентів (domain_organic_organic), відсортований за
+    релевантністю. Прибирає агрегатори/соцмережі й сам домен. Кешується."""
+    lim = int(limit or getattr(config, "COMPETITORS_LIMIT", 5))
+    return _cached(f"comp:{_db(db)}:{domain}:{lim}", lambda: _competitors(domain, db, lim))
+
+
+def _competitors(domain: str, db: str, lim: int) -> List[Dict[str, Any]]:
+    self_dom = _norm_domain(domain)
+    cols = ["Dn", "Cr", "Np", "Or", "Ot", "Oc"]
+    try:
+        text = _request({
+            "type": "domain_organic_organic",
+            "domain": domain,
+            "database": _db(db),
+            "display_limit": max(lim * 4, 20),   # запас під фільтрацію
+            "display_sort": "cr_desc",           # за релевантністю (спільні ключі)
+            "export_columns": ",".join(cols),
+        })
+    except SemrushError:
+        return []
+    out = []
+    for row in _parse_csv(text):
+        dn = _norm_domain(row.get("Domain") or row.get("Dn") or "")
+        if not dn or dn == self_dom or dn.endswith("." + self_dom) or self_dom.endswith("." + dn):
+            continue
+        if any(dn == s or dn.endswith("." + s) for s in _COMPETITOR_STOP):
+            continue
+        if dn.startswith("google."):
+            continue
+        out.append({
+            "domain": dn,
+            "relevance": _safe_float(row.get("Competitor Relevance") or row.get("Cr")),
+            "common_kw": _safe_int(row.get("Common Keywords") or row.get("Np")),
+            "org_keywords": _safe_int(row.get("Organic Keywords") or row.get("Or")),
+            "org_traffic": _safe_int(row.get("Organic Traffic") or row.get("Ot")),
+        })
+        if len(out) >= lim:
+            break
+    return out
+
+
+# --- Traffic Analytics (Trends): трафік по каналах --------------------------
+# Порядок каналів як у макеті. "organic" = органічний пошук (search).
+TA_CHANNELS = ["Direct", "Organic", "Paid", "Social", "Referral", "Other"]
+
+
+def _ta_request(endpoint: str, params: Dict[str, Any]) -> str:
+    params = dict(params)
+    params["key"] = config.SEMRUSH_API_KEY
+    base = getattr(config, "SEMRUSH_TA_BASE", "https://api.semrush.com/analytics/ta/api/v3/")
+    url = base.rstrip("/") + "/" + endpoint.lstrip("/")
+    r = requests.get(url, params=params, timeout=config.HTTP_TIMEOUT)
+    text = r.text.strip()
+    if r.status_code != 200:
+        raise SemrushError(f"HTTP {r.status_code}: {text[:200]}")
+    if text.startswith("ERROR"):
+        if "NOTHING FOUND" in text.upper():
+            return ""
+        raise SemrushError(text)
+    return text
+
+
+def _parse_csv_lc(text: str) -> List[Dict[str, str]]:
+    """Як _parse_csv, але ключі приводяться до нижнього регістру (для TA-звітів,
+    де заголовки — це коди колонок: target, visits, direct, ...)."""
+    if not text:
+        return []
+    lines = text.splitlines()
+    header = [h.strip().lower() for h in lines[0].split(";")]
+    out = []
+    for line in lines[1:]:
+        cells = line.split(";")
+        if len(cells) != len(header):
+            continue
+        out.append(dict(zip(header, cells)))
+    return out
+
+
+def _channel_split(visits: float, shares: Dict[str, float]) -> Dict[str, int]:
+    """Перетворює частки каналів у абсолютні візити. Автовизначає, чи це частки
+    (0..1), відсотки (0..100), чи вже абсолютні числа."""
+    vals = [v for v in shares.values() if v > 0]
+    s = sum(vals)
+    if s <= 0:
+        return {c: 0 for c in TA_CHANNELS}
+    if s <= 1.5:                 # частки 0..1
+        factor = visits
+    elif s <= 150:               # відсотки 0..100
+        factor = visits / 100.0
+    else:                        # вже абсолютні візити
+        factor = 1.0
+    ch = {
+        "Direct": shares.get("direct", 0) * factor,
+        "Organic": shares.get("search", 0) * factor,
+        "Paid": shares.get("paid", 0) * factor,
+        "Social": shares.get("social", 0) * factor,
+        "Referral": shares.get("referral", 0) * factor,
+    }
+    known = sum(ch.values())
+    ch["Other"] = max(0.0, visits - known)
+    return {k: int(round(v)) for k, v in ch.items()}
+
+
+def traffic_channels(targets, db: str = None, country: str = None) -> Dict[str, Any]:
+    """Трафік по каналах для списку доменів (SemRush Trends / Traffic Analytics).
+    Повертає {available, country, domains:[{domain, visits, channels:{...}}], channels}.
+    Якщо Trends недоступний/помилка — available=False (блок деградує м'яко)."""
+    if isinstance(targets, str):
+        targets = [targets]
+    doms = []
+    for t in targets:
+        d = _norm_domain(t)
+        if d and d not in doms:
+            doms.append(d)
+    if not doms:
+        return {"available": False, "domains": [], "channels": TA_CHANNELS, "error": "no targets"}
+    ctry = (country or getattr(config, "SEMRUSH_TA_COUNTRY", "UA") or "").strip()
+    key = f"ta:{ctry}:{'|'.join(sorted(doms))}"
+    return _cached(key, lambda: _traffic_channels(doms, ctry))
+
+
+def _traffic_channels(doms: List[str], ctry: str) -> Dict[str, Any]:
+    cols = "target,visits,users,direct,referral,search,social,paid"
+    params = {
+        "targets": ",".join(doms),
+        "export_columns": cols,
+    }
+    if ctry and ctry.lower() not in ("world", "global", ""):
+        params["country"] = ctry.lower()
+    try:
+        text = _ta_request("summary", params)
+    except SemrushError as e:
+        return {"available": False, "domains": [], "channels": TA_CHANNELS,
+                "country": ctry, "error": str(e)[:200]}
+    rows = _parse_csv_lc(text)
+    if not rows:
+        return {"available": False, "domains": [], "channels": TA_CHANNELS,
+                "country": ctry, "error": "no data"}
+    by_target = {}
+    for r in rows:
+        tgt = _norm_domain(r.get("target") or r.get("domain") or "")
+        if not tgt:
+            continue
+        visits = _safe_float(r.get("visits"))
+        shares = {k: _safe_float(r.get(k)) for k in
+                  ("direct", "referral", "search", "social", "paid")}
+        by_target[tgt] = {
+            "domain": tgt,
+            "visits": int(round(visits)),
+            "channels": _channel_split(visits, shares),
+        }
+    out_domains = [by_target[d] for d in doms if d in by_target]
+    return {
+        "available": bool(out_domains),
+        "country": ctry,
+        "channels": TA_CHANNELS,
+        "domains": out_domains,
+    }
+
+
 def _safe_int(v):
     try:
         return int(float(v or 0))

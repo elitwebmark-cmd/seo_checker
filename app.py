@@ -342,6 +342,42 @@ def report_dotisk():
     return jsonify({"ok": True, "errors": errors, **out})
 
 
+@app.route("/report/competitors", methods=["POST"])
+@login_required
+def report_competitors():
+    """Конкурентний аналіз: трафік по каналах для аналізованого домену + до 5
+    конкурентів (SemRush Trends / Traffic Analytics). Список доменів редагований."""
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower()
+    domain = domain.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    r = _find_job_result(job_id, domain)
+    if not r:
+        return jsonify({"ok": False, "error": "результат не знайдено"}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    raw = data.get("domains") or []
+
+    def _norm(d):
+        d = (d or "").strip().lower().replace("https://", "").replace("http://", "")
+        d = d.strip("/").split("/")[0]
+        return d[4:] if d.startswith("www.") else d
+
+    targets, seen = [], set()
+    for d in [domain] + list(raw):        # аналізований домен завжди першим
+        n = _norm(d)
+        if n and n not in seen:
+            seen.add(n)
+            targets.append(n)
+        if len(targets) >= 6:             # аналізований + 5 конкурентів
+            break
+    try:
+        ta = semrush.traffic_channels(targets)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 200
+    ta["primary"] = _norm(domain)
+    r["competitors_channels"] = ta        # зберігаємо для перезавантаження/PDF
+    return jsonify({"ok": True, **ta})
+
+
 @app.route("/report/pages", methods=["POST"])
 @login_required
 def report_pages():
