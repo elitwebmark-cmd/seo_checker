@@ -168,6 +168,25 @@ def _position_history(domain: str, db: str, months: int) -> List[Dict[str, Any]]
     return out
 
 
+def position_history_full(domain: str, db: str = None) -> List[Dict[str, Any]]:
+    """Історія по сегментах + поточний зріз (position_distribution) останньою
+    точкою — щоб графік сходився з матрицею «на зараз». Для конкурентів."""
+    hist = position_history(domain, db) or []
+    try:
+        cur = position_distribution(domain, db=db)
+    except Exception:
+        cur = None
+    if isinstance(cur, dict) and cur.get("total") and cur.get("segments"):
+        import datetime
+        cm = datetime.date.today().strftime("%Y%m")
+        pt = {"date": cm, "segments": dict(cur["segments"]), "total": cur["total"]}
+        if hist and hist[-1].get("date") == cm:
+            hist[-1] = pt
+        else:
+            hist = hist + [pt]
+    return hist
+
+
 def domain_shopping(domain: str, db: str = None) -> Dict[str, Any]:
     """Чи використовує домен Google Shopping / PLA (товарну рекламу).
     Звіт domain_shopping (PLA Positions). Кешується по домену."""

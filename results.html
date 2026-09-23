@@ -69,9 +69,19 @@
   {% endif %}
   {% if r.position_history and r.position_history|length > 1 %}
   <div class="seoviz">
-    <div class="viz-card viz-wide">
+    <div class="viz-card viz-wide poshist-block">
       <div class="viz-h">📊 Динаміка ключів по сегментах позицій · {{ r.position_history|length }} міс</div>
+      <div class="poshist-sub">🔵 {{ r.domain }}</div>
       <div class="poshist-wrap"><canvas class="poshist-canvas" data-poshist='{{ r.position_history|tojson }}'></canvas></div>
+      <div class="poshist-cmp">
+        <input type="text" class="poshist-cmp-inp" placeholder="домен конкурента для порівняння">
+        <button type="button" class="btn-ai poshist-cmp-btn">⚔️ Порівняти з конкурентом</button>
+        <span class="poshist-cmp-status small"></span>
+      </div>
+      <div class="poshist-cmp-result" hidden>
+        <div class="poshist-sub poshist-cmp-title"></div>
+        <div class="poshist-wrap"><canvas class="poshist-cmp-canvas"></canvas></div>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -1200,16 +1210,15 @@ document.addEventListener('click', function(e){
     {key:'p21_50', label:'21–50',   color:'#FFB020'},
     {key:'p51_100',label:'51–100',  color:'#6B7280'}
   ];
+  var MONTHS = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
   function mlabel(ym){
     if(!ym || ym.length < 6) return ym || '';
-    return ym.slice(4,6) + '.' + ym.slice(2,4);   // MM.YY
+    var mi = parseInt(ym.slice(4,6), 10) - 1;
+    return (MONTHS[mi] || ym.slice(4,6)) + ' ' + ym.slice(2,4);   // «сер 26»
   }
   function fmt(n){ return (Math.round(n)||0).toLocaleString('uk-UA').replace(/,/g,' '); }
 
-  document.querySelectorAll('.poshist-canvas').forEach(function(cv){
-    var data;
-    try { data = JSON.parse(cv.dataset.poshist || '[]'); } catch(e){ return; }
-    if(!data.length) return;
+  function buildChart(cv, data){
     var labels = data.map(function(p){ return mlabel(p.date); });
     var datasets = SEGS.map(function(s){
       return {
@@ -1220,7 +1229,7 @@ document.addEventListener('click', function(e){
         stack: 'seg'
       };
     });
-    new Chart(cv.getContext('2d'), {
+    return new Chart(cv.getContext('2d'), {
       type: 'bar',
       data: { labels: labels, datasets: datasets },
       options: {
@@ -1239,11 +1248,55 @@ document.addEventListener('click', function(e){
           }
         },
         scales: {
-          x: { stacked: true, grid: { display: false }, ticks: { color: '#8a8a94', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-          y: { stacked: true, grid: { color: '#2A2A31' }, ticks: { color: '#8a8a94', callback: function(v){ return fmt(v); } } }
+          x: { stacked: true, grid: { display: false },
+               ticks: { color: '#8a8a94', autoSkip: false, maxRotation: 90, minRotation: 90,
+                        font: { size: 10 } } },
+          y: { stacked: true, grid: { color: '#2A2A31' },
+               ticks: { color: '#8a8a94', callback: function(v){ return fmt(v); } } }
         }
       }
     });
+  }
+
+  document.querySelectorAll('.poshist-block').forEach(function(block){
+    var mainCv = block.querySelector('.poshist-canvas');
+    var mainData;
+    try { mainData = JSON.parse(mainCv.dataset.poshist || '[]'); } catch(e){ return; }
+    if(!mainData.length) return;
+    buildChart(mainCv, mainData);
+
+    var btn = block.querySelector('.poshist-cmp-btn');
+    var inp = block.querySelector('.poshist-cmp-inp');
+    var statusEl = block.querySelector('.poshist-cmp-status');
+    var resultEl = block.querySelector('.poshist-cmp-result');
+    var titleEl = block.querySelector('.poshist-cmp-title');
+    var cmpCv = block.querySelector('.poshist-cmp-canvas');
+    var cmpChart = null;
+
+    function compare(){
+      var dom = (inp.value || '').trim();
+      if(!dom){ inp.focus(); return; }
+      btn.disabled = true;
+      statusEl.textContent = 'Тягнемо дані по ' + dom + '…';
+      fetch('/report/position-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: dom })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        btn.disabled = false;
+        if(!d.ok){ statusEl.textContent = 'Помилка: ' + (d.error || 'невідома'); return; }
+        statusEl.textContent = '';
+        titleEl.textContent = '🟠 ' + d.domain;
+        resultEl.hidden = false;
+        if(cmpChart) cmpChart.destroy();
+        cmpChart = buildChart(cmpCv, d.history);
+      })
+      .catch(function(e){ btn.disabled = false; statusEl.textContent = 'Помилка запиту: ' + e; });
+    }
+    btn.addEventListener('click', compare);
+    inp.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); compare(); } });
   });
 })();
 </script>

@@ -342,6 +342,27 @@ def report_dotisk():
     return jsonify({"ok": True, "errors": errors, **out})
 
 
+@app.route("/report/position-history", methods=["POST"])
+@login_required
+def report_position_history():
+    """Історія розподілу по сегментах позицій для довільного домену (конкурента) —
+    для порівняльного графіка під основним."""
+    data = request.get_json(force=True, silent=True) or {}
+    dom = (data.get("domain") or "").strip().lower()
+    dom = dom.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    if dom.startswith("www."):
+        dom = dom[4:]
+    if not dom:
+        return jsonify({"ok": False, "error": "порожній домен"}), 200
+    try:
+        hist = semrush.position_history_full(dom)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 200
+    if not hist:
+        return jsonify({"ok": False, "error": "немає даних по сегментах для цього домену"}), 200
+    return jsonify({"ok": True, "domain": dom, "history": hist})
+
+
 @app.route("/report/competitors", methods=["POST"])
 @login_required
 def report_competitors():
