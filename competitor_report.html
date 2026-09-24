@@ -148,17 +148,20 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 
 <div class="body-top">
   <table class="kpis"><tr>
-    <td><div class="kpi-l">Наш орг. трафік</div><div class="kpi-v">{{ d.our.organic_traffic|sp }}</div><div class="kpi-d">візитів / міс</div></td>
-    <td><div class="kpi-l">Більших конкурентів</div><div class="kpi-v">{{ d.competitors|length }}</div><div class="kpi-d">переважають нас за трафіком</div></td>
+    <td><div class="kpi-l">Ваш орг. трафік</div><div class="kpi-v">{{ d.our.organic_traffic|sp }}</div><div class="kpi-d">візитів / міс</div></td>
+    <td><div class="kpi-l">Більших конкурентів</div><div class="kpi-v">{{ d.competitors|length }}</div><div class="kpi-d">переважають вас за трафіком</div></td>
     {% if d.biggest %}<td><div class="kpi-l">Найбільший конкурент</div><div class="kpi-v">×{{ d.biggest.bigger_x }}</div><div class="kpi-d">{{ d.biggest.domain }}</div></td>{% endif %}
-    <td><div class="kpi-l">Недоотримуємо</div><div class="kpi-v red">~{{ d.gap_total_missed|sp }}</div><div class="kpi-d">візитів / міс забирають конкуренти</div></td>
+    <td><div class="kpi-l">Недоотримуєте</div><div class="kpi-v red">~{{ d.gap_total_missed|sp }}</div><div class="kpi-d">візитів / міс забирають конкуренти</div></td>
   </tr></table>
 </div>
 
-{% if d.ai and d.ai.summary %}
+{% set ai = d.ai or {} %}
+{% set fb = d.fb or {} %}
+{% set t_summary = ai.summary or fb.summary %}
+{% if t_summary %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Ситуація</h3> <span class="cnt">· огляд</span></div>
-  <p class="lead">{{ d.ai.summary }}</p>
+  <p class="lead">{{ t_summary }}</p>
 </div>
 {% endif %}
 
@@ -173,7 +176,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
     </tr>
     {% endfor %}
   </table>
-  {% if d.ai and d.ai.landscape %}<p class="lead" style="margin-top:12px">{{ d.ai.landscape }}</p>{% endif %}
+  {% set t_landscape = ai.landscape or fb.landscape %}
+  {% if t_landscape %}<p class="lead" style="margin-top:12px">{{ t_landscape }}</p>{% endif %}
 </div>
 
 <div class="panel">
@@ -195,14 +199,23 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 
 {% if chart_svg %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Наша динаміка пошукового трафіку</h3> <span class="cnt">· 12 міс</span></div>
+  <div class="ph"><span class="dt"></span><h3>Ваша динаміка пошукового трафіку</h3> <span class="cnt">· 12 міс</span></div>
   <div class="chart-wrap">{{ chart_svg|safe }}</div>
+</div>
+{% endif %}
+
+{% if seg_history_svg %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Динаміка позицій вашого сайту по сегментах</h3> <span class="cnt">· {{ d.seg_trend.months if d.seg_trend else '' }} міс · скільки ключів у ТОП-3 / 4–10 / 11–20 / 21–50 / 51–100</span></div>
+  <div class="chart-wrap">{{ seg_history_svg|safe }}</div>
+  {% set t_segtrend = ai.segment_trend or fb.seg_trend_text %}
+  {% if t_segtrend %}<p class="lead" style="margin-top:12px">{{ t_segtrend }}</p>{% endif %}
 </div>
 {% endif %}
 
 {% if d.our.segments and d.our.segments.total %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Наш розподіл позицій</h3> <span class="cnt">· {{ d.our.segments.total|sp }} ключів у ТОП-100</span></div>
+  <div class="ph"><span class="dt"></span><h3>Ваш розподіл позицій зараз</h3> <span class="cnt">· {{ d.our.segments.total|sp }} ключів у ТОП-100</span></div>
   <table class="segmx">
     {% set colors = {'top3':'#159A4B','p4_10':'#7DBB3E','p11_20':'#F0A227','p21_50':'#E8720E','p51_100':'#FD3A1F'} %}
     {% set labels = {'top3':'ТОП 3','p4_10':'4–10','p11_20':'11–20','p21_50':'21–50','p51_100':'51–100'} %}
@@ -219,11 +232,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 
 {% if d.gap %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Запити, за якими ми втрачаємо трафік</h3> <span class="cnt">· конкуренти в ТОП, ми — ні</span></div>
+  <div class="ph"><span class="dt"></span><h3>Запити, за якими ви втрачаєте трафік</h3> <span class="cnt">· конкуренти в ТОП, ви — ні</span></div>
+  <p class="lead">Нижче — комерційні запити з реальним попитом, за якими ваші конкуренти стоять у ТОП, а ваш сайт — ні або значно нижче. Кожен такий запит — це цільові відвідувачі з наміром купити, які щомісяця йдуть до конкурента замість вас.</p>
   <div class="miss"><div class="v">~{{ d.gap_total_missed|sp }} візитів / міс</div><div class="l">сумарний трафік, який конкуренти забирають по цих {{ d.gap|length }} запитах</div></div>
   <table class="tbl" style="margin-top:10px">
     <colgroup><col style="width:34%"><col style="width:12%"><col style="width:11%"><col style="width:27%"><col style="width:16%"></colgroup>
-    <thead><tr><th>Запит</th><th>Частотність</th><th>Наша поз.</th><th>Конкурент (поз.)</th><th>Недоотримуємо</th></tr></thead>
+    <thead><tr><th>Запит</th><th>Частотність</th><th>Ваша поз.</th><th>Конкурент (поз.)</th><th>Недоотримуєте</th></tr></thead>
     <tbody>
     {% for g in d.gap %}
       <tr>
@@ -236,23 +250,25 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
     {% endfor %}
     </tbody>
   </table>
-  <div style="font-size:9px;color:var(--mut);margin-top:5px;font-style:italic">«Наша поз.» = «—» означає, що сайт не входить у ТОП-100 за запитом. Недоотриманий трафік оцінено як частотність × CTR позиції конкурента.</div>
+  <div style="font-size:9px;color:var(--mut);margin-top:5px;font-style:italic">«Ваша поз.» = «—» означає, що ваш сайт не входить у ТОП-100 за запитом. Недоотриманий трафік оцінено як частотність × CTR позиції конкурента.</div>
 </div>
 {% endif %}
 
-{% if d.ai and d.ai.losses %}
+{% set t_losses = (ai.losses if ai.losses else fb.losses) %}
+{% if t_losses %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Де і чому ми втрачаємо трафік</h3></div>
-  {% for x in d.ai.losses %}
+  <div class="ph"><span class="dt"></span><h3>Де і чому ви втрачаєте трафік</h3></div>
+  {% for x in t_losses %}
   <div class="card"><div class="t">{{ loop.index }}. {{ x.title }}</div><div class="d">{{ x.detail }}</div></div>
   {% endfor %}
 </div>
 {% endif %}
 
-{% if d.ai and d.ai.actions %}
+{% set t_actions = (ai.actions if ai.actions else fb.actions) %}
+{% if t_actions %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Що робити — план дій</h3></div>
-  {% for x in d.ai.actions %}
+  {% for x in t_actions %}
   <div class="card act"><div class="t">{{ loop.index }}. {{ x.title }}</div><div class="d">{{ x.detail }}</div>{% if x.effect %}<div class="e">Ефект: {{ x.effect }}</div>{% endif %}</div>
   {% endfor %}
 </div>
@@ -261,7 +277,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 <div class="concl">
   <div class="glow"></div>
   <h4><span class="dt"></span>Висновок</h4>
-  <p>{% if d.ai and d.ai.conclusion %}{{ d.ai.conclusion }}{% else %}Конкуренти сумарно забирають близько <b>{{ d.gap_total_missed|sp }} візитів/міс</b> за комерційними запитами, де вони в ТОП, а {{ d.domain }} — ні. Це трафік, який можна повернути системним SEO за напрямком «оплата за вихід у ТОП».{% endif %}</p>
+  <p>{{ ai.conclusion or fb.conclusion }}</p>
   <div class="note">Дані: SemRush (органічний трафік, позиції, keyword gap). Недоотриманий трафік — оцінка на основі частотності та CTR позицій. Фактичний результат залежить від обсягу робіт і конкуренції.</div>
 </div>
 

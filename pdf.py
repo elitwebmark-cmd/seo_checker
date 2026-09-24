@@ -72,10 +72,13 @@ def render_competitor_html(data: dict) -> str:
     import charts
     hist = (data.get("res") or {}).get("history") or []
     chart_svg = charts.traffic_svg(hist, theme="light") if hist else ""
+    seg_hist = data.get("our_history") or []
+    seg_history_svg = charts.seg_history_svg(seg_hist, theme="light") if seg_hist else ""
     return _env.get_template("competitor_report.html").render(
         data=data,
         logo=_logo_data_uri(),
         chart_svg=chart_svg,
+        seg_history_svg=seg_history_svg,
         today=datetime.date.today().strftime("%d.%m.%Y"),
     )
 

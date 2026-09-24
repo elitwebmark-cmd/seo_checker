@@ -311,6 +311,78 @@ def kwplan_svg(points: List[int], labels: List[str], theme: str = "dark") -> str
     )
 
 
+_SEG_ORDER = ["top3", "p4_10", "p11_20", "p21_50", "p51_100"]
+_SEG_LABELS = {"top3": "ТОП 3", "p4_10": "4–10", "p11_20": "11–20",
+               "p21_50": "21–50", "p51_100": "51–100"}
+_SEG_COLORS = {"top3": "#159A4B", "p4_10": "#7DBB3E", "p11_20": "#F0A227",
+               "p21_50": "#E8720E", "p51_100": "#FD3A1F"}
+
+
+def seg_history_svg(history: List[Dict[str, Any]], theme: str = "light",
+                    months: int = 24) -> str:
+    """Стек-графік динаміки ключів по сегментах позицій (ТОП3/4–10/11–20/21–50/
+    51–100) по місяцях. history — [{date:'YYYYMM', segments:{...}, total}]."""
+    pts = [p for p in (history or []) if p.get("segments")][-months:]
+    if len(pts) < 2:
+        return ""
+    T = _THEMES.get(theme, _THEMES["light"])
+    axis = T["axis"]
+    grid = T["grid"]
+    totals = [sum(int(p["segments"].get(k) or 0) for k in _SEG_ORDER) for p in pts]
+    top = max(totals) or 1
+    import math
+    stepv = 10 ** max(0, len(str(int(top))) - 2)
+    top = math.ceil(top / stepv) * stepv if stepv else top
+    top = max(top, 1)
+
+    n = len(pts)
+    W, H = 760, 300
+    padL, padR, padT, padB = 46, 12, 40, 40
+    plotW, plotH = W - padL - padR, H - padT - padB
+    slot = plotW / n
+    bw = min(26, slot * 0.68)
+
+    def Y(v): return padT + plotH * (1 - v / top)
+
+    parts = []
+    # легенда
+    lx = padL
+    for k in _SEG_ORDER:
+        parts.append(f'<rect x="{lx}" y="10" width="11" height="11" rx="2" fill="{_SEG_COLORS[k]}"/>')
+        parts.append(f'<text x="{lx+15}" y="19.5" fill="{axis}" font-size="10.5" '
+                     f'font-weight="700">{_SEG_LABELS[k]}</text>')
+        lx += 30 + len(_SEG_LABELS[k]) * 7 + 18
+    # сітка Y
+    for gv in (0, top / 2, top):
+        y = Y(gv)
+        parts.append(f'<line x1="{padL}" y1="{y:.1f}" x2="{W-padR}" y2="{y:.1f}" '
+                     f'stroke="{grid}" stroke-width="1"/>')
+        parts.append(f'<text x="{padL-6}" y="{y+3.5:.1f}" text-anchor="end" '
+                     f'fill="{axis}" font-size="10" font-weight="700">{_fmt(gv)}</text>')
+    # стовпці
+    label_step = max(1, round(n / 12))
+    for i, p in enumerate(pts):
+        cx = padL + slot * i + slot / 2
+        x = cx - bw / 2
+        y_cur = Y(0)
+        for k in _SEG_ORDER:
+            v = int(p["segments"].get(k) or 0)
+            if v <= 0:
+                continue
+            h = (plotH * v / top)
+            y_cur -= h
+            parts.append(f'<rect x="{x:.1f}" y="{y_cur:.1f}" width="{bw:.1f}" '
+                         f'height="{h:.1f}" fill="{_SEG_COLORS[k]}"/>')
+        if i % label_step == 0 or i == n - 1:
+            parts.append(f'<text x="{cx:.1f}" y="{H-14}" text-anchor="middle" '
+                         f'fill="{axis}" font-size="9.5" font-weight="700">'
+                         f'{_month_label(p.get("date"))}</text>')
+
+    return (f'<svg viewBox="0 0 {W} {H}" width="100%" preserveAspectRatio="xMidYMid meet" '
+            f'role="img" aria-label="Динаміка ключів по сегментах позицій">'
+            + "".join(parts) + "</svg>")
+
+
 def _short_lbl(label) -> str:
     s = str(label or "")
     return s.split()[0][:3] if s else ""
