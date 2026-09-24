@@ -134,6 +134,74 @@ def _seo_review(domain: str, res: dict) -> dict:
     }
 
 
+# ---------------- Конкурентний аналіз (для PDF-звіту) ----------------
+_CMP_SYS = (
+    "Ти senior SEO-стратег преміальної агенції, що готує клієнтський звіт "
+    "конкурентного аналізу. Пишеш українською, професійно, конкретно, з цифрами "
+    "з наданих даних. Пояснюєш простими словами для власника бізнесу, але "
+    "змістовно й переконливо. Без води й загальних фраз. Поверни ЛИШЕ валідний JSON."
+)
+
+
+def competitor_analysis(domain: str, ctx: dict) -> dict:
+    """Розгорнутий текстовий аналіз для PDF: огляд, ландшафт, де і чому втрачаємо
+    трафік, що робити. ctx містить факти по нашому сайту, конкурентах і keyword-gap."""
+    if not config.ANTHROPIC_API_KEY:
+        return None
+    return _cached(f"aicmp:{domain}:{ctx.get('sig','')}", lambda: _competitor_analysis(domain, ctx))
+
+
+def _competitor_analysis(domain: str, ctx: dict) -> dict:
+    comps = ctx.get("competitors") or []
+    comp_lines = []
+    for c in comps:
+        comp_lines.append(
+            f"- {c.get('domain')}: орг. трафік {c.get('organic_traffic')}/міс, "
+            f"ключів {c.get('organic_keywords')}, у ТОП-3 {c.get('top3')}, "
+            f"у 4–10 {c.get('p4_10')} (× {c.get('bigger_x','?')} до нас за трафіком)")
+    gap = ctx.get("gap_rows") or []
+    gap_lines = [f"- «{g.get('keyword')}»: частотність {g.get('volume')}, ми "
+                 f"{'поза ТОП-100' if not g.get('our_pos') else 'поз.'+str(g.get('our_pos'))}, "
+                 f"конкурент {g.get('best_comp_domain')} на поз. {g.get('best_comp_pos')}, "
+                 f"недоотримуємо ~{g.get('missed_traffic')} візитів/міс" for g in gap[:20]]
+    prompt = (
+        f"НАШ САЙТ: {domain}\n"
+        f"Ніша: {ctx.get('niche','—')}\n"
+        f"Наш орг. трафік: {ctx.get('our_traffic')}/міс, орг. ключів {ctx.get('our_keywords')}, "
+        f"у ТОП-3 {ctx.get('our_top3')}, у 4–10 {ctx.get('our_p4_10')}.\n\n"
+        f"КОНКУРЕНТИ (більші за нас):\n" + "\n".join(comp_lines) + "\n\n"
+        f"СУМАРНО недоотримуємо ~{ctx.get('total_missed')} візитів/міс по запитах, "
+        f"де конкуренти в ТОП, а ми — ні.\n"
+        f"ТОП запитів, де втрачаємо трафік:\n" + "\n".join(gap_lines) + "\n\n"
+        "Поверни JSON такої структури:\n"
+        '{"summary":"4-6 речень: загальна ситуація сайту на тлі конкурентів",'
+        '"landscape":"3-5 речень: аналіз конкурентного ландшафту — хто більший, '
+        'наскільки, за рахунок чого вони виграють",'
+        '"losses":[{"title":"короткий заголовок точки втрати трафіку",'
+        '"detail":"2-4 речення: де саме і ЧОМУ ми втрачаємо трафік, з цифрами"}],'
+        '"actions":[{"title":"конкретна дія","detail":"що зробити","effect":"очікуваний ефект"}],'
+        '"conclusion":"3-4 речення підсумку для клієнта із закликом до дії"}\n'
+        "У losses 3-5 пунктів, в actions 4-6 пунктів. Пиши змістовно й переконливо.")
+    obj = _parse_json(_complete(_CMP_SYS, prompt, 2600))
+    if not obj:
+        return None
+
+    def _items(v, keys):
+        out = []
+        for x in (v or []):
+            if isinstance(x, dict) and x.get(keys[0]):
+                out.append({k: str(x.get(k) or "").strip() for k in keys})
+        return out
+    return {
+        "checked": True,
+        "summary": str(obj.get("summary") or "").strip(),
+        "landscape": str(obj.get("landscape") or "").strip(),
+        "losses": _items(obj.get("losses"), ["title", "detail"]),
+        "actions": _items(obj.get("actions"), ["title", "detail", "effect"]),
+        "conclusion": str(obj.get("conclusion") or "").strip(),
+    }
+
+
 # ---------------- Executive summary ----------------
 _SUM_SYS = ("Ти маркетинг-стратег агенції. На основі зведення каналів дай стислий "
             "стратегічний висновок і пріоритети. Поверни ЛИШЕ JSON, українською, без води.")

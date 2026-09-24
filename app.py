@@ -564,6 +564,48 @@ def report_pdf():
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
+@app.route("/report/competitor-analysis.pdf")
+@login_required
+def report_competitor_pdf():
+    """PDF конкурентного аналізу: наш сайт vs більші конкуренти + keyword gap + AI.
+    Конкурентів підбираємо автоматично (більші за наш сайт), якщо не передані явно."""
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower()
+    domain = domain.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    debug = request.args.get("debug")
+    res = _find_job_result(job_id, domain)
+    if (not res or res.get("error")) and domain:
+        import demo as demo_mod
+        if domain == demo_mod.DEMO_DOMAIN.lower():
+            res = demo_mod.demo_result()
+    if (not res or res.get("error")) and domain:
+        rebuilt = _safe_qualify(domain, do_onpage=False, do_ads=True, do_social=True)
+        if not rebuilt.get("error"):
+            res = rebuilt
+    if not res or res.get("error"):
+        if debug:
+            return Response("No result for domain=%r job=%r" % (domain, job_id),
+                            mimetype="text/plain", status=404)
+        return redirect(url_for("index"))
+    # явні конкуренти з блоку (?c=a.com&c=b.com) — інакше авто-підбір більших
+    manual = [c for c in request.args.getlist("c") if c.strip()]
+    try:
+        import competitor_report
+        data = competitor_report.build(res, competitor_domains=manual or None)
+        import pdf
+        out = pdf.build_competitor(data)
+    except Exception:
+        log.exception("competitor PDF build failed for %s", domain)
+        if debug:
+            import traceback
+            return Response("Competitor PDF failed:\n\n" + traceback.format_exc(),
+                            mimetype="text/plain", status=500)
+        return "Помилка генерації PDF", 500
+    fname = (domain or "report").replace("/", "_") + "-konkurenty-elitweb.pdf"
+    return Response(out, mimetype="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
 @app.route("/api/analyze", methods=["POST"])
 @login_required
 def api_analyze():

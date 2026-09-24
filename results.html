@@ -232,6 +232,9 @@
       {% endfor %}
     </div>
     <button type="button" class="btn-ai cmp-run">📊 Побудувати графік порівняння</button>
+    <a class="btn-ai cmp-pdf-btn" style="margin-left:8px;display:none;text-decoration:none"
+       href="/report/competitor-analysis.pdf?job={{ job_id }}&domain={{ r.domain }}"
+       target="_blank" rel="noopener">🧾 Згенерувати інфографіку та висновки (PDF)</a>
     <div class="cmp-status small"></div>
     <div class="cmp-result" hidden>
       <div class="cmp-canvas-wrap"><canvas class="cmp-bar"></canvas></div>
@@ -1064,6 +1067,7 @@ document.addEventListener('click', function(e){
     var legendEl = box.querySelector('.cmp-legend');
     var selEl = box.querySelector('.cmp-channel');
     var tableEl = box.querySelector('.cmp-pie-table');
+    var pdfBtn = box.querySelector('.cmp-pdf-btn');
     var barChart = null, pieChart = null, state = null;
 
     function domainList(){
@@ -1169,6 +1173,7 @@ document.addEventListener('click', function(e){
           return;
         }
         state = d;
+        if(pdfBtn) pdfBtn.style.display = 'inline-block';   // аналіз створено — показуємо PDF-кнопку
         statusEl.className = 'cmp-status small';
         statusEl.textContent = 'Доменів: ' + d.domains.length + (d.note ? ' · ' + d.note : '');
         resultEl.hidden = false;

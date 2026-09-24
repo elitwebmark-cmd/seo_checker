@@ -633,6 +633,117 @@ def _competitors(domain: str, db: str, lim: int) -> List[Dict[str, Any]]:
     return out
 
 
+def competitors_bigger(domain: str, db: str = None, need: int = 5) -> List[Dict[str, Any]]:
+    """Підбирає до `need` органічних конкурентів, БІЛЬШИХ за досліджуваний сайт
+    (за орг. трафіком). Якщо серед прямих конкурентів більших замало — розширює
+    пошук по конкурентах найбільшого зі знайдених, і так далі."""
+    self_dom = _norm_domain(domain)
+    try:
+        our = _safe_int(domain_overview(domain, db).get("organic_traffic"))
+    except Exception:
+        our = 0
+    picked: List[Dict[str, Any]] = []
+    picked_set = set()
+    tried = set()
+    frontier = [self_dom]
+    while frontier and len(picked) < need and len(tried) < 8:
+        base = frontier.pop(0)
+        if base in tried:
+            continue
+        tried.add(base)
+        try:
+            comps = competitors(base, db, limit=15)
+        except Exception:
+            comps = []
+        for c in sorted(comps, key=lambda x: x.get("org_traffic", 0), reverse=True):
+            d = c.get("domain")
+            if not d or d == self_dom or d in picked_set:
+                continue
+            if c.get("org_traffic", 0) > our:
+                picked.append(c)
+                picked_set.add(d)
+                if len(picked) >= need:
+                    break
+        # не набрали — розширюємо з найбільшого конкурента (навіть якщо він ~ нашого рівня)
+        if len(picked) < need and comps:
+            biggest = max(comps, key=lambda x: x.get("org_traffic", 0))
+            if biggest.get("domain") and biggest["domain"] not in tried:
+                frontier.append(biggest["domain"])
+    return picked[:need]
+
+
+def keyword_gap(our_domain: str, competitor_domains: List[str], db: str = None,
+                limit: int = None, scan: int = None) -> Dict[str, Any]:
+    """Запити, де конкуренти в ТОП, а наш сайт — ні (або значно слабше).
+    Один виклик domain_domains (Keyword Gap). Повертає {rows, total_missed}, де
+    total_missed — сумарний трафік/міс, який конкуренти забирають по цих запитах."""
+    limit = int(limit or getattr(config, "KWGAP_LIMIT", 30))
+    scan = int(scan or getattr(config, "KWGAP_SCAN", 300))
+    min_vol = getattr(config, "KWGAP_MIN_VOL", 70)
+    comps = [_norm_domain(d) for d in (competitor_domains or []) if _norm_domain(d)][:4]
+    if not comps:
+        return {"rows": [], "total_missed": 0}
+    self_dom = _norm_domain(our_domain)
+    doms = [self_dom] + comps
+    # *|or|our|+|or|c1|+|or|c2... — об'єднання всіх органічних ключів доменів
+    parts = [f"*|or|{doms[0]}"] + [f"+|or|{d}" for d in doms[1:]]
+    domains_param = "|".join(parts)
+    pcols = [f"P{i}" for i in range(len(doms))]
+    cols = ["Ph"] + pcols + ["Nq", "Cp", "Co"]
+    try:
+        text = _request({
+            "type": "domain_domains",
+            "domains": domains_param,
+            "database": _db(db),
+            "display_limit": max(1, scan),
+            "display_sort": "nq_desc",
+            "export_columns": ",".join(cols),
+        })
+    except SemrushError:
+        return {"rows": [], "total_missed": 0}
+    rows = []
+    total_missed = 0
+    for line in [ln for ln in text.splitlines() if ln.strip()][1:]:
+        cells = line.split(";")
+        if len(cells) != len(cols):
+            continue
+        row = dict(zip(cols, cells))
+        vol = _safe_int(row.get("Nq"))
+        if vol < min_vol:
+            continue
+        cpc = _safe_float(row.get("Cp"))
+        our_pos = _safe_int(row.get("P0"))            # 0 = не ранжуємось
+        comp_positions = []
+        for i, cdom in enumerate(comps, start=1):
+            p = _safe_int(row.get(f"P{i}"))
+            if p and p > 0:
+                comp_positions.append((p, cdom))
+        if not comp_positions:
+            continue
+        best_pos, best_dom = min(comp_positions, key=lambda x: x[0])
+        # gap: конкурент у ТОП-10, а ми або не в ТОП-20, або взагалі відсутні
+        we_weak = (our_pos == 0) or (our_pos > 20)
+        if best_pos > 10 or not we_weak:
+            continue
+        if cpc <= 0:                                   # лишаємо комерційні (з CPC)
+            continue
+        missed = int(round(vol * _ctr(best_pos)))
+        total_missed += missed
+        rows.append({
+            "keyword": row.get("Ph", ""),
+            "volume": vol,
+            "cpc": round(cpc, 2),
+            "our_pos": our_pos,               # 0 → показуємо як «поза ТОП-100»
+            "best_comp_pos": best_pos,
+            "best_comp_domain": best_dom,
+            "n_comp": len(comp_positions),
+            "missed_traffic": missed,
+        })
+    rows.sort(key=lambda r: r["missed_traffic"], reverse=True)
+    rows = rows[:limit]
+    return {"rows": rows, "total_missed": sum(r["missed_traffic"] for r in rows)}
+
+
 # --- Traffic Analytics: трафік по каналах -----------------------------------
 # Порядок каналів у графіку (як у Traffic Analytics-дашборді SemRush).
 TA_CHANNELS = ["Direct", "Organic", "Paid", "AI", "Social", "Referral", "Other"]

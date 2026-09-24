@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --ink:#15151B; --mut:#6E6E77; --mut2:#9A9AA2; --line:#E6E6EA; --red:#FD3A1F; --reddk:#C12814; --good:#159A4B; }
+html, body { background: #fff; }
+body { font-family: 'Montserrat', Arial, sans-serif; color: var(--ink); font-size: 10.5px; line-height: 1.5; }
+
+/* cover */
+.cover { position: relative; background: #0A0A0A; color: #fff; height: 297mm; overflow: hidden; break-after: always; page-break-after: always; }
+.topbar { position: absolute; left: 0; top: 0; width: 100%; height: 4px; background: linear-gradient(90deg,#FD3A1F,#C12814); }
+.glow2 { position: absolute; right: -150px; top: 90px; width: 580px; height: 580px; border-radius: 50%;
+         background: radial-gradient(circle, rgba(193,40,20,.72) 0%, rgba(122,26,14,0) 64%); }
+.cv-logo { position: absolute; top: 42px; left: 48px; z-index: 3; }
+.cv-datetop { position: absolute; top: 44px; right: 48px; z-index: 3; text-align: right; }
+.cv-datetop b { display: block; color: var(--red); font-size: 9px; letter-spacing: 2px; font-weight: 800; margin-bottom: 3px; }
+.cv-datetop span { font-size: 14px; font-weight: 600; }
+.cv-center { position: absolute; top: 32%; left: 0; right: 0; padding: 0 48px; z-index: 2; }
+.cv-eyebrow { color: var(--red); font-size: 11px; letter-spacing: 4px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; }
+.cv-eyebrow .l { display: inline-block; width: 28px; height: 3px; background: var(--red); vertical-align: middle; margin-right: 11px; }
+.cv-title { font-size: 43px; font-weight: 800; line-height: 1.07; letter-spacing: -1.2px; }
+.cv-for { font-size: 21px; font-weight: 600; color: var(--mut2); margin-top: 24px; }
+.cv-for .r { color: var(--red); font-weight: 800; font-size: 31px; letter-spacing: -.5px; }
+.cv-niche { font-size: 13px; color: var(--mut2); margin-top: 16px; }
+.cv-vs { position:absolute; bottom: 70px; left: 48px; right: 48px; z-index: 3; color: var(--mut2); font-size: 12px; }
+.cv-vs b { color:#fff; font-weight: 700; }
+
+/* header */
+.hdr { position: relative; background: #0A0A0A; color: #fff; padding: 24px 30px 18px; overflow: hidden; }
+.glow { position: absolute; right: -80px; top: -110px; width: 320px; height: 320px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(193,40,20,.80) 0%, rgba(122,26,14,0) 68%); }
+.hrow { position: relative; z-index: 2; width: 100%; border-collapse: collapse; }
+.hrow td { vertical-align: middle; }
+.logo { font-weight: 900; font-size: 24px; line-height: 1; }
+.logo .c { color: var(--red); } .logo .s { display: block; font-size: 8px; letter-spacing: 5px; color: var(--red); font-weight: 800; margin-top: 3px; }
+.htitle { font-weight: 800; font-size: 16px; line-height: 1.3; padding: 0 16px; }
+.htitle .r { color: var(--red); }
+.hsub { display: block; margin-top: 5px; font-size: 10px; font-weight: 600; color: var(--mut2); }
+.date { display: inline-block; border: 1px solid var(--red); border-radius: 9px; padding: 8px 14px; font-size: 12px; color: #fff; white-space: nowrap; background: rgba(253,58,31,.08); text-align: center; }
+.date b { display: block; font-size: 8.5px; color: var(--red); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 3px; }
+
+/* KPI */
+.body-top { padding: 20px 30px 4px; }
+.kpis { width: 100%; border-collapse: collapse; }
+.kpis td { padding: 8px 10px; text-align: center; border-left: 1px solid var(--line); vertical-align: top; }
+.kpis td:first-child { border-left: none; }
+.kpi-l { font-size: 11px; color: var(--mut); font-weight: 600; margin-bottom: 8px; }
+.kpi-v { font-size: 25px; font-weight: 800; line-height: 1.05; letter-spacing: -.6px; white-space: nowrap; }
+.kpi-v.red { color: var(--red); }
+.kpi-d { font-size: 10px; font-weight: 700; margin-top: 8px; color: var(--mut); }
+
+/* panels */
+.panel { margin: 20px 30px 0; padding-top: 15px; border-top: 1px solid var(--line); break-inside: avoid; -weasy-break-inside: avoid; }
+.ph { margin-bottom: 12px; }
+.ph .dt { display: inline-block; width: 9px; height: 9px; background: var(--red); margin-right: 8px; vertical-align: middle; }
+.ph h3 { display: inline; font-size: 14px; font-weight: 700; }
+.ph .cnt { color: var(--mut2); font-weight: 600; font-size: 11px; }
+.lead { font-size: 11px; line-height: 1.6; margin: 4px 0 2px; color: #2C2C33; }
+
+/* comparison bars */
+.cmpbar { width: 100%; border-collapse: collapse; }
+.cmpbar td { padding: 6px 0; vertical-align: middle; }
+.cmp-name { width: 168px; font-weight: 800; font-size: 11px; overflow: hidden; white-space: nowrap; }
+.cmp-name .self { color: var(--red); }
+.cmp-name .x { color: var(--mut2); font-weight: 700; font-size: 9px; }
+.cmp-track { background: #F0F0F2; border-radius: 6px; height: 18px; position: relative; }
+.cmp-fill { height: 100%; border-radius: 6px; min-width: 3px; }
+.cmp-val { width: 108px; text-align: right; font-weight: 800; padding-left: 10px; font-size: 11px; }
+
+/* table */
+table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }
+.tbl thead th { background: #0A0A0A; color: #fff; font-weight: 700; text-align: right; padding: 8px 10px; font-size: 9.5px; }
+.tbl thead th:first-child { text-align: left; border-radius: 7px 0 0 7px; }
+.tbl thead th:last-child { border-radius: 0 7px 7px 0; }
+.tbl tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right; color: var(--mut); font-weight: 600; }
+.tbl tbody td:first-child { text-align: left; color: var(--ink); font-weight: 700; overflow: hidden; white-space: nowrap; }
+.tbl tbody tr:nth-child(even) td { background: #FAFAFB; }
+.tbl tbody tr.self td { background: #FCEDEA; }
+.tbl tbody tr.self td:first-child { color: var(--reddk); }
+.tbl .pos { color: var(--reddk); font-weight: 800; }
+.tbl .pot { color: var(--good); font-weight: 800; }
+
+.segmx { width: 100%; border-collapse: collapse; }
+.segmx td { padding: 5px 0; vertical-align: middle; }
+.seg-name { width: 66px; font-weight: 700; }
+.seg-track { background: #F0F0F2; border-radius: 6px; height: 14px; }
+.seg-fill { height: 100%; border-radius: 6px; min-width: 3px; }
+.seg-cnt { width: 96px; text-align: right; font-weight: 800; padding-left: 10px; }
+.seg-pct { color: var(--mut2); font-weight: 600; font-size: 9.5px; }
+.chart-wrap { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; }
+.chart-wrap svg { width: 100%; height: auto; display: block; }
+
+/* missed-traffic hero */
+.miss { margin: 8px 0 4px; background: #FCF1EE; border: 1px solid #F4D5CD; border-radius: 12px; padding: 14px 18px; text-align:center; }
+.miss .v { font-size: 30px; font-weight: 900; color: var(--red); letter-spacing:-.5px; }
+.miss .l { font-size: 10.5px; color: #7a4a42; font-weight: 700; }
+
+/* AI cards */
+.cards { width: 100%; border-collapse: collapse; }
+.card { border: 1px solid var(--line); border-left: 3px solid var(--red); border-radius: 8px; padding: 10px 13px; margin: 7px 0; break-inside: avoid; -weasy-break-inside: avoid; }
+.card .t { font-weight: 800; font-size: 11.5px; margin-bottom: 3px; }
+.card .d { font-size: 10.5px; color: #33333A; line-height: 1.55; }
+.card .e { font-size: 10px; color: var(--good); font-weight: 700; margin-top: 4px; }
+.card.act { border-left-color: var(--good); }
+
+.concl { margin: 22px 30px 0; background: #0A0A0A; color:#fff; border-radius: 12px; padding: 18px 22px; break-inside: avoid; -weasy-break-inside: avoid; position:relative; overflow:hidden; }
+.concl .glow { top:-60px; right:-40px; width:200px; height:200px; }
+.concl h4 { font-size: 13px; font-weight: 800; margin-bottom: 9px; position:relative; z-index:2;}
+.concl h4 .dt { display: inline-block; width: 9px; height: 9px; background: var(--red); margin-right: 8px; vertical-align: middle; }
+.concl p { font-size: 11px; color: #E4E4E8; line-height: 1.6; position:relative; z-index:2; }
+.concl .note { color: var(--mut2); font-size: 8.5px; font-style: italic; margin-top: 10px; position:relative; z-index:2;}
+
+.ft { margin-top: 26px; background: #0A0A0A; color: #fff; border-top: 3px solid var(--red); }
+.ft-addr { color: var(--mut2); font-size: 9.5px; line-height: 1.4; }
+.ft-contacts { margin-top: 6px; font-size: 12px; font-weight: 700; }
+.ft-contacts a { color: var(--red); text-decoration: none; }
+</style></head>
+<body>
+
+{% set d = data %}
+<div class="cover">
+  <div class="topbar"></div>
+  <div class="glow2"></div>
+  <div class="cv-logo">{% if logo %}<img src="{{ logo }}" style="height:34px">{% else %}<div class="logo">elit<span style="color:#fff">web</span><span class="c">❯</span><span class="s">MORE THAN</span></div>{% endif %}</div>
+  <div class="cv-datetop"><b>ДАТА ЗВІТУ</b><span>{{ today }}</span></div>
+  <div class="cv-center">
+    <div class="cv-eyebrow"><span class="l"></span>Конкурентний аналіз</div>
+    <div class="cv-title">Конкурентний аналіз<br>і точки втрати трафіку</div>
+    <div class="cv-for">для сайту <span class="r">{{ d.domain }}</span></div>
+    {% if d.res.niche and d.res.niche.subniche %}<div class="cv-niche">{{ d.res.niche.direction_name }} · {{ d.res.niche.industry_name }} · {{ d.res.niche.subniche }}</div>{% endif %}
+  </div>
+  <div class="cv-vs">Порівняння з {{ d.competitors|length }} більшими конкурентами:
+    <b>{% for c in d.competitors %}{{ c.domain }}{% if not loop.last %} · {% endif %}{% endfor %}</b></div>
+</div>
+
+<div class="hdr">
+  <div class="topbar"></div><div class="glow"></div>
+  <table class="hrow"><tr>
+    <td style="width:140px">{% if logo %}<img src="{{ logo }}" style="height:28px">{% else %}<div class="logo">elit<span style="color:#fff">web</span><span class="c">❯</span></div>{% endif %}</td>
+    <td class="htitle">Конкурентний аналіз для <span class="r">{{ d.domain }}</span>
+      {% if d.res.niche and d.res.niche.subniche %}<span class="hsub">{{ d.res.niche.industry_name }} · {{ d.res.niche.subniche }}</span>{% endif %}
+    </td>
+    <td style="width:140px;text-align:right"><span class="date"><b>Дата звіту</b>{{ today }}</span></td>
+  </tr></table>
+</div>
+
+<div class="body-top">
+  <table class="kpis"><tr>
+    <td><div class="kpi-l">Наш орг. трафік</div><div class="kpi-v">{{ d.our.organic_traffic|sp }}</div><div class="kpi-d">візитів / міс</div></td>
+    <td><div class="kpi-l">Більших конкурентів</div><div class="kpi-v">{{ d.competitors|length }}</div><div class="kpi-d">переважають нас за трафіком</div></td>
+    {% if d.biggest %}<td><div class="kpi-l">Найбільший конкурент</div><div class="kpi-v">×{{ d.biggest.bigger_x }}</div><div class="kpi-d">{{ d.biggest.domain }}</div></td>{% endif %}
+    <td><div class="kpi-l">Недоотримуємо</div><div class="kpi-v red">~{{ d.gap_total_missed|sp }}</div><div class="kpi-d">візитів / міс забирають конкуренти</div></td>
+  </tr></table>
+</div>
+
+{% if d.ai and d.ai.summary %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Ситуація</h3> <span class="cnt">· огляд</span></div>
+  <p class="lead">{{ d.ai.summary }}</p>
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Конкурентний ландшафт</h3> <span class="cnt">· органічний трафік / міс</span></div>
+  <table class="cmpbar">
+    {% for s in d.all_sites %}
+    <tr>
+      <td class="cmp-name">{% if s.is_self %}<span class="self">{{ s.domain }} (ви)</span>{% else %}{{ s.domain }} {% if s.bigger_x %}<span class="x">×{{ s.bigger_x }}</span>{% endif %}{% endif %}</td>
+      <td><div class="cmp-track"><div class="cmp-fill" style="width:{{ (s.organic_traffic / d.max_traffic * 100)|round(1) }}%;background:{{ '#FD3A1F' if s.is_self else '#0A0A0A' }}"></div></div></td>
+      <td class="cmp-val">{{ s.organic_traffic|sp }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if d.ai and d.ai.landscape %}<p class="lead" style="margin-top:12px">{{ d.ai.landscape }}</p>{% endif %}
+</div>
+
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Порівняння за позиціями</h3> <span class="cnt">· ключі в ТОП-100</span></div>
+  <table class="tbl">
+    <colgroup><col style="width:30%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:14%"></colgroup>
+    <thead><tr><th>Сайт</th><th>Орг. трафік</th><th>Ключів</th><th>ТОП-3</th><th>4–10</th><th>11–20</th></tr></thead>
+    <tbody>
+    {% for s in d.all_sites %}
+      <tr class="{{ 'self' if s.is_self else '' }}">
+        <td>{{ s.domain }}{% if s.is_self %} (ви){% endif %}</td>
+        <td>{{ s.organic_traffic|sp }}</td><td>{{ s.organic_keywords|sp }}</td>
+        <td>{{ s.top3|sp }}</td><td>{{ s.p4_10|sp }}</td><td>{{ s.p11_20|sp }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if chart_svg %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Наша динаміка пошукового трафіку</h3> <span class="cnt">· 12 міс</span></div>
+  <div class="chart-wrap">{{ chart_svg|safe }}</div>
+</div>
+{% endif %}
+
+{% if d.our.segments and d.our.segments.total %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Наш розподіл позицій</h3> <span class="cnt">· {{ d.our.segments.total|sp }} ключів у ТОП-100</span></div>
+  <table class="segmx">
+    {% set colors = {'top3':'#159A4B','p4_10':'#7DBB3E','p11_20':'#F0A227','p21_50':'#E8720E','p51_100':'#FD3A1F'} %}
+    {% set labels = {'top3':'ТОП 3','p4_10':'4–10','p11_20':'11–20','p21_50':'21–50','p51_100':'51–100'} %}
+    {% for key in ['top3','p4_10','p11_20','p21_50','p51_100'] %}
+    {% set cnt = d.our.segments[key] or 0 %}
+    {% set pct = (cnt / d.our.segments.total * 100) if d.our.segments.total else 0 %}
+    <tr><td class="seg-name">{{ labels[key] }}</td>
+      <td><div class="seg-track"><div class="seg-fill" style="width:{{ pct|round(1) }}%;background:{{ colors[key] }}"></div></div></td>
+      <td class="seg-cnt">{{ cnt|sp }} <span class="seg-pct">· {{ pct|round }}%</span></td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if d.gap %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Запити, за якими ми втрачаємо трафік</h3> <span class="cnt">· конкуренти в ТОП, ми — ні</span></div>
+  <div class="miss"><div class="v">~{{ d.gap_total_missed|sp }} візитів / міс</div><div class="l">сумарний трафік, який конкуренти забирають по цих {{ d.gap|length }} запитах</div></div>
+  <table class="tbl" style="margin-top:10px">
+    <colgroup><col style="width:34%"><col style="width:12%"><col style="width:11%"><col style="width:27%"><col style="width:16%"></colgroup>
+    <thead><tr><th>Запит</th><th>Частотність</th><th>Наша поз.</th><th>Конкурент (поз.)</th><th>Недоотримуємо</th></tr></thead>
+    <tbody>
+    {% for g in d.gap %}
+      <tr>
+        <td>{{ g.keyword }}</td>
+        <td>{{ g.volume|sp }}</td>
+        <td class="pos">{{ g.our_pos if g.our_pos else '—' }}</td>
+        <td style="text-align:left;color:var(--ink);font-weight:600">{{ g.best_comp_domain }} <span style="color:var(--reddk);font-weight:800">#{{ g.best_comp_pos }}</span></td>
+        <td class="pot">+{{ g.missed_traffic|sp }}/міс</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div style="font-size:9px;color:var(--mut);margin-top:5px;font-style:italic">«Наша поз.» = «—» означає, що сайт не входить у ТОП-100 за запитом. Недоотриманий трафік оцінено як частотність × CTR позиції конкурента.</div>
+</div>
+{% endif %}
+
+{% if d.ai and d.ai.losses %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Де і чому ми втрачаємо трафік</h3></div>
+  {% for x in d.ai.losses %}
+  <div class="card"><div class="t">{{ loop.index }}. {{ x.title }}</div><div class="d">{{ x.detail }}</div></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if d.ai and d.ai.actions %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Що робити — план дій</h3></div>
+  {% for x in d.ai.actions %}
+  <div class="card act"><div class="t">{{ loop.index }}. {{ x.title }}</div><div class="d">{{ x.detail }}</div>{% if x.effect %}<div class="e">Ефект: {{ x.effect }}</div>{% endif %}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="concl">
+  <div class="glow"></div>
+  <h4><span class="dt"></span>Висновок</h4>
+  <p>{% if d.ai and d.ai.conclusion %}{{ d.ai.conclusion }}{% else %}Конкуренти сумарно забирають близько <b>{{ d.gap_total_missed|sp }} візитів/міс</b> за комерційними запитами, де вони в ТОП, а {{ d.domain }} — ні. Це трафік, який можна повернути системним SEO за напрямком «оплата за вихід у ТОП».{% endif %}</p>
+  <div class="note">Дані: SemRush (органічний трафік, позиції, keyword gap). Недоотриманий трафік — оцінка на основі частотності та CTR позицій. Фактичний результат залежить від обсягу робіт і конкуренції.</div>
+</div>
+
+<div class="ft">
+  <table style="width:100%"><tr>
+    <td style="vertical-align:middle;padding:16px 0 16px 30px;width:38%">{% if logo %}<img src="{{ logo }}" style="height:20px">{% else %}<div class="logo" style="font-size:16px">elit<span style="color:#fff">web</span><span class="c">❯</span></div>{% endif %}</td>
+    <td style="vertical-align:middle;text-align:right;padding:16px 30px 16px 0">
+      <div class="ft-addr">Київ · вул. Андрія Верхогляда 2а, оф. 440</div>
+      <div class="ft-contacts"><a href="tel:0800759750">0800 759 750</a> &nbsp;·&nbsp; <a href="mailto:office@elit-web.ua">office@elit-web.ua</a></div>
+    </td>
+  </tr></table>
+</div>
+
+</body></html>

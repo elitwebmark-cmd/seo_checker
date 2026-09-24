@@ -66,3 +66,22 @@ def build(res: dict) -> bytes:
     from weasyprint import HTML   # ліниво: потребує системних бібліотек
     html = render_html(res)
     return HTML(string=html, base_url=_DIR).write_pdf()
+
+
+def render_competitor_html(data: dict) -> str:
+    import charts
+    hist = (data.get("res") or {}).get("history") or []
+    chart_svg = charts.traffic_svg(hist, theme="light") if hist else ""
+    return _env.get_template("competitor_report.html").render(
+        data=data,
+        logo=_logo_data_uri(),
+        chart_svg=chart_svg,
+        today=datetime.date.today().strftime("%d.%m.%Y"),
+    )
+
+
+def build_competitor(data: dict) -> bytes:
+    """PDF конкурентного аналізу (наш сайт vs більші конкуренти + keyword gap + AI)."""
+    from weasyprint import HTML
+    html = render_competitor_html(data)
+    return HTML(string=html, base_url=_DIR).write_pdf()

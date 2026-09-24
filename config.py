@@ -55,6 +55,9 @@ SEMRUSH_TA_CACHE_TTL = int(os.getenv("SEMRUSH_TA_CACHE_TTL", "604800"))
 SEMRUSH_TA_TIMEOUT = int(os.getenv("SEMRUSH_TA_TIMEOUT", "20"))
 COMPETITORS_LIMIT = int(os.getenv("COMPETITORS_LIMIT", "5")) # скільки конкурентів підтягувати
 SEG_HISTORY_MONTHS = int(os.getenv("SEG_HISTORY_MONTHS", "24"))  # глибина тренду по сегментах позицій
+KWGAP_SCAN = int(os.getenv("KWGAP_SCAN", "300"))     # скільки рядків domain_domains скенувати для gap
+KWGAP_MIN_VOL = int(os.getenv("KWGAP_MIN_VOL", "70"))  # мін. частотність запиту для gap-таблиці
+KWGAP_LIMIT = int(os.getenv("KWGAP_LIMIT", "30"))    # скільки gap-запитів у звіт
 
 # --- Авторизація веб-інтерфейсу ---
 APP_LOGIN_EMAIL = os.getenv("APP_LOGIN_EMAIL", "marketing@elit-web.ua")
