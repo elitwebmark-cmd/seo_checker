@@ -200,9 +200,12 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         matched_cases = []
 
     # --- економіка потенціалу: прогноз лідів/продажів, доходу і прибутку з приросту трафіку ---
-    _conv = niche_info.get("conv_pct")
-    _check = niche_info.get("avg_check")
-    _margin = niche_info.get("avg_margin")
+    # Якщо нішу не розпізнано (немає нішевих бенчмарків) — беремо усереднені дефолти,
+    # щоб блок «Потенціал» будувався завжди (клієнт може ввести свої дані вручну).
+    _econ_default = not (niche_info.get("conv_pct") and niche_info.get("avg_check"))
+    _conv = niche_info.get("conv_pct") or config.DEFAULT_CONV_PCT
+    _check = niche_info.get("avg_check") or config.DEFAULT_AVG_CHECK
+    _margin = niche_info.get("avg_margin") or config.DEFAULT_AVG_MARGIN
     if _conv and _check and benefit.get("queries"):
         # комерційно-зважений трафік: широкі/напівінформаційні запити важать менше
         _ctr1 = config.CTR_BY_POS[1]
@@ -217,7 +220,7 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
         w_t1 *= model_scale
         w_uplift = w_t1 - w_now
         # воронка: заявки -> продажі (× конверсія заявка->продаж) -> дохід -> прибуток
-        _close = niche_info.get("close_pct")
+        _close = niche_info.get("close_pct") or (config.DEFAULT_CLOSE_PCT if _econ_default else None)
         _cf = (_close / 100.0) if _close else 1.0
         _apps_up = w_uplift * _conv / 100.0          # заявки з приросту трафіку
         _apps_t1 = w_t1 * _conv / 100.0
@@ -233,7 +236,8 @@ def qualify(domain: str, do_onpage: bool = True, db: str = None,
             "avg_check": _check,
             "avg_margin": _margin,
             "close_pct": _close,
-            "conv_type": niche_info.get("conv_type"),
+            "conv_type": niche_info.get("conv_type") or config.DEFAULT_CONV_TYPE,
+            "econ_default": _econ_default,
             "conv_quality_pct": conv_quality,
             # інваріанти для онлайн-перерахунку воронки (зважений приріст трафіку)
             "w_uplift": int(round(w_uplift)),

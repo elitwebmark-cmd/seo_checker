@@ -150,6 +150,13 @@ SEGMENT_FETCH_LIMIT = int(os.getenv("SEGMENT_FETCH_LIMIT", "5000"))
 ORGANIC_FETCH_LIMIT = int(os.getenv("ORGANIC_FETCH_LIMIT", "200"))
 SHOPPING_FETCH_LIMIT = int(os.getenv("SHOPPING_FETCH_LIMIT", "10"))   # PLA/Shopping-чек (30 юнітів/рядок)
 PPC_BUDGET_DEFAULT = int(os.getenv("PPC_BUDGET_DEFAULT", "150000"))   # базовий бюджет медіаплану контексту, грн/міс
+# Дефолтні (усереднені) бенчмарки економіки, якщо нішу не розпізнано — щоб блок
+# «Потенціал» (воронка заявок/продажів/доходу) будувався завжди.
+DEFAULT_CONV_PCT = float(os.getenv("DEFAULT_CONV_PCT", "2.0"))     # конверсія сайту в заявку, %
+DEFAULT_AVG_CHECK = int(os.getenv("DEFAULT_AVG_CHECK", "2000"))    # середній чек, грн
+DEFAULT_AVG_MARGIN = float(os.getenv("DEFAULT_AVG_MARGIN", "30"))  # маржа, %
+DEFAULT_CLOSE_PCT = float(os.getenv("DEFAULT_CLOSE_PCT", "35"))    # заявка → продаж, %
+DEFAULT_CONV_TYPE = os.getenv("DEFAULT_CONV_TYPE", "заявка")
 # Стеля коефіцієнта екстраполяції потенціалу на повну семантику (захист від «вибухів»)
 MODEL_SCALE_CAP = float(os.getenv("MODEL_SCALE_CAP", "12"))
 # Кеш даних SemRush по домену (сек). Повторний аналіз не робить нових запитів.

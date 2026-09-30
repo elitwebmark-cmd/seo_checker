@@ -305,6 +305,10 @@ details.ret-calc[open] .ret-calc-hint{display:none}
 .fc-sw{width:14px;height:0;border-top:2.4px solid var(--red);display:inline-block}
 .fc-sw.fc{border-top:2.4px dashed #28C76F}
 @media(max-width:640px){.ben-colR{border-left:none;border-top:1px dashed var(--bord);padding-left:0;padding-top:12px}}
+/* без нішевої економіки — прогноз на всю ширину, без порожньої лівої колонки */
+.ben-cols.no-econ{align-items:flex-start}
+.ben-cols.no-econ .ben-colL{flex:1 1 100%}
+.ben-cols.no-econ .ben-colR{flex:1 1 100%;border-left:none;padding-left:0;border-top:1px dashed var(--bord);padding-top:14px;margin-top:2px}
 /* ---------- кастомні дані ---------- */
 .ben-custom{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ben-edit{cursor:pointer}
