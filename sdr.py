@@ -150,7 +150,8 @@ def build_report_context(r: dict) -> dict:
     """Контекст для серверної PDF-презентації SDR (sdr_report.html) — та сама
     аналітика, що й у листі: трафік, позиції, конкуренти, потенціал/гроші,
     запити, точки зростання."""
-    our_org = r.get("organic_traffic") or 0
+    hist = r.get("history") or []
+    our_org = r.get("organic_traffic") or (hist[0].get("org_traffic") if hist else 0) or 0
     our_kw = r.get("organic_keywords") or 0
     seg = r.get("segments") or {}
 
@@ -193,8 +194,63 @@ def build_report_context(r: dict) -> dict:
                    "сторінок дає результат швидше, ніж створення нових з нуля."))
     gp = gp[:4]
 
+    # --- аналітичні тексти (друга особа, тон холодного сейлзу) ---
+    dom = r.get("domain", "")
+    up = b.get("uplift") or 0
+    mult = b.get("multiplier")
+    mult_s = f"×{_num1(mult)}" if mult else ""
+
+    summary = (f"{dom} має {_group(total)} запитів у ТОП-100 і орієнтовно {_group(our_org)} "
+               f"органічних візитів на місяць — видимість уже є, сайт не з нуля.")
+    if b.get("queries") and up:
+        summary += (f" Основний резерв — {_group(b['queries'])} комерційних запитів на позиціях 4–20: "
+                    f"вони близькі до першої сторінки, але недоотримують трафік. Вивід їх у ТОП додає "
+                    f"≈ {_group(up)} цільових візитів/міс" + (f" ({mult_s} до поточного)" if mult_s else "") + ".")
+    summary += " Нижче — деталі по позиціях, конкурентах, грошах і конкретних запитах."
+
+    traffic_text = (f"Сайт уже видимий у пошуку: {_group(total)} запитів у ТОП-100. Питання не у "
+                    f"відсутності сторінок, а в тому, що більшість запитів стоять нижче ТОП-10 і майже "
+                    f"не отримують кліків — {_group(sgs.get('top3') or 0)} у ТОП-3, "
+                    f"{_group(sgs.get('p4_10') or 0)} на 4–10, решта нижче. Чим вище позиція, тим більша "
+                    f"частка кліків: перші місця забирають у рази більше трафіку, ніж 4–10.")
+
+    comp_text = ""
+    if len(comps) >= 1:
+        leader = all_sites[0]
+        if leader.get("is_self"):
+            comp_text = ("За органічним трафіком ви вже попереду цієї вибірки конкурентів. "
+                         "Завдання — втримати відрив і забрати комерційні запити, за якими "
+                         "конкуренти ще стоять вище.")
+        else:
+            comp_text = (f"Найсильніший гравець у вибірці — {leader['domain']} ({_group(leader['organic_traffic'])} "
+                         f"візитів/міс). Розрив показує стелю ніші: стільки трафіку реально обертається "
+                         f"навколо ваших запитів, і значна його частина зараз іде до конкурентів, а не до вас.")
+
+    potential_text = ""
+    if b.get("traffic_top1"):
+        potential_text = (f"Якщо комерційні запити з зони 4–20 вивести у ТОП-1, трафік зростає з "
+                          f"{_group(b.get('traffic_now') or 0)} до {_group(b['traffic_top1'])} візитів/міс "
+                          f"(+{_group(up)}" + (f", {mult_s}" if mult_s else "") + ").")
+        if b.get("revenue_uplift"):
+            potential_text += (f" За середніми бенчмарками ніші це ≈ +{_group(b.get('leads_uplift') or 0)} заявок, "
+                               f"+{_group(b.get('sales_uplift') or 0)} продажів і ≈ {_group(b['revenue_uplift'])} грн "
+                               f"доходу щомісяця. Цифри — по ринкових показниках; на етапі оферу перерахуємо під "
+                               f"вашу реальну конверсію та чек.")
+
+    queries_text = ("Нижче — комерційні запити, яким до першої позиції лишилось найменше. Кожен уже має "
+                    "позицію і попит, тож підняття у ТОП-1 дає зазначений приріст трафіку. Це найшвидші "
+                    "перемоги для старту робіт.")
+
+    conclusion = (f"У {dom} міцна пошукова база — {_group(total)} ключів у ТОП-100 і {_group(our_org)} "
+                  f"органічних візитів/міс.")
+    if up:
+        conclusion += (f" Найближчий резерв — комерційні запити на 4–20 позиціях: їх вивід у ТОП-1 додає "
+                       f"≈ {_group(up)} цільових візитів/міс"
+                       + (f" і ≈ {_group(b['revenue_uplift'])} грн доходу" if b.get("revenue_uplift") else "") + ".")
+    conclusion += " Рухаємось по точках зростання вище — ви платите лише за результат (позиції в ТОП-5)."
+
     return {
-        "domain": r.get("domain", ""),
+        "domain": dom,
         "niche": r.get("niche") or {},
         "our": {"organic_traffic": our_org, "organic_keywords": our_kw,
                 "segments": {**sgs, "total": total}},
@@ -204,6 +260,12 @@ def build_report_context(r: dict) -> dict:
         "benefit": b,
         "queries": q,
         "growth": [{"title": t, "detail": dd} for t, dd in gp],
+        "summary": summary,
+        "traffic_text": traffic_text,
+        "comp_text": comp_text,
+        "potential_text": potential_text,
+        "queries_text": queries_text,
+        "conclusion": conclusion,
     }
 
 

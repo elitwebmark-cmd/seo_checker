@@ -153,9 +153,16 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
   </tr></table>
 </div>
 
+{% if d.summary %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Ситуація</h3> <span class="cnt">· коротко</span></div>
+  <p class="lead">{{ d.summary }}</p>
+</div>
+{% endif %}
+
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Що зараз із пошуковим трафіком</h3> <span class="cnt">· органіка</span></div>
-  <p class="lead">Органіка орієнтовно дає <b>{{ d.our.organic_traffic|sp }}</b> візитів/міс. База в сайту серйозна: <b>{{ d.our.segments.total|sp }}</b> запитів уже у ТОП-100 — сайт не треба піднімати з нуля.</p>
+  <p class="lead">{{ d.traffic_text }}</p>
   {% if chart_svg %}<div class="chart-wrap" style="margin-top:10px">{{ chart_svg|safe }}</div>{% endif %}
 </div>
 
@@ -188,11 +195,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
     </tr>
     {% endfor %}
   </table>
+  {% if d.comp_text %}<p class="lead" style="margin-top:12px">{{ d.comp_text }}</p>{% endif %}
 </div>
 {% endif %}
 
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Скільки можна забрати</h3> <span class="cnt">· потенціал у ТОП-1</span></div>
+  {% if d.potential_text %}<p class="lead" style="margin-bottom:10px">{{ d.potential_text }}</p>{% endif %}
   {% if forecast_svg %}<div class="chart-wrap">{{ forecast_svg|safe }}</div>{% endif %}
   <table class="kpis" style="margin-top:14px"><tr>
     <td><div class="kpi-l">Трафік зараз</div><div class="kpi-v">{{ d.benefit.traffic_now|sp }}</div><div class="kpi-d">візитів / міс</div></td>
@@ -213,6 +222,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 {% if d.queries %}
 <div class="panel">
   <div class="ph"><span class="dt"></span><h3>Запити, найближчі до цілі</h3> <span class="cnt">· комерційні</span></div>
+  {% if d.queries_text %}<p class="lead" style="margin-bottom:8px">{{ d.queries_text }}</p>{% endif %}
   <table class="tbl">
     <colgroup><col style="width:46%"><col style="width:16%"><col style="width:19%"><col style="width:19%"></colgroup>
     <thead><tr><th>Запит</th><th>Позиція</th><th>Трафік зараз</th><th>У ТОП-1</th></tr></thead>
@@ -242,7 +252,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 <div class="concl">
   <div class="glow"></div>
   <h4><span class="dt"></span>Висновок</h4>
-  <p>У {{ d.domain }} міцна пошукова база — {{ d.our.segments.total|sp }} ключів у ТОП-100 і {{ d.our.organic_traffic|sp }} органічних візитів/міс.{% if d.benefit.uplift %} Найближчий резерв — комерційні запити на 4–20 позиціях: їх вивід у ТОП-1 додає ≈ {{ d.benefit.uplift|sp }} цільових візитів/міс{% if d.benefit.revenue_uplift %} і ≈ {{ d.benefit.revenue_uplift|sp }} грн доходу{% endif %}.{% endif %} Рухаємось по точках зростання вище — платите лише за результат (позиції в ТОП-5).</p>
+  <p>{{ d.conclusion }}</p>
   <div class="note">Дані: SemRush (органічний трафік, позиції, запити). Потенціал і гроші — оцінка за частотністю, CTR позицій та бенчмарками ніші. Фактичний результат залежить від обсягу робіт і конкуренції.</div>
 </div>
 
