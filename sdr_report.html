@@ -116,12 +116,21 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 .ft-addr { color: var(--mut2); font-size: 9.5px; line-height: 1.4; }
 .ft-contacts { margin-top: 6px; font-size: 12px; font-weight: 700; }
 .ft-contacts a { color: var(--red); text-decoration: none; }
+
+.panel p{font-size:11px;line-height:1.6;margin:7px 0;color:#2C2C33}
+.panel p strong{color:var(--ink);font-weight:800}
+.panel ul.kv{list-style:none;margin:8px 0}
+.panel ul.kv li{display:flex;justify-content:space-between;gap:14px;padding:5px 2px;border-bottom:1px solid var(--line);font-size:11px}
+.panel ul.kv li .k{color:var(--ink)}
+.panel ul.kv li .n{font-weight:800;white-space:nowrap;color:var(--ink)}
+.datanote{background:#FCF1EE;border:1px solid #F4D5CD;border-radius:10px;padding:12px 15px;font-size:10px;color:#5a3a34;line-height:1.55}
+.datanote b{color:var(--reddk)}
+.p-lead{font-size:12px;font-weight:700;color:var(--ink);margin:6px 0 8px}
 </style></head>
 <body>
 {% set d = data %}
 <div class="cover">
-  <div class="topbar"></div>
-  <div class="glow2"></div>
+  <div class="topbar"></div><div class="glow2"></div>
   <div class="cv-logo">{% if logo %}<img src="{{ logo }}" style="height:34px">{% else %}<div class="logo">elit<span style="color:#fff">web</span><span class="c">&#10095;</span><span class="s">MORE THAN</span></div>{% endif %}</div>
   <div class="cv-datetop"><b>ДАТА ЗВІТУ</b><span>{{ today }}</span></div>
   <div class="cv-center">
@@ -146,38 +155,31 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 
 <div class="body-top">
   <table class="kpis"><tr>
-    <td><div class="kpi-l">Орг. трафік</div><div class="kpi-v">{{ d.our.organic_traffic|sp }}</div><div class="kpi-d">візитів / міс</div></td>
-    <td><div class="kpi-l">Ключів у ТОП-100</div><div class="kpi-v">{{ d.our.segments.total|sp }}</div><div class="kpi-d">органічних запитів</div></td>
-    {% if d.benefit.queries %}<td><div class="kpi-l">Комерц. запитів 4–20</div><div class="kpi-v">{{ d.benefit.queries|sp }}</div><div class="kpi-d">у зоні швидкого росту</div></td>{% endif %}
-    {% if d.benefit.revenue_uplift %}<td><div class="kpi-l">Потенційний дохід</div><div class="kpi-v red">~{{ d.benefit.revenue_uplift|sp }} ₴</div><div class="kpi-d">на місяць (бенчмарки ніші)</div></td>{% endif %}
+    {% if d.org %}<td><div class="kpi-l">Орг. трафік</div><div class="kpi-v">{{ d.org }}</div><div class="kpi-d">візитів / міс</div></td>{% endif %}
+    {% if d.top100 %}<td><div class="kpi-l">Ключів у ТОП-100</div><div class="kpi-v">{{ d.top100 }}</div><div class="kpi-d">органічних запитів</div></td>{% endif %}
+    {% if d.commKeys %}<td><div class="kpi-l">Комерц. запитів 4–20</div><div class="kpi-v">{{ d.commKeys }}</div><div class="kpi-d">у зоні швидкого росту</div></td>{% endif %}
+    {% if d.rev %}<td><div class="kpi-l">Потенційний дохід</div><div class="kpi-v red">~{{ d.rev }} ₴</div><div class="kpi-d">на місяць (бенчмарки ніші)</div></td>{% endif %}
   </tr></table>
 </div>
 
-{% if d.summary %}
-<div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Ситуація</h3> <span class="cnt">· коротко</span></div>
-  <p class="lead">{{ d.summary }}</p>
-</div>
-{% endif %}
+<div class="panel"><div class="datanote"><b>Звідки цифри.</b> Позиції та трафік — із сервісу аналізу видачі (SEMrush). Це оцінка по відкритих даних, а не показники Вашої аналітики. Заявки, продажі й дохід пораховані за середніми показниками ніші, без звʼязки з Вашою CRM.<br>На етапі підготовки оферу перерахуємо все за фактичними даними Вашої аналітики — і цифри стануть Вашими, а не середніми.</div></div>
 
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Що зараз із пошуковим трафіком</h3> <span class="cnt">· органіка</span></div>
-  <p class="lead">{{ d.traffic_text }}</p>
-  {% if chart_svg %}<div class="chart-wrap" style="margin-top:10px">{{ chart_svg|safe }}</div>{% endif %}
+  <div class="ph"><span class="dt"></span><h3>Що зараз із пошуковим трафіком</h3></div>
+  <p>Органіка орієнтовно дає Вам <strong>{{ d.org }}</strong> візитів на місяць.{% if d.trWas and d.trNow %} За останній рік трафік просів: був на рівні {{ d.trWas }}, зараз — близько {{ d.trNow }}.{% endif %}</p>
+  <p>При цьому база в сайту серйозна: <strong>{{ d.top100 }} {{ d.kw_top100 }} уже у ТОП-100</strong>. З них {{ d.top3 }} у ТОП-3, {{ d.t410 }} на позиціях 4–10, {{ d.t1120 }} на 11–20 і ще {{ d.t2150 }} на 21–50.</p>
+  {% if chart_svg %}<div class="chart-wrap" style="margin:10px 0">{{ chart_svg|safe }}</div>{% endif %}
+  <p>Тобто сайт не треба піднімати з нуля. Більшість запитів уже у видачі — просто стоять нижче тих місць, які дають кліки.</p>
 </div>
 
-{% if d.our.segments and d.our.segments.total %}
+{% if d.seg_rows %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Ваш розподіл позицій зараз</h3> <span class="cnt">· {{ d.our.segments.total|sp }} ключів у ТОП-100</span></div>
+  <div class="ph"><span class="dt"></span><h3>Ваш розподіл позицій зараз</h3> <span class="cnt">· {{ d.top100 }} у ТОП-100</span></div>
   <table class="segmx">
-    {% set colors = {'top3':'#159A4B','p4_10':'#7DBB3E','p11_20':'#F0A227','p21_50':'#E8720E','p51_100':'#FD3A1F'} %}
-    {% set labels = {'top3':'ТОП 3','p4_10':'4–10','p11_20':'11–20','p21_50':'21–50','p51_100':'51–100'} %}
-    {% for key in ['top3','p4_10','p11_20','p21_50','p51_100'] %}
-    {% set cnt = d.our.segments[key] or 0 %}
-    {% set pct = (cnt / d.our.segments.total * 100) if d.our.segments.total else 0 %}
-    <tr><td class="seg-name">{{ labels[key] }}</td>
-      <td><div class="seg-track"><div class="seg-fill" style="width:{{ pct|round(1) }}%;background:{{ colors[key] }}"></div></div></td>
-      <td class="seg-cnt">{{ cnt|sp }} <span class="seg-pct">· {{ pct|round }}%</span></td></tr>
+    {% for s in d.seg_rows %}
+    <tr><td class="seg-name">{{ s.label }}</td>
+      <td><div class="seg-track"><div class="seg-fill" style="width:{{ s.pct }}%;background:{{ s.color }}"></div></div></td>
+      <td class="seg-cnt">{{ s.cnt|sp }} <span class="seg-pct">· {{ s.pct|round }}%</span></td></tr>
     {% endfor %}
   </table>
 </div>
@@ -185,74 +187,120 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 
 {% if d.all_sites|length > 1 %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Поруч із конкурентами</h3> <span class="cnt">· органічний трафік / міс</span></div>
+  <div class="ph"><span class="dt"></span><h3>Як це виглядає поруч із конкурентами</h3></div>
+  <p>Органічний трафік у ніші розподілений так:</p>
   <table class="cmpbar">
     {% for s in d.all_sites %}
     <tr>
-      <td class="cmp-name">{% if s.is_self %}<span class="self">{{ s.domain }} (ви)</span>{% else %}{{ s.domain }} {% if s.bigger_x %}<span class="x">×{{ s.bigger_x }}</span>{% endif %}{% endif %}</td>
+      <td class="cmp-name">{% if s.is_self %}<span class="self">{{ s.domain }} (ви)</span>{% else %}{{ s.domain }}{% endif %}</td>
       <td><div class="cmp-track"><div class="cmp-fill" style="width:{{ (s.organic_traffic / d.max_traffic * 100)|round(1) }}%;background:{{ '#FD3A1F' if s.is_self else '#0A0A0A' }}"></div></div></td>
       <td class="cmp-val">{{ s.organic_traffic|sp }}</td>
     </tr>
     {% endfor %}
   </table>
-  {% if d.comp_text %}<p class="lead" style="margin-top:12px">{{ d.comp_text }}</p>{% endif %}
+  {% if d.leader and d.leader_phrase %}<p>У {{ d.leader }} органіки {{ d.leader_phrase }} більше, ніж у Вас. Це не питання бюджету на рекламу, це питання позицій.</p>
+  {% else %}<p>За органікою Ви попереду конкурентів — але ця перевага тримається на позиціях, які легко втратити, і на запитах, що стоять нижче зони кліків.</p>{% endif %}
 </div>
 {% endif %}
 
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Скільки можна забрати</h3> <span class="cnt">· потенціал у ТОП-1</span></div>
-  {% if d.potential_text %}<p class="lead" style="margin-bottom:10px">{{ d.potential_text }}</p>{% endif %}
-  {% if forecast_svg %}<div class="chart-wrap">{{ forecast_svg|safe }}</div>{% endif %}
-  <table class="kpis" style="margin-top:14px"><tr>
-    <td><div class="kpi-l">Трафік зараз</div><div class="kpi-v">{{ d.benefit.traffic_now|sp }}</div><div class="kpi-d">візитів / міс</div></td>
-    <td><div class="kpi-l">Трафік у ТОП-1</div><div class="kpi-v red">{{ d.benefit.traffic_top1|sp }}</div><div class="kpi-d">візитів / міс</div></td>
-    <td><div class="kpi-l">Приріст</div><div class="kpi-v">+{{ d.benefit.uplift|sp }}</div><div class="kpi-d">{% if d.benefit.multiplier %}майже ×{{ d.benefit.multiplier }}{% else %}візитів / міс{% endif %}</div></td>
-  </tr></table>
-  {% if d.benefit.revenue_uplift %}
-  <table class="kpis" style="margin-top:4px"><tr>
-    <td><div class="kpi-l">+ заявок / міс</div><div class="kpi-v">+{{ d.benefit.leads_uplift|sp }}</div></td>
-    <td><div class="kpi-l">+ продажів</div><div class="kpi-v">+{{ d.benefit.sales_uplift|sp }}</div></td>
-    <td><div class="kpi-l">+ дохід</div><div class="kpi-v">+{{ d.benefit.revenue_uplift|sp }} ₴</div></td>
-    {% if d.benefit.profit_uplift %}<td><div class="kpi-l">+ прибуток</div><div class="kpi-v red">+{{ d.benefit.profit_uplift|sp }} ₴</div></td>{% endif %}
-  </tr></table>
-  <p class="lead" style="margin-top:12px">Розрахунок за середніми бенчмарками ніші{% if d.benefit.conv_pct %} (конверсія сайту {{ d.benefit.conv_pct }}%{% if d.benefit.close_pct %}, заявка в продаж {{ d.benefit.close_pct }}%{% endif %}{% if d.benefit.avg_check %}, чек {{ d.benefit.avg_check|sp }} грн{% endif %}{% if d.benefit.avg_margin %}, маржа {{ d.benefit.avg_margin }}%{% endif %}){% endif %}. На етапі підготовки оферу перерахуємо під Ваші реальні показники.</p>
-  {% endif %}
+  <div class="ph"><span class="dt"></span><h3>Скільки можна забрати</h3></div>
+  <p>У Вас <strong>{{ d.commKeys }} комерційних {{ d.kw_comm }}</strong> на позиціях 4–20. Вони вже у видачі, але нижче зони, яка дає кліки.</p>
+  <p>Зараз ці запити орієнтовно приносять {{ d.trComm }} візитів на місяць. Якщо вивести їх у ТОП-1 — <strong>{{ d.trTop1 }} візитів</strong>. Це +{{ d.trDelta }} візитів, майже в {{ d.mult }} разів більше.</p>
+  {% if forecast_svg %}<div class="chart-wrap" style="margin:10px 0">{{ forecast_svg|safe }}</div>{% endif %}
+  <p>Що це означає в грошах — за середніми показниками ніші{% if d.bench %} ({{ d.bench }}){% endif %}:</p>
+  <ul class="kv">
+    <li><span class="k">заявки на місяць</span><span class="n">+{{ d.leads }}</span></li>
+    <li><span class="k">продажі</span><span class="n">+{{ d.sales }}</span></li>
+    <li><span class="k">валовий дохід</span><span class="n">+{{ d.rev }} ₴</span></li>
+    <li><span class="k">прибуток</span><span class="n">+{{ d.profit }} ₴</span></li>
+  </ul>
+  <p>Це орієнтир по бенчмарках. Скиньте свою реальну конверсію й середній чек — перерахую під Ваші цифри, буде точніше.</p>
 </div>
 
 {% if d.queries %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Запити, найближчі до цілі</h3> <span class="cnt">· комерційні</span></div>
-  {% if d.queries_text %}<p class="lead" style="margin-bottom:8px">{{ d.queries_text }}</p>{% endif %}
+  <div class="ph"><span class="dt"></span><h3>Конкретні запити, які найближче до цілі</h3></div>
+  <p>Ось запити, де до першої позиції лишилось найменше:</p>
   <table class="tbl">
     <colgroup><col style="width:46%"><col style="width:16%"><col style="width:19%"><col style="width:19%"></colgroup>
     <thead><tr><th>Запит</th><th>Позиція</th><th>Трафік зараз</th><th>У ТОП-1</th></tr></thead>
     <tbody>
-    {% for g in d.queries %}
-      <tr>
-        <td>{{ g.keyword }}</td>
-        <td class="pos">{{ g.position if g.position else '—' }}</td>
-        <td>{{ g.traffic_now|sp }}</td>
-        <td class="pot">{{ g.traffic_top1|sp }}</td>
-      </tr>
+    {% for q in d.queries %}
+      <tr><td>{{ q.keyword }}</td><td class="pos">{{ q.position if q.position else '—' }}</td><td>{{ q.now }}</td><td class="pot">{{ q.top1 }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
 </div>
 {% endif %}
 
-{% if d.growth %}
 <div class="panel">
-  <div class="ph"><span class="dt"></span><h3>Ваші точки зростання</h3> <span class="cnt">· у порядку пріоритету</span></div>
-  {% for x in d.growth %}
-  <div class="card act"><div class="t">{{ loop.index }}. {{ x.title }}</div><div class="d">{{ x.detail }}</div></div>
-  {% endfor %}
+  <div class="ph"><span class="dt"></span><h3>Чому зона результату — саме ТОП-5</h3></div>
+  <p>Ось середні показники по видачі: скільки людей клікає на кожну позицію.</p>
+  <ul class="kv">
+    <li><span class="k">1 місце</span><span class="n">24%</span></li>
+    <li><span class="k">2 місце</span><span class="n">14%</span></li>
+    <li><span class="k">3 місце</span><span class="n">9%</span></li>
+    <li><span class="k">4 місце</span><span class="n">6%</span></li>
+    <li><span class="k">5 місце</span><span class="n">4,5%</span></li>
+    <li><span class="k">6–10 місце</span><span class="n">від 3,5% до 1,3%</span></li>
+    <li><span class="k">нижче 10 місця</span><span class="n">менше 1%</span></li>
+  </ul>
+  <p><strong>Перша пʼятірка забирає близько 83% усіх кліків, які взагалі дістаються першій десятці.</strong> На позиції з 6 по 10 лишається приблизно 17% — і це вже не продажі, а залишки. Восьме місце дає у десять разів менше за перше, а все, що нижче десятого, не дає практично нічого.</p>
+  <p>Це середні значення по видачі — у конкретній ніші цифри відрізняються. Але співвідношення між позиціями тримається всюди, і саме тому зоною результату ми вважаємо ТОП-5, а не абстрактне «потрапили в десятку».</p>
+  <p>Подивіться на свою матрицю ще раз: у ТОП-3 у Вас {{ d.top3 }} запитів, а ще {{ d.t410 }} стоять на позиціях 4–10. Частина з них — за крок від зони, яка реально приносить клієнтів.</p>
 </div>
-{% endif %}
+
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Як ми працюємо</h3></div>
+  {% if d.model == 'share' %}
+  <p class="p-lead">З серпня у нас оплата за результат: Ви платите за частку запитів у ТОП-5.</p>
+  <p>Не за роботи, не за години, не за звіти. Щомісяця рахуємо, скільки відсотків узгодженого переліку стоїть на позиціях з 1 по 5. Чим вищий відсоток — тим вища оплата. Відсоток не виріс — платите лише витратну частину.</p>
+  <p><strong>Ви даєте пріоритетні категорії</strong> — те, що важливо продавати в першу чергу. Семантику під них збираємо ми: витягуємо комерційні запити, за якими Вас шукають, і узгоджуємо фінальний перелік із Вами. Брендові запити не беремо: Ви за ними і так перші.</p>
+  <p>Позиції знімаються щодня автоматично, таблиця у Вас з першого дня. Для розрахунку беремо середньоденне значення за місяць, щоб одноденні стрибки видачі не впливали на рахунок.</p>
+  <p>Шкала фіксується в договорі до старту і виглядає так:</p>
+  <ul class="kv">
+    <li><span class="k">до 35% у ТОП 1–5</span><span class="n">600 $</span></li>
+    <li><span class="k">40%</span><span class="n">1 200 $</span></li>
+    <li><span class="k">45%</span><span class="n">1 400 $</span></li>
+    <li><span class="k">50%</span><span class="n">1 600 $</span></li>
+    <li><span class="k">55%</span><span class="n">1 800 $</span></li>
+    <li><span class="k">60%</span><span class="n">2 000 $</span></li>
+    <li><span class="k">70%</span><span class="n">2 200 $</span></li>
+    <li><span class="k">75% і вище</span><span class="n">2 600 $</span></li>
+  </ul>
+  <p>Значення в лівій колонці — нижні межі. Фактичні 47% — це рівень 45%. Нижче 35% доплати немає взагалі.</p>
+  {% if d.tier == 'prep' %}<p>Вашому сайту спершу потрібна технічна підготовка. Це <strong>$1 200 на місяць протягом 2–3 місяців</strong> — приводимо сайт до ладу. Далі переходимо на шкалу вище.</p>
+  {% elif d.tier == 'strong' %}<p>Для сайту Вашого рівня можемо зайти <strong>взагалі без витратної частини</strong>: платите за підсумком місяця, тільки за досягнутий відсоток.</p>
+  {% else %}<p><strong>$600 на місяць — витратна частина</strong>, вона покриває роботу команди. Усе понад неї — доплата за досягнутий відсоток зі шкали. Верхня межа — <strong>$2 600 на місяць</strong>.</p>{% endif %}
+  <p>На ринку всі працюють за фіксом: відсоток у ТОП росте чи падає — платите однаково. Ми готові прив'язати свою оплату до результату.</p>
+  {% else %}
+  <p class="p-lead">З серпня у нас оплата за результат: Ви платите за позиції в ТОП-5.</p>
+  <p>Не за роботи, не за години, не за звіти. Запит не вийшов у ТОП-5 — Ви за нього не платите. Ось і вся гарантія.</p>
+  <p><strong>Ви даєте пріоритетні категорії</strong> — те, що важливо продавати в першу чергу. Семантику під них збираємо ми: витягуємо комерційні запити, за якими Вас шукають, і узгоджуємо фінальний перелік із Вами. Брендові запити не беремо: Ви за ними і так перші.</p>
+  <p>Позиції знімаються щодня автоматично, таблиця у Вас з першого дня. Наприкінці місяця відкриваєте її й бачите позицію кожного запиту по днях і суму, яка з цього вийшла. Рахунок формується з цієї таблиці, а не зі звіту про виконані роботи.</p>
+  <p>Наша оплата прямо залежить від місця, і рахується за кожен день окремо:</p>
+  <ul class="kv">
+    <li><span class="k">1 місце</span><span class="n">100% ціни запиту</span></li>
+    <li><span class="k">2 місце</span><span class="n">85%</span></li>
+    <li><span class="k">3 місце</span><span class="n">70%</span></li>
+    <li><span class="k">4 місце</span><span class="n">60%</span></li>
+    <li><span class="k">5 місце</span><span class="n">50%</span></li>
+    <li><span class="k">6–10 місце</span><span class="n">10%</span></li>
+    <li><span class="k">нижче 10</span><span class="n">нічого</span></li>
+  </ul>
+  <p>Тобто запит на 5 місці приносить нам удвічі менше, ніж на першому, а на сьомому — у десять разів менше. Нам невигідно зупинятись на межі ТОП-10: заробіток зʼявляється тільки тоді, коли запит заходить у пʼятірку, і росте з кожним місцем угору.</p>
+  {% if d.tier == 'prep' %}<p>Вашому сайту спершу потрібна технічна підготовка. Це <strong>$1 200 на місяць протягом 2–3 місяців</strong> — приводимо сайт до ладу. Далі переходимо на оплату за позиції.</p><p><strong>Ваш бюджет завжди в коридорі $600–$2 200 на місяць.</strong> Менше $600 не буде — це мінімум. Більше $2 200 не буде теж: навіть якщо за позиціями набігло більше, усе понад стелю ми не виставляємо. Усередині коридору сума щомісяця різна — її визначають позиції, на яких реально стояли Ваші запити.</p>
+  {% elif d.tier == 'strong' %}<p>Для сайту Вашого рівня можемо зайти <strong>взагалі без фіксованої частини</strong>: платите за підсумком місяця, тільки за фактичні позиції.</p>
+  {% else %}<p><strong>$600 на місяць — це мінімум, а не абонплата зверху.</strong> Якщо сума за позиціями виходить меншою, Ви платите $600. Якщо більшою — платите її замість $600, а не додатково до неї.</p><p><strong>Ваш бюджет завжди в коридорі $600–$2 200 на місяць.</strong> Менше $600 не буде — це мінімум. Більше $2 200 не буде теж: навіть якщо за позиціями набігло більше, усе понад стелю ми не виставляємо. Усередині коридору сума щомісяця різна — її визначають позиції, на яких реально стояли Ваші запити.</p>{% endif %}
+  <p>На ринку всі працюють за фіксом: позиції ростуть чи падають — платите однаково. Ми готові прив'язати свою оплату до результату. У нас падіння позицій зменшує наш прибуток.</p>
+  {% endif %}
+</div>
 
 <div class="concl">
   <div class="glow"></div>
-  <h4><span class="dt"></span>Висновок</h4>
-  <p>{{ d.conclusion }}</p>
+  <h4><span class="dt"></span>Коротко</h4>
+  <p>Сайт не з нуля: {{ d.top100 }} {{ d.kw_top100 }} уже у ТОП-100. Найближчий резерв — {{ d.commKeys }} комерційних {{ d.kw_comm }} на позиціях 4–20: вивід у ТОП-1 додає +{{ d.trDelta }} візитів/міс{% if d.rev %} і ≈ {{ d.rev }} грн доходу{% endif %}. Ви платите лише за результат — позиції в ТОП-5.</p>
   <div class="note">Дані: SemRush (органічний трафік, позиції, запити). Потенціал і гроші — оцінка за частотністю, CTR позицій та бенчмарками ніші. Фактичний результат залежить від обсягу робіт і конкуренції.</div>
 </div>
 

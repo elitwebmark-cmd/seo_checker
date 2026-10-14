@@ -90,12 +90,13 @@ def build_competitor(data: dict) -> bytes:
     return HTML(string=html, base_url=_DIR).write_pdf()
 
 
-def render_sdr_html(res: dict) -> str:
-    """SDR-презентація: та сама аналітика, що в інструменті (трафік, позиції,
-    конкуренти, потенціал/гроші, запити, точки зростання) у брендованому стилі."""
+def render_sdr_html(res: dict, fields: dict = None) -> str:
+    """SDR-презентація: блоки й тексти з конструктора (зі стану форми, враховуючи
+    обрані опції model/tier і правки), у брендованому стилі. Графіки — з аналізу."""
     import charts
     import sdr
-    ctx = sdr.build_report_context(res)
+    fields = fields or sdr.fields_from_result(res)
+    ctx = sdr.build_pdf_context(fields, niche=(res.get("niche") or {}))
     b = res.get("benefit") or {}
     hist = res.get("history") or []
     chart_svg = charts.traffic_svg(hist, theme="light") if hist else ""
@@ -110,8 +111,8 @@ def render_sdr_html(res: dict) -> str:
     )
 
 
-def build_sdr(res: dict) -> bytes:
-    """PDF SDR-презентації по домену."""
+def build_sdr(res: dict, fields: dict = None) -> bytes:
+    """PDF SDR-презентації по домену (fields — стан форми; інакше дефолти з аналізу)."""
     from weasyprint import HTML
-    html = render_sdr_html(res)
+    html = render_sdr_html(res, fields)
     return HTML(string=html, base_url=_DIR).write_pdf()

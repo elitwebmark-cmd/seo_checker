@@ -6,6 +6,7 @@
 Ключі збігаються з id/data-k інпутів у sdr.html."""
 from __future__ import annotations
 import html as _html
+import re
 
 
 def _esc(s) -> str:
@@ -43,6 +44,43 @@ def _num1(x) -> str:
     return s.replace(".", ",")
 
 
+def _keyword(n) -> str:
+    """Відмінок слова «запит» за числом (як keyWord() у листі)."""
+    try:
+        i = int(n)
+    except (TypeError, ValueError):
+        return "запитів"
+    if not i:
+        return "запитів"
+    last, two = i % 10, i % 100
+    if last == 1 and two != 11:
+        return "запит"
+    if 2 <= last <= 4 and (two < 12 or two > 14):
+        return "запити"
+    return "запитів"
+
+
+def _times_phrase(x) -> str:
+    """«майже в N разів» / «у X,Y раза» (як timesPhrase() у листі)."""
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return ""
+    if v <= 1.1:
+        return ""
+    if abs(v - round(v)) > 1e-9:
+        return "у " + _num1(v) + " раза"
+    i = int(round(v))
+    last, two = i % 10, i % 100
+    if last == 1 and two != 11:
+        w = "раз"
+    elif 2 <= last <= 4 and (two < 12 or two > 14):
+        w = "рази"
+    else:
+        w = "разів"
+    return f"майже в {i} {w}"
+
+
 def _seg(segments: dict, key: str) -> str:
     try:
         return str(int(segments["segments"].get(key) or 0))
@@ -58,6 +96,9 @@ def build_sdr_data(r: dict) -> dict:
     d = {"domain": r.get("domain", ""), "opener": "cold"}
 
     org = r.get("organic_traffic")
+    if not org:                      # overview інколи дає 0 — беремо з історії
+        hist = r.get("history") or []
+        org = (hist[0].get("org_traffic") if hist else 0) or 0
     if org:
         d["org"] = _group(org)
         d["trNow"] = _group(org)
@@ -146,127 +187,98 @@ def build_sdr_data(r: dict) -> dict:
     return d
 
 
-def build_report_context(r: dict) -> dict:
-    """Контекст для серверної PDF-презентації SDR (sdr_report.html) — та сама
-    аналітика, що й у листі: трафік, позиції, конкуренти, потенціал/гроші,
-    запити, точки зростання."""
-    hist = r.get("history") or []
-    our_org = r.get("organic_traffic") or (hist[0].get("org_traffic") if hist else 0) or 0
-    our_kw = r.get("organic_keywords") or 0
-    seg = r.get("segments") or {}
+def _pint(s) -> int:
+    """'2 750' -> 2750, '114 138' -> 114138, '' -> 0 (ігнорує % та текст)."""
+    s = str(s or "").replace(" ", " ").replace(" ", " ")
+    if "%" in s:
+        s = s.split("%")[0]
+    digits = "".join(re.findall(r"\d+", s))
+    try:
+        return int(digits) if digits else 0
+    except ValueError:
+        return 0
 
-    comps = [c for c in (r.get("competitors") or []) if c.get("org_traffic")]
-    comps = sorted(comps, key=lambda c: c.get("org_traffic") or 0, reverse=True)[:5]
-    all_sites = [{"domain": r.get("domain", ""), "organic_traffic": our_org, "is_self": True}]
-    for c in comps:
-        bx = round((c["org_traffic"] / our_org), 1) if our_org and c["org_traffic"] > our_org else None
-        all_sites.append({"domain": c["domain"], "organic_traffic": c["org_traffic"],
-                          "is_self": False, "bigger_x": bx})
+
+def build_pdf_context(f: dict, niche: dict = None) -> dict:
+    """Контекст PDF-презентації SDR зі стану ФОРМИ (ті самі значення й опції, що
+    бачить сейлз): відтворює блоки листа слово-в-слово, з урахуванням model/tier
+    та будь-яких правок. Конкурентів, сегменти й запити парсить із полів форми."""
+    g = lambda k: (f.get(k) or "").strip()
+    domain = g("domain")
+
+    # --- конкуренти (бари): свій сайт + рядки з textarea comps ---
+    our_org = _pint(g("org"))
+    all_sites = []
+    if our_org:
+        all_sites.append({"domain": domain, "organic_traffic": our_org, "is_self": True})
+    for line in g("comps").split("\n"):
+        parts = [p.strip() for p in line.split("|") if p.strip()]
+        if not parts:
+            continue
+        dom = parts[0]
+        if dom.lower() == domain.lower():
+            continue
+        all_sites.append({"domain": dom, "organic_traffic": _pint(parts[1] if len(parts) > 1 else 0),
+                          "is_self": False})
     all_sites.sort(key=lambda s: s["organic_traffic"], reverse=True)
     max_traffic = max([s["organic_traffic"] for s in all_sites] or [1]) or 1
 
-    q = [x for x in (r.get("dotisk_queries") or []) if x.get("keyword")]
-    q = sorted(q, key=lambda x: x.get("traffic_top1") or 0, reverse=True)[:10]
+    # --- матриця позицій зараз ---
+    top100 = _pint(g("top100"))
+    s3, s410, s1120, s2150 = _pint(g("top3")), _pint(g("t410")), _pint(g("t1120")), _pint(g("t2150"))
+    s51 = max(0, top100 - (s3 + s410 + s1120 + s2150))
+    seg_rows = []
+    if top100:
+        for lab, cnt, col in [("ТОП 3", s3, "#159A4B"), ("4–10", s410, "#7DBB3E"),
+                              ("11–20", s1120, "#F0A227"), ("21–50", s2150, "#E8720E"),
+                              ("51–100", s51, "#FD3A1F")]:
+            seg_rows.append({"label": lab, "cnt": cnt, "color": col,
+                             "pct": round(cnt / top100 * 100, 1) if top100 else 0})
 
-    b = r.get("benefit") or {}
-    sgs = seg.get("segments") or {}
-    total = seg.get("total") or 0
+    # --- запити (таблиця) ---
+    queries = []
+    for line in g("queries").split("\n"):
+        parts = [p.strip() for p in line.split("|")]
+        parts = [p for p in parts if p != ""]
+        if not parts:
+            continue
+        queries.append({"keyword": parts[0],
+                        "position": parts[1] if len(parts) > 1 else "",
+                        "now": parts[2] if len(parts) > 2 else "",
+                        "top1": parts[3] if len(parts) > 3 else ""})
 
-    # точки зростання (data-driven)
-    gp = []
-    if sgs.get("p4_10"):
-        gp.append(("Дотиснути запити з позицій 4–10 у ТОП-3",
-                   f"{_group(sgs['p4_10'])} запитів уже стоять на 4–10 — це найближчий трафік. "
-                   "Підсилення цих сторінок (контент, перелінковка, товарні/довірчі сигнали) "
-                   "піднімає їх у ТОП-3, де зосереджена основна маса кліків."))
-    if sgs.get("p11_20"):
-        gp.append(("Витягнути запити з 11–20 на першу сторінку",
-                   f"{_group(sgs['p11_20'])} запитів на 11–20 майже не дають трафіку. "
-                   "Точкова оптимізація виводить їх у ТОП-10, звідки починаються переходи."))
-    if b.get("queries") and b.get("uplift"):
-        mult = f" (×{_num1(b['multiplier'])})" if b.get("multiplier") else ""
-        gp.append(("Закрити комерційні прогалини",
-                   f"{_group(b['queries'])} комерційних запитів у зоні 4–20. Вивід у ТОП-1 додає "
-                   f"≈ {_group(b['uplift'])} цільових візитів/міс{mult} — це прямий приріст заявок."))
-    if total:
-        gp.append(("Нарощувати сторінки, що вже ранжуються",
-                   f"Сайт не з нуля: у ТОП-100 вже {_group(total)} ключів. Підсилення наявних "
-                   "сторінок дає результат швидше, ніж створення нових з нуля."))
-    gp = gp[:4]
-
-    # --- аналітичні тексти (друга особа, тон холодного сейлзу) ---
-    dom = r.get("domain", "")
-    up = b.get("uplift") or 0
-    mult = b.get("multiplier")
-    mult_s = f"×{_num1(mult)}" if mult else ""
-
-    summary = (f"{dom} має {_group(total)} запитів у ТОП-100 і орієнтовно {_group(our_org)} "
-               f"органічних візитів на місяць — видимість уже є, сайт не з нуля.")
-    if b.get("queries") and up:
-        summary += (f" Основний резерв — {_group(b['queries'])} комерційних запитів на позиціях 4–20: "
-                    f"вони близькі до першої сторінки, але недоотримують трафік. Вивід їх у ТОП додає "
-                    f"≈ {_group(up)} цільових візитів/міс" + (f" ({mult_s} до поточного)" if mult_s else "") + ".")
-    summary += " Нижче — деталі по позиціях, конкурентах, грошах і конкретних запитах."
-
-    traffic_text = (f"Сайт уже видимий у пошуку: {_group(total)} запитів у ТОП-100. Питання не у "
-                    f"відсутності сторінок, а в тому, що більшість запитів стоять нижче ТОП-10 і майже "
-                    f"не отримують кліків — {_group(sgs.get('top3') or 0)} у ТОП-3, "
-                    f"{_group(sgs.get('p4_10') or 0)} на 4–10, решта нижче. Чим вище позиція, тим більша "
-                    f"частка кліків: перші місця забирають у рази більше трафіку, ніж 4–10.")
-
-    comp_text = ""
-    if len(comps) >= 1:
-        leader = all_sites[0]
-        if leader.get("is_self"):
-            comp_text = ("За органічним трафіком ви вже попереду цієї вибірки конкурентів. "
-                         "Завдання — втримати відрив і забрати комерційні запити, за якими "
-                         "конкуренти ще стоять вище.")
-        else:
-            comp_text = (f"Найсильніший гравець у вибірці — {leader['domain']} ({_group(leader['organic_traffic'])} "
-                         f"візитів/міс). Розрив показує стелю ніші: стільки трафіку реально обертається "
-                         f"навколо ваших запитів, і значна його частина зараз іде до конкурентів, а не до вас.")
-
-    potential_text = ""
-    if b.get("traffic_top1"):
-        potential_text = (f"Якщо комерційні запити з зони 4–20 вивести у ТОП-1, трафік зростає з "
-                          f"{_group(b.get('traffic_now') or 0)} до {_group(b['traffic_top1'])} візитів/міс "
-                          f"(+{_group(up)}" + (f", {mult_s}" if mult_s else "") + ").")
-        if b.get("revenue_uplift"):
-            potential_text += (f" За середніми бенчмарками ніші це ≈ +{_group(b.get('leads_uplift') or 0)} заявок, "
-                               f"+{_group(b.get('sales_uplift') or 0)} продажів і ≈ {_group(b['revenue_uplift'])} грн "
-                               f"доходу щомісяця. Цифри — по ринкових показниках; на етапі оферу перерахуємо під "
-                               f"вашу реальну конверсію та чек.")
-
-    queries_text = ("Нижче — комерційні запити, яким до першої позиції лишилось найменше. Кожен уже має "
-                    "позицію і попит, тож підняття у ТОП-1 дає зазначений приріст трафіку. Це найшвидші "
-                    "перемоги для старту робіт.")
-
-    conclusion = (f"У {dom} міцна пошукова база — {_group(total)} ключів у ТОП-100 і {_group(our_org)} "
-                  f"органічних візитів/міс.")
-    if up:
-        conclusion += (f" Найближчий резерв — комерційні запити на 4–20 позиціях: їх вивід у ТОП-1 додає "
-                       f"≈ {_group(up)} цільових візитів/міс"
-                       + (f" і ≈ {_group(b['revenue_uplift'])} грн доходу" if b.get("revenue_uplift") else "") + ".")
-    conclusion += " Рухаємось по точках зростання вище — ви платите лише за результат (позиції в ТОП-5)."
+    leaderX = g("leaderX").replace(",", ".")
+    leader_phrase = _times_phrase(leaderX) if leaderX else ""
 
     return {
-        "domain": dom,
-        "niche": r.get("niche") or {},
-        "our": {"organic_traffic": our_org, "organic_keywords": our_kw,
-                "segments": {**sgs, "total": total}},
-        "all_sites": all_sites,
-        "max_traffic": max_traffic,
-        "comp_count": len(comps),
-        "benefit": b,
-        "queries": q,
-        "growth": [{"title": t, "detail": dd} for t, dd in gp],
-        "summary": summary,
-        "traffic_text": traffic_text,
-        "comp_text": comp_text,
-        "potential_text": potential_text,
-        "queries_text": queries_text,
-        "conclusion": conclusion,
+        "domain": domain,
+        "niche": niche or {},
+        # сирі рядки (як у листі, дослівно)
+        "org": g("org"), "trWas": g("trWas"), "trNow": g("trNow"),
+        "top100": g("top100"), "top3": g("top3"), "t410": g("t410"),
+        "t1120": g("t1120"), "t2150": g("t2150"),
+        "kw_top100": _keyword(top100),
+        "commKeys": g("commKeys"), "kw_comm": _keyword(_pint(g("commKeys"))),
+        "mult": g("mult"), "trComm": g("trComm"), "trTop1": g("trTop1"), "trDelta": g("trDelta"),
+        "leads": g("leads"), "sales": g("sales"), "rev": g("rev"), "profit": g("profit"),
+        "bench": g("bench"),
+        "leader": g("leader"), "leader_phrase": leader_phrase,
+        "model": g("model") or "keys",
+        "tier": g("tier") or "std",
+        # дані для візуалів
+        "all_sites": all_sites, "max_traffic": max_traffic,
+        "seg_rows": seg_rows, "top100_n": top100,
+        "queries": queries,
     }
+
+
+def fields_from_result(r: dict) -> dict:
+    """Поля форми за замовчуванням із результату аналізу (для GET без форми)."""
+    d = build_sdr_data(r)
+    d.pop("visuals", None)
+    d.setdefault("model", "keys")
+    d.setdefault("tier", "std")
+    return d
 
 
 def build_visuals(r: dict) -> dict:

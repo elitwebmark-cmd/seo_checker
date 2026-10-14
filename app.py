@@ -284,14 +284,16 @@ def sdr_page(job_id, domain):
     return Response(html, mimetype="text/html")
 
 
-@app.route("/sdr/presentation.pdf")
+@app.route("/sdr/presentation.pdf", methods=["GET", "POST"])
 @login_required
 def sdr_presentation_pdf():
-    """SDR-презентація (PDF): аналітика інструмента у брендованому стилі."""
-    job_id = request.args.get("job", "")
-    domain = (request.args.get("domain") or "").strip().lower()
+    """SDR-презентація (PDF): блоки й тексти з конструктора у брендованому стилі.
+    POST — зі станом форми (обрані опції + правки); GET — дефолти з аналізу."""
+    src = request.form if request.method == "POST" else request.args
+    job_id = src.get("job", "")
+    domain = (src.get("domain") or "").strip().lower()
     domain = domain.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
-    debug = request.args.get("debug")
+    debug = src.get("debug")
     res = _find_job_result(job_id, domain)
     if (not res or res.get("error")) and domain:
         import demo as demo_mod
@@ -302,9 +304,10 @@ def sdr_presentation_pdf():
             return Response("No result for domain=%r job=%r" % (domain, job_id),
                             mimetype="text/plain", status=404)
         return redirect(url_for("index"))
+    fields = {k: src.get(k) for k in src.keys()} if request.method == "POST" else None
     try:
         import pdf
-        data = pdf.build_sdr(res)
+        data = pdf.build_sdr(res, fields)
     except Exception:
         log.exception("sdr pdf build failed for %s", domain)
         if debug:
