@@ -1716,8 +1716,10 @@ chery911.com.ua | 284 | 3,2%</textarea>
         form.method='POST'; form.action='/sdr/presentation.pdf'; form.target='_blank';
         function add(n,v){ var i=document.createElement('input'); i.type='hidden'; i.name=n; i.value=(v==null?'':v); form.appendChild(i); }
         add('job', D._job); add('domain', D._domain||D.domain||'');
-        // поточний стан усіх полів форми (значення + обрані опції model/tier)
-        document.querySelectorAll('[data-k]').forEach(function(el){ add(el.getAttribute('data-k'), el.value); });
+        // поточний стан усіх полів форми (значення + обрані опції); queries без data-k — беремо за id
+        document.querySelectorAll('#panel input,#panel select,#panel textarea,.switcher select,#queries').forEach(function(el){
+          var name=el.getAttribute('data-k')||el.id; if(name) add(name, el.value);
+        });
         document.body.appendChild(form); form.submit(); form.remove();
       });
     }

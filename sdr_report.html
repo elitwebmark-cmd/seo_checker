@@ -126,6 +126,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 .datanote{background:#FCF1EE;border:1px solid #F4D5CD;border-radius:10px;padding:12px 15px;font-size:10px;color:#5a3a34;line-height:1.55}
 .datanote b{color:var(--reddk)}
 .p-lead{font-size:12px;font-weight:700;color:var(--ink);margin:6px 0 8px}
+/* верстка PDF: прозові блоки перетікають, атомарні елементи не рвуться */
+.panel{break-inside:auto;-weasy-break-inside:auto}
+.ph{break-after:avoid;-weasy-break-after:avoid}
+.chart-wrap,table.tbl,table.segmx,table.cmpbar,table.kpis,ul.kv,.datanote,.card{break-inside:avoid;-weasy-break-inside:avoid}
+.ft{margin-top:14px}
 </style></head>
 <body>
 {% set d = data %}
@@ -297,12 +302,16 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
   {% endif %}
 </div>
 
-<div class="concl">
-  <div class="glow"></div>
-  <h4><span class="dt"></span>Коротко</h4>
-  <p>Сайт не з нуля: {{ d.top100 }} {{ d.kw_top100 }} уже у ТОП-100. Найближчий резерв — {{ d.commKeys }} комерційних {{ d.kw_comm }} на позиціях 4–20: вивід у ТОП-1 додає +{{ d.trDelta }} візитів/міс{% if d.rev %} і ≈ {{ d.rev }} грн доходу{% endif %}. Ви платите лише за результат — позиції в ТОП-5.</p>
-  <div class="note">Дані: SemRush (органічний трафік, позиції, запити). Потенціал і гроші — оцінка за частотністю, CTR позицій та бенчмарками ніші. Фактичний результат залежить від обсягу робіт і конкуренції.</div>
+{% if d.growth %}
+<div class="panel">
+  <div class="ph"><span class="dt"></span><h3>Ваші точки зростання</h3> <span class="cnt">· у порядку пріоритету</span></div>
+  {% for x in d.growth %}
+  <div class="card act"><div class="t">{{ loop.index }}. {{ x.title }}</div>
+    <div class="d"><b>Чому:</b> {{ x.why }}<br><b>Перший крок:</b> {{ x.step }}</div></div>
+  {% endfor %}
+  <div style="font-size:8.5px;color:var(--mut);margin-top:8px;font-style:italic">Дані: SemRush (органічний трафік, позиції, запити). Потенціал і гроші — оцінка за частотністю, CTR позицій та бенчмарками ніші. Фактичний результат залежить від обсягу робіт і конкуренції.</div>
 </div>
+{% endif %}
 
 <div class="ft">
   <table style="width:100%"><tr>
