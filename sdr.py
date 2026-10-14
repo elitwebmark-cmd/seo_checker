@@ -350,7 +350,8 @@ def build_visuals(r: dict) -> dict:
     # comps: бари органічного трафіку (Ви vs конкуренти)
     comps = [c for c in (r.get("competitors") or []) if c.get("org_traffic")]
     comps = sorted(comps, key=lambda c: c.get("org_traffic") or 0, reverse=True)[:5]
-    our = r.get("organic_traffic") or 0
+    _hist = r.get("history") or []
+    our = r.get("organic_traffic") or (_hist[0].get("org_traffic") if _hist else 0) or 0
     if comps:
         allrows = [(r.get("domain", ""), our, True)] + [(c["domain"], c["org_traffic"], False) for c in comps]
         mx = max([v for _, v, _ in allrows] or [1]) or 1

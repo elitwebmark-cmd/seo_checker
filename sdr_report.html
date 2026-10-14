@@ -131,6 +131,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
 .ph{break-after:avoid;-weasy-break-after:avoid}
 .chart-wrap,table.tbl,table.segmx,table.cmpbar,table.kpis,ul.kv,.datanote,.card{break-inside:avoid;-weasy-break-inside:avoid}
 .ft{margin-top:14px}
+/* відступи від країв на контентних сторінках; обкладинка — повноекранна */
+@page cover { margin: 0 }
+@page content { margin: 14mm 0 11mm 0 }
+body { page: content }
+.cover { page: cover }
 </style></head>
 <body>
 {% set d = data %}
