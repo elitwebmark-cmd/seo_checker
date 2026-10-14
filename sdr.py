@@ -5,6 +5,11 @@
 
 Ключі збігаються з id/data-k інпутів у sdr.html."""
 from __future__ import annotations
+import html as _html
+
+
+def _esc(s) -> str:
+    return _html.escape(str(s if s is not None else ""))
 
 
 def _group(n) -> str:
@@ -132,4 +137,87 @@ def build_sdr_data(r: dict) -> dict:
                          f"{_group(x.get('traffic_now') or 0)} | {_group(x.get('traffic_top1') or 0)}")
         d["queries"] = "\n".join(lines)
 
+    # авто-візуали для листа (замість ручних скрінів)
+    try:
+        d["visuals"] = build_visuals(r)
+    except Exception:
+        d["visuals"] = {}
+
     return d
+
+
+def build_visuals(r: dict) -> dict:
+    """HTML-візуали з даних аналізу для вставки у лист замість ручних скрінів:
+    графік трафіку + матриця позицій, бари конкурентів, прогноз, таблиця запитів.
+    Усе в темній темі (лист на темному тлі). М'яко деградує."""
+    vis = {}
+    try:
+        import charts
+    except Exception:
+        charts = None
+
+    # matrix: 12-міс графік трафіку + матриця позицій по сегментах
+    parts = []
+    if charts and r.get("history"):
+        try:
+            parts.append('<div class="auto-viz">' + charts.traffic_svg(r["history"], theme="dark") + "</div>")
+        except Exception:
+            pass
+    sg = (r.get("segments") or {})
+    seg = sg.get("segments") or {}
+    tot = sg.get("total") or 0
+    if seg and tot:
+        labels = [("top3", "ТОП-3"), ("p4_10", "4–10"), ("p11_20", "11–20"),
+                  ("p21_50", "21–50"), ("p51_100", "51–100")]
+        rows = ""
+        for k, lab in labels:
+            c = seg.get(k) or 0
+            pw = (c / tot * 100) if tot else 0
+            rows += ('<div class="mx-row"><span class="mx-l">' + lab + '</span>'
+                     '<span class="mx-bar"><i style="width:' + f"{pw:.1f}" + '%"></i></span>'
+                     '<span class="mx-n">' + _group(c) + "</span></div>")
+        parts.append('<div class="auto-viz mx">' + rows
+                     + '<div class="mx-tot">Усього органічних у ТОП-100: <b>' + _group(tot) + "</b></div></div>")
+    if parts:
+        vis["matrix"] = "".join(parts)
+
+    # comps: бари органічного трафіку (Ви vs конкуренти)
+    comps = [c for c in (r.get("competitors") or []) if c.get("org_traffic")]
+    comps = sorted(comps, key=lambda c: c.get("org_traffic") or 0, reverse=True)[:5]
+    our = r.get("organic_traffic") or 0
+    if comps:
+        allrows = [(r.get("domain", ""), our, True)] + [(c["domain"], c["org_traffic"], False) for c in comps]
+        mx = max([v for _, v, _ in allrows] or [1]) or 1
+        rows = ""
+        for dom, v, you in sorted(allrows, key=lambda x: x[1], reverse=True):
+            w = v / mx * 100 if mx else 0
+            rows += ('<div class="cmp-row"><span class="cmp-d' + (" you" if you else "") + '">'
+                     + _esc(dom) + (" (Ви)" if you else "") + '</span>'
+                     '<span class="cmp-bar"><i class="' + ("you" if you else "") + '" style="width:'
+                     + f"{w:.1f}" + '%"></i></span>'
+                     '<span class="cmp-n">' + _group(v) + "</span></div>")
+        vis["comps"] = '<div class="auto-viz">' + rows + "</div>"
+
+    # potential: прогноз зростання трафіку
+    if charts and r.get("history"):
+        b = r.get("benefit") or {}
+        try:
+            fs = charts.forecast_svg(r["history"], b.get("traffic_top1"), theme="dark",
+                                     baseline=b.get("traffic_now"))
+            vis["potential"] = '<div class="auto-viz">' + fs + "</div>"
+        except Exception:
+            pass
+
+    # queries: таблиця найближчих до цілі запитів
+    q = [x for x in (r.get("dotisk_queries") or []) if x.get("keyword")]
+    q = sorted(q, key=lambda x: x.get("traffic_top1") or 0, reverse=True)[:8]
+    if q:
+        trs = ""
+        for x in q:
+            trs += ("<tr><td>" + _esc(x["keyword"]) + '</td><td class="c">' + str(x.get("position") or "—")
+                    + '</td><td class="c">' + _group(x.get("traffic_now") or 0)
+                    + '</td><td class="c hot">' + _group(x.get("traffic_top1") or 0) + "</td></tr>")
+        vis["queries"] = ('<div class="auto-viz"><table class="qv"><thead><tr><th>Запит</th>'
+                          '<th class="c">Позиція</th><th class="c">Зараз</th><th class="c">У ТОП-1</th>'
+                          "</tr></thead><tbody>" + trs + "</tbody></table></div>")
+    return vis

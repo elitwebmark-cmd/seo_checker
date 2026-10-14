@@ -273,6 +273,8 @@ def sdr_page(job_id, domain):
     if not r:
         return redirect(url_for("index"))
     data = sdr_mod.build_sdr_data(r)
+    data["_job"] = job_id
+    data["_domain"] = domain
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     path = os.path.join(app.root_path, "sdr.html")
     with open(path, encoding="utf-8") as f:
