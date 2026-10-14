@@ -284,6 +284,39 @@ def sdr_page(job_id, domain):
     return Response(html, mimetype="text/html")
 
 
+@app.route("/sdr/presentation.pdf")
+@login_required
+def sdr_presentation_pdf():
+    """SDR-презентація (PDF): аналітика інструмента у брендованому стилі."""
+    job_id = request.args.get("job", "")
+    domain = (request.args.get("domain") or "").strip().lower()
+    domain = domain.replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    debug = request.args.get("debug")
+    res = _find_job_result(job_id, domain)
+    if (not res or res.get("error")) and domain:
+        import demo as demo_mod
+        if domain == demo_mod.DEMO_DOMAIN.lower():
+            res = demo_mod.demo_result()
+    if not res or res.get("error"):
+        if debug:
+            return Response("No result for domain=%r job=%r" % (domain, job_id),
+                            mimetype="text/plain", status=404)
+        return redirect(url_for("index"))
+    try:
+        import pdf
+        data = pdf.build_sdr(res)
+    except Exception:
+        log.exception("sdr pdf build failed for %s", domain)
+        if debug:
+            import traceback
+            return Response("SDR PDF build failed:\n\n" + traceback.format_exc(),
+                            mimetype="text/plain", status=500)
+        return "Помилка генерації PDF", 500
+    fname = (domain or "sdr").replace("/", "_") + "-presentation.pdf"
+    return Response(data, mimetype="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
 @app.route("/report/cro", methods=["POST", "GET"])
 @login_required
 def report_cro():

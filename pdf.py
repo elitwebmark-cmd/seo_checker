@@ -88,3 +88,30 @@ def build_competitor(data: dict) -> bytes:
     from weasyprint import HTML
     html = render_competitor_html(data)
     return HTML(string=html, base_url=_DIR).write_pdf()
+
+
+def render_sdr_html(res: dict) -> str:
+    """SDR-презентація: та сама аналітика, що в інструменті (трафік, позиції,
+    конкуренти, потенціал/гроші, запити, точки зростання) у брендованому стилі."""
+    import charts
+    import sdr
+    ctx = sdr.build_report_context(res)
+    b = res.get("benefit") or {}
+    hist = res.get("history") or []
+    chart_svg = charts.traffic_svg(hist, theme="light") if hist else ""
+    forecast_svg = (charts.forecast_svg(hist, b.get("traffic_top1"), theme="light",
+                                        baseline=b.get("traffic_now")) if hist else "")
+    return _env.get_template("sdr_report.html").render(
+        data=ctx,
+        logo=_logo_data_uri(),
+        chart_svg=chart_svg,
+        forecast_svg=forecast_svg,
+        today=datetime.date.today().strftime("%d.%m.%Y"),
+    )
+
+
+def build_sdr(res: dict) -> bytes:
+    """PDF SDR-презентації по домену."""
+    from weasyprint import HTML
+    html = render_sdr_html(res)
+    return HTML(string=html, base_url=_DIR).write_pdf()

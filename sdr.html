@@ -1710,7 +1710,7 @@ chery911.com.ua | 284 | 3,2%</textarea>
       var neo=old.cloneNode(true); old.parentNode.replaceChild(neo,old);
       neo.className='btn btn-primary';
       neo.textContent='⬇ Презентація (PDF)';
-      var url='/report/competitor-analysis.pdf?job='+encodeURIComponent(D._job)+
+      var url='/sdr/presentation.pdf?job='+encodeURIComponent(D._job)+
               '&domain='+encodeURIComponent(D._domain||D.domain||'');
       neo.addEventListener('click',function(e){ e.preventDefault(); window.open(url,'_blank','noopener'); });
     }
