@@ -1,10 +1,10 @@
 """Веб-інтерфейс: авторизація -> список сайтів -> прогрес -> результати."""
 # deploy marker: Retention block + CRO (rebuild trigger)
-import os, uuid, threading, concurrent.futures, functools, time, logging
+import os, uuid, threading, concurrent.futures, functools, time, logging, json
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session, Response)
 
-import qualify, config, hubspot_sync, semrush
+import qualify, config, hubspot_sync, semrush, sdr as sdr_mod
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -262,6 +262,24 @@ def results(job_id):
     return render_template("results.html", results=job["results"], cfg=config,
                            do_onpage=job["do_onpage"], bot_url=config.TELEGRAM_BOT_URL,
                            job_id=job_id)
+
+
+@app.route("/sdr/<job_id>/<path:domain>")
+@login_required
+def sdr_page(job_id, domain):
+    """SDR-конструктор холодної відписки + PDF-презентація, заповнений даними
+    аналізу одного домену."""
+    r = _find_job_result(job_id, domain)
+    if not r:
+        return redirect(url_for("index"))
+    data = sdr_mod.build_sdr_data(r)
+    payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    path = os.path.join(app.root_path, "sdr.html")
+    with open(path, encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("<!--SDR_DATA-->",
+                         "<script>window.SDR_DATA = " + payload + ";</script>", 1)
+    return Response(html, mimetype="text/html")
 
 
 @app.route("/report/cro", methods=["POST", "GET"])
