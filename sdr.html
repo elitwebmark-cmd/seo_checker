@@ -555,7 +555,8 @@ chery911.com.ua | 284 | 3,2%</textarea>
           <button class="btn" id="scan2" hidden>Заповнити зі скринів</button>
           <button class="btn" id="pdf">Завантажити PDF</button>
           <button class="btn" id="printBtn">Друк / зберегти PDF</button>
-          <button class="btn btn-primary" id="copyTg">Текст для Telegram</button>
+          <button class="btn btn-primary" id="copyTg1">📋 Текст 1 (лист + PDF)</button>
+          <button class="btn btn-primary" id="copyTg2">📋 Текст 2 (після файлу)</button>
           <button class="btn" id="copy">Скопіювати все</button>
         </div>
       </div>
@@ -564,7 +565,7 @@ chery911.com.ua | 284 | 3,2%</textarea>
 
     <div class="note">
       <b>Як це працює.</b> Графіки й таблиці підтягуються автоматично з аналізу сайту — нічого завантажувати вручну не треба.<br><br>
-      <b>Текст повідомлення.</b> Блоки на сірому тлі — це текст для Telegram; кнопка «Текст для Telegram» копіює тільки їх. Решту листа можна скопіювати кнопкою «Скопіювати все».<br><br>
+      <b>Два повідомлення.</b> Блоки на сірому тлі — це текст для Telegram, їх два: «Текст 1 (лист + PDF)» надсилаєте разом із презентацією, «Текст 2 (після файлу)» — наступним повідомленням. Кожна кнопка копіює свій текст окремо.<br><br>
       <b>Презентація.</b> Кнопка «⬇ Презентація (PDF)» відкриває брендований звіт по сайту з точками зростання (дизайн як у наших звітах) — його прикріплюєте до повідомлення.
     </div>
   </div>
@@ -1054,18 +1055,23 @@ chery911.com.ua | 284 | 3,2%</textarea>
     toastEl.classList.add('on');
     setTimeout(function(){toastEl.classList.remove('on');},1500);
   }
-  var copyTgBtn=document.getElementById('copyTg');
-  copyTgBtn.addEventListener('click',function(){
+  /* два повідомлення Telegram копіюються окремо:
+     №1 — перше (йде разом із PDF), №2 — друге (після файлу) */
+  function copyTgPart(idx,msg){
     var parts=Array.prototype.slice.call(letter.querySelectorAll('.tg-part'));
-    if(!parts.length){ toast('У цій версії окремого тексту немає'); return; }
-    var text=parts.map(function(n){
-      var clone=n.cloneNode(true);
-      Array.prototype.forEach.call(clone.querySelectorAll('.tg-only'),function(t){
-        t.parentNode.removeChild(t);
-      });
-      return blocksToText(clone);
-    }).join('\n\n').replace(/\n{3,}/g,'\n\n').trim();
-    putOnClipboard(text,'Текст для Telegram скопійовано');
+    if(parts.length<=idx || !parts[idx]){ toast('У цій версії цього тексту немає'); return; }
+    var clone=parts[idx].cloneNode(true);
+    Array.prototype.forEach.call(clone.querySelectorAll('.tg-only'),function(t){
+      t.parentNode.removeChild(t);
+    });
+    var text=blocksToText(clone).replace(/\n{3,}/g,'\n\n').trim();
+    putOnClipboard(text,msg);
+  }
+  document.getElementById('copyTg1').addEventListener('click',function(){
+    copyTgPart(0,'Текст 1 (лист) скопійовано');
+  });
+  document.getElementById('copyTg2').addEventListener('click',function(){
+    copyTgPart(1,'Текст 2 (після файлу) скопійовано');
   });
 
   /* one blank line between paragraphs, single line breaks inside a list */
