@@ -126,8 +126,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
   <div class="cv-logo">{% if logo %}<img src="{{ logo }}" style="height:34px">{% else %}<div class="logo">elit<span style="color:#fff">web</span><span class="c">❯</span><span class="s">MORE THAN</span></div>{% endif %}</div>
   <div class="cv-datetop"><b>ДАТА ЗВІТУ</b><span>{{ today }}</span></div>
   <div class="cv-center">
-    <div class="cv-eyebrow"><span class="l"></span>Конкурентний аналіз</div>
-    <div class="cv-title">Конкурентний аналіз<br>і точки втрати трафіку</div>
+    <div class="cv-eyebrow"><span class="l"></span>Маркетинговий аналіз</div>
+    <div class="cv-title">Маркетинговий аналіз<br>і точки зростання</div>
     <div class="cv-for">для сайту <span class="r">{{ d.domain }}</span></div>
     {% if d.res.niche and d.res.niche.subniche %}<div class="cv-niche">{{ d.res.niche.direction_name }} · {{ d.res.niche.industry_name }} · {{ d.res.niche.subniche }}</div>{% endif %}
   </div>
@@ -139,7 +139,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 10px; table-layou
   <div class="topbar"></div><div class="glow"></div>
   <table class="hrow"><tr>
     <td style="width:140px">{% if logo %}<img src="{{ logo }}" style="height:28px">{% else %}<div class="logo">elit<span style="color:#fff">web</span><span class="c">❯</span></div>{% endif %}</td>
-    <td class="htitle">Конкурентний аналіз для <span class="r">{{ d.domain }}</span>
+    <td class="htitle">Маркетинговий аналіз для <span class="r">{{ d.domain }}</span>
       {% if d.res.niche and d.res.niche.subniche %}<span class="hsub">{{ d.res.niche.industry_name }} · {{ d.res.niche.subniche }}</span>{% endif %}
     </td>
     <td style="width:140px;text-align:right"><span class="date"><b>Дата звіту</b>{{ today }}</span></td>
