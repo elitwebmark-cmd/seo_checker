@@ -543,7 +543,22 @@ def report_ai_summary():
     except Exception:
         s = None
     if not s:
-        return "<div class='cro-err'>AI-резюме недоступне: перевірте ANTHROPIC_API_KEY або спробуйте пізніше.</div>", 200
+        hint = ""
+        try:
+            d = ai_review.debug()
+            parts = []
+            if not d.get("has_key"):
+                parts.append("ключ не заданий")
+            for lbl in ("primary", "fallback"):
+                m = d.get(lbl) or {}
+                if m:
+                    parts.append(f"{m.get('model')}: {m.get('status') or m.get('error')}")
+            hint = " \u00b7 ".join([p for p in parts if p])
+        except Exception:
+            pass
+        msg = "AI-резюме недоступне" + (f" ({hint})" if hint else "")
+        return (f"<div class='cro-err'>{msg}. Перевірте ANTHROPIC_API_KEY і назви моделей "
+                f"на сервері (діагностика: /debug/ai).</div>"), 200
     res["ai_summary"] = s
     return render_template("ai_summary_block.html", s=s)
 

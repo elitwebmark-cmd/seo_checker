@@ -6,7 +6,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 NICHE_AI_MODEL = os.getenv("NICHE_AI_MODEL", "claude-haiku-4-5-20251001")
 NICHE_AI_TIMEOUT = int(os.getenv("NICHE_AI_TIMEOUT", "20"))
 # AI-аналітика (SEO-ревʼю + executive summary) — якісніша модель, on-demand.
-AI_REVIEW_MODEL = os.getenv("AI_REVIEW_MODEL", "claude-sonnet-5")
+AI_REVIEW_MODEL = os.getenv("AI_REVIEW_MODEL", "claude-sonnet-5-5")
 AI_REVIEW_FALLBACK_MODEL = os.getenv("AI_REVIEW_FALLBACK_MODEL", "claude-haiku-4-5-20251001")
 AI_REVIEW_TIMEOUT = int(os.getenv("AI_REVIEW_TIMEOUT", "60"))
 
