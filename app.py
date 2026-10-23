@@ -535,7 +535,16 @@ def report_ai_summary():
     if not domain:
         return "<div class='cro-err'>Домен не вказано.</div>", 400
     res = _find_job_result(job_id, domain)
-    if not res:
+    if (not res or res.get("error")) and domain:
+        import demo as demo_mod
+        if domain == demo_mod.DEMO_DOMAIN.lower():
+            res = demo_mod.demo_result()
+    if (not res or res.get("error")) and domain:
+        # кеш у пам'яті міг зникнути після рестарту/деплою — перебудовуємо дані
+        rebuilt = _safe_qualify(domain, do_onpage=False, do_ads=True, do_social=True)
+        if not rebuilt.get("error"):
+            res = rebuilt
+    if not res or res.get("error"):
         return "<div class='cro-err'>Дані звіту не знайдено (можливо, застаріли). Зробіть новий аналіз.</div>", 200
     try:
         import ai_review
