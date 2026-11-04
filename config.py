@@ -139,6 +139,13 @@ COMMERCIAL_KW_SOFT = int(os.getenv("COMMERCIAL_KW_SOFT", "100"))
 TRAFFIC_MIN = int(os.getenv("TRAFFIC_MIN", "1000"))
 # Потенціал зростання за трафіком: <MIN — не підходить; MIN..MID — середній; >MID — сильний
 GROWTH_TRAFFIC_MIN = int(os.getenv("GROWTH_TRAFFIC_MIN", "1000"))
+# --- Пороги продуктової воронки (funnel.py) ---
+# Низький трафік: профіль під фікс-пакети SEO (дуже мало відвідувачів/міс)
+FUNNEL_LOW_TRAFFIC = int(os.getenv("FUNNEL_LOW_TRAFFIC", "500"))
+# GEO / AI Search: мінімальний орг. трафік для здорового SEO-фундаменту
+FUNNEL_GEO_MIN_ORGANIC = int(os.getenv("FUNNEL_GEO_MIN_ORGANIC", "1000"))
+# CRO: бажаний трафік/міс для A/B-тестів
+FUNNEL_CRO_TRAFFIC = int(os.getenv("FUNNEL_CRO_TRAFFIC", "10000"))
 GROWTH_TRAFFIC_MID = int(os.getenv("GROWTH_TRAFFIC_MID", "10000"))
 STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
 STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))

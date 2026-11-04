@@ -1,0 +1,61 @@
+{% set offers = ev.offers %}
+{% set byid = {} %}
+{% for o in offers %}{% set _ = byid.update({o.id: o}) %}{% endfor %}
+
+{% macro offer_card(o) %}
+<div class="fn-offer s-{{ o.status }}">
+  <div class="fn-oh">
+    <span class="badge {{ {'offer':'b-green','check':'b-amber','no':'b-gray'}[o.status] }}">{{ o.status_label }}</span>
+    <span class="nm">{{ o.name }}</span>
+    <span class="fn-src">{{ o.src }}</span>
+  </div>
+  <div class="fn-price">{{ o.price }}</div>
+  {% if o.status != 'no' %}
+    {% if o.kpi %}<div class="fn-meta">KPI: {{ o.kpi }}</div>{% endif %}
+    {% if o.budget %}<div class="fn-meta">{{ o.budget }}</div>{% endif %}
+  {% endif %}
+  <ul>{% for w in o.why %}<li>{{ w }}</li>{% endfor %}</ul>
+  {% if o.status != 'no' %}
+    {% if o.terms %}<div class="lbl">Умови</div><ul>{% for t in o.terms %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+    {% if o.variants %}<div class="lbl">Допродажі</div><ul>{% for t in o.variants %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+    {% if o.confirm %}<div class="lbl">Уточнити в клієнта</div><ul>{% for t in o.confirm %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% if ev.notes %}<div class="warn">{% for n in ev.notes %}{{ n }}{% if not loop.last %} {% endif %}{% endfor %}</div>{% endif %}
+
+<div class="card fn-lead">
+  <div class="metric">Пропонувати в першу чергу</div>
+  {% if ev.niche %}<div class="fn-meta" style="margin-bottom:8px">{{ ev.niche.industry }} → {{ ev.niche.name }}</div>{% endif %}
+  {% if ev.lead_with %}
+    {% for i in ev.lead_with %}{% set o = byid[i] %}
+    <div class="svc-row">
+      <span class="badge {{ 'b-green' if o.status=='offer' else 'b-amber' }}">{{ o.status_label }}</span>
+      <span class="nm" style="font-weight:800">{{ o.name }}</span>
+      <span class="svc-note">{{ o.price }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="svc-note">Поки нічого не підходить — оберіть нішу і заповніть цифри.</div>
+  {% endif %}
+  <div style="margin-top:14px">
+    <textarea class="fn-sum" id="fnSum" readonly>{{ ev.summary }}</textarea>
+    <div style="margin-top:8px"><button type="button" class="btn btn-ghost" data-copy>Копіювати підсумок</button></div>
+  </div>
+</div>
+
+{% for key, label in channels %}
+  {% set items = offers | selectattr('channel','equalto',key) | list %}
+  {% set shown = items | rejectattr('status','equalto','no') | list %}
+  {% set hidden = items | selectattr('status','equalto','no') | list %}
+  {% if items %}
+  <div class="fn-ch">{{ label }}</div>
+  {% for o in shown %}{{ offer_card(o) }}{% endfor %}
+  {% if hidden %}
+  <details class="fn-no"><summary>Не підходить ({{ hidden|length }})</summary>
+    {% for o in hidden %}{{ offer_card(o) }}{% endfor %}
+  </details>
+  {% endif %}
+  {% endif %}
+{% endfor %}

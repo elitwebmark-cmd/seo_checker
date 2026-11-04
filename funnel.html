@@ -1,0 +1,160 @@
+{% extends "_base.html" %}
+{% block body %}
+<style>
+.fn-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.fn-tab{background:var(--card);border:1px solid var(--bord);color:var(--mute2);border-radius:12px;padding:10px 18px;font-weight:800;font-size:14px;cursor:pointer}
+.fn-tab.on{background:var(--red);border-color:var(--red);color:#fff}
+.field{margin-bottom:14px}
+.field-label{display:block;color:var(--mute2);font-size:13px;font-weight:800;margin-bottom:0}
+select.fld{width:100%;background:var(--bg2);border:1px solid var(--bord);border-radius:12px;color:#fff;padding:13px 14px;font:700 15px 'Manrope';margin-top:6px;transition:border-color .15s}
+select.fld:focus{outline:none;border-color:var(--red)}
+.fn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 18px}
+.fn-grid select.fld,.fn-grid input.fld{width:100%;min-width:0}
+.fn-hint{color:var(--mute);font-size:12px;font-weight:700;margin-top:4px;min-height:16px}
+.fn-hint.warn{color:var(--amber);background:none;border:none;padding:0}
+.fn-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.fn-row .field{flex:1;min-width:200px;margin-bottom:0}
+.fn-err{color:var(--red);font-weight:800;margin-top:10px}
+.fn-lead{border-left:3px solid var(--green)}
+.fn-ch{margin:22px 0 8px;color:var(--mute);font-size:12px;letter-spacing:1.2px;text-transform:uppercase;font-weight:800}
+.fn-offer{border:1px solid var(--bord);border-left:3px solid var(--gray);border-radius:12px;background:var(--card);padding:14px 16px;margin-bottom:10px}
+.fn-offer.s-offer{border-left-color:var(--green)}
+.fn-offer.s-check{border-left-color:var(--amber)}
+.fn-offer.s-no{opacity:.62}
+.fn-oh{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.fn-oh .nm{font-weight:800;font-size:16px}
+.fn-oh .badge{min-width:96px;text-align:center}
+.fn-price{color:var(--gold);font-weight:800;font-size:14px;margin-top:6px}
+.fn-meta{color:var(--mute2);font-size:13px;font-weight:700;margin-top:4px}
+.fn-offer ul{margin:8px 0 0 18px;color:var(--mute2);font-size:13px;font-weight:600;line-height:1.7}
+.fn-offer .lbl{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.6px;font-weight:800;margin-top:8px}
+.fn-src{color:var(--mute);font-size:11px;font-weight:700;margin-left:auto}
+.fn-sum{width:100%;min-height:190px;background:var(--bg2);border:1px solid var(--bord);border-radius:12px;color:#fff;padding:12px;font:600 13px/1.6 'Manrope';resize:vertical}
+details.fn-no>summary{cursor:pointer;color:var(--mute2);font-weight:800;margin:14px 0 8px}
+</style>
+
+<div class="eyebrow">Для відділу продажів</div>
+<h1>Продуктова <span class="ac">воронка</span></h1>
+<p class="sub">Кому що можна пропонувати, за якою ціною і на яких умовах. Підтягніть дані з аналізатора за доменом або введіть вручну — і перевірте підбір.</p>
+{% if not has_key %}<div class="warn">⚠️ SEMRUSH_API_KEY не заданий — підтягування за доменом не працюватиме; ручний режим працює.</div>{% endif %}
+
+<div class="fn-tabs">
+  <button type="button" class="fn-tab on" data-mode="domain">З аналізатора (за доменом)</button>
+  <button type="button" class="fn-tab" data-mode="manual">Ввести вручну</button>
+</div>
+
+<div class="card" id="fnPull">
+  <div class="fn-row">
+    <div class="field"><label class="field-label" for="fnDomain">Домен</label>
+      <input class="fld" id="fnDomain" placeholder="example.com" autocomplete="off"></div>
+    <div style="flex:0 0 auto"><button type="button" id="fnPullBtn">Підтягнути дані й підібрати оффери</button></div>
+  </div>
+  <div class="fn-hint" id="fnPullNote">Використає нещодавню перевірку цього домену, якщо вона є; інакше запустить аналіз (близько хвилини). Перегляньте заповнені поля нижче — виправте, що виглядає не так.</div>
+  <div class="fn-err" id="fnPullErr"></div>
+</div>
+
+<form class="card" id="fnForm" autocomplete="off">
+  <div class="fn-grid">
+    <div class="field"><label class="field-label" for="f_niche">Ніша</label>
+      <select name="niche" id="f_niche" class="fld">
+        <option value="">— оберіть нішу —</option>
+        {% for grp, items in niche_groups %}<optgroup label="{{ grp }}">{% for code, label in items %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</optgroup>{% endfor %}
+      </select><div class="fn-hint" data-h="niche"></div></div>
+    <div class="field"><label class="field-label" for="f_site">Сайт</label>
+      <select name="site" id="f_site" class="fld"><option value="live">Робочий сайт</option><option value="none">Сайту ще немає / у розробці</option></select>
+      <div class="fn-hint" data-h="site"></div></div>
+    <div class="field"><label class="field-label" for="f_visits">Відвідувачів на місяць (усі джерела)</label>
+      <input class="fld" name="visits" id="f_visits" inputmode="numeric" placeholder="напр. 12000"><div class="fn-hint" data-h="visits"></div></div>
+    <div class="field"><label class="field-label" for="f_organic">Органічний пошук, візитів/міс</label>
+      <input class="fld" name="organic" id="f_organic" inputmode="numeric" placeholder="напр. 3500"><div class="fn-hint" data-h="organic"></div></div>
+    <div class="field"><label class="field-label" for="f_commercial">Комерційних запитів у TOP 4–20</label>
+      <input class="fld" name="commercial" id="f_commercial" inputmode="numeric" placeholder="напр. 250"><div class="fn-hint" data-h="commercial"></div></div>
+    <div class="field"><label class="field-label" for="f_budget">Рекламний бюджет клієнта, $/міс</label>
+      <input class="fld" name="budget" id="f_budget" inputmode="numeric" placeholder="запитайте у клієнта"><div class="fn-hint" data-h="budget"></div></div>
+    <div class="field"><label class="field-label" for="f_google_ads">Запускає Google Ads зараз?</label>
+      <select name="google_ads" id="f_google_ads" class="fld"><option value="">Не знаю</option><option value="yes">Так</option><option value="no">Ні</option></select>
+      <div class="fn-hint" data-h="google_ads"></div></div>
+    <div class="field"><label class="field-label" for="f_meta_ads">Запускає Meta (Facebook / Instagram) зараз?</label>
+      <select name="meta_ads" id="f_meta_ads" class="fld"><option value="">Не знаю</option><option value="yes">Так</option><option value="no">Ні</option></select>
+      <div class="fn-hint" data-h="meta_ads"></div></div>
+    <div class="field"><label class="field-label" for="f_tracking">GA4 + відстеження конверсій налаштовано?</label>
+      <select name="tracking" id="f_tracking" class="fld"><option value="">Не знаю</option><option value="yes">Так</option><option value="no">Ні</option></select>
+      <div class="fn-hint" data-h="tracking"></div></div>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:6px">
+    <button type="submit">Показати оффери</button>
+    <button type="button" class="btn btn-ghost" id="fnReset">Очистити</button>
+  </div>
+</form>
+
+<div id="fnResult"></div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var form=$('fnForm'), result=$('fnResult'), pullErr=$('fnPullErr');
+  var FIELDS=['niche','site','visits','organic','commercial','budget','google_ads','meta_ads','tracking'];
+
+  function setMode(m){
+    document.querySelectorAll('.fn-tab').forEach(function(b){b.classList.toggle('on',b.dataset.mode===m)});
+    $('fnPull').style.display = m==='domain' ? '' : 'none';
+  }
+  document.querySelectorAll('.fn-tab').forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.mode)})});
+
+  function evaluate(){
+    var fd=new FormData(form);
+    result.innerHTML='<div class="card" style="color:var(--mute2)">Рахую…</div>';
+    return fetch('/funnel/evaluate',{method:'POST',body:fd,credentials:'same-origin'})
+      .then(function(r){ if(r.redirected||r.status===401){location.href='/login'; throw 0;} return r.text(); })
+      .then(function(h){ result.innerHTML=h; wireResult(); })
+      .catch(function(e){ if(e!==0) result.innerHTML='<div class="fn-err">Не вдалося порахувати оффери. Спробуйте ще раз.</div>'; });
+  }
+  form.addEventListener('submit',function(e){e.preventDefault(); evaluate();});
+
+  function wireResult(){
+    var btn=result.querySelector('[data-copy]');
+    if(btn) btn.addEventListener('click',function(){
+      var t=result.querySelector('#fnSum'); t.select();
+      try{ navigator.clipboard.writeText(t.value); }catch(_){ document.execCommand('copy'); }
+      btn.textContent='Скопійовано ✓'; setTimeout(function(){btn.textContent='Копіювати підсумок'},1600);
+    });
+  }
+
+  function hints(src){
+    document.querySelectorAll('.fn-hint[data-h]').forEach(function(h){
+      var k=h.dataset.h; h.textContent=src&&src[k]?src[k]:''; h.classList.toggle('warn',/перевір|уточн|недоступ|низька/.test(h.textContent));
+    });
+  }
+  function fill(inp){
+    FIELDS.forEach(function(k){
+      var el=form.elements[k]; if(!el) return;
+      var v=inp[k]; if(v===null||v===undefined||v==='unknown') v='';
+      el.value=v;
+    });
+  }
+  $('fnReset').addEventListener('click',function(){ form.reset(); hints(null); result.innerHTML=''; });
+
+  var busy=false;
+  function pull(){
+    if(busy) return;
+    var d=$('fnDomain').value.trim();
+    pullErr.textContent='';
+    if(!d){ pullErr.textContent='Спершу введіть домен.'; return; }
+    busy=true; var btn=$('fnPullBtn'); var old=btn.textContent; btn.disabled=true; btn.textContent='Підтягую дані…';
+    var fd=new FormData(); fd.append('domain',d);
+    fetch('/funnel/analyze',{method:'POST',body:fd,credentials:'same-origin'})
+      .then(function(r){ if(r.redirected||r.status===401){location.href='/login'; throw 0;} return r.json().then(function(j){return {ok:r.ok,j:j}}); })
+      .then(function(x){
+        if(!x.ok){ pullErr.textContent=x.j.error||'Не вдалося підтягнути дані.'; return; }
+        fill(x.j.inputs); hints(x.j.sources);
+        $('fnPullNote').textContent = (x.j.reused?'Використано нещодавню перевірку ':'Запущено свіжий аналіз ')+x.j.domain+'. Перегляньте поля нижче — бюджет і трекінг запитайте у клієнта.';
+        return evaluate();
+      })
+      .catch(function(e){ if(e!==0) pullErr.textContent='Запит не вдався. Спробуйте ще раз.'; })
+      .then(function(){ busy=false; btn.disabled=false; btn.textContent=old; });
+  }
+  $('fnPullBtn').addEventListener('click',pull);
+  $('fnDomain').addEventListener('keydown',function(e){ if(e.key==='Enter'){e.preventDefault(); pull();} });
+})();
+</script>
+{% endblock %}

@@ -4,7 +4,7 @@ import os, uuid, threading, concurrent.futures, functools, time, logging, json
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session, Response)
 
-import qualify, config, hubspot_sync, semrush, sdr as sdr_mod
+import qualify, config, hubspot_sync, semrush, sdr as sdr_mod, funnel
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -188,6 +188,59 @@ def index():
     return render_template("index.html", cfg=config,
                            has_key=bool(config.SEMRUSH_API_KEY),
                            bot_url=config.TELEGRAM_BOT_URL)
+
+
+def _norm_domain(d):
+    import re as _re
+    return _re.sub(r"^https?://", "", d or "").strip("/ ").lower()
+
+
+def _recent_result_for_domain(domain):
+    """Повертає нещодавній успішний результат аналізу цього домену з памʼяті джобів."""
+    domain = _norm_domain(domain)
+    best = None
+    with JOBS_LOCK:
+        for job in JOBS.values():
+            for r in job.get("results", []):
+                if _norm_domain(r.get("domain")) == domain and not r.get("error") \
+                        and (r.get("metrics") or r.get("niche")):
+                    return r
+    return best
+
+
+@app.route("/funnel")
+@login_required
+def funnel_page():
+    return render_template("funnel.html", cfg=config,
+                           has_key=bool(config.SEMRUSH_API_KEY),
+                           niche_groups=funnel.niche_choices())
+
+
+@app.route("/funnel/evaluate", methods=["POST"])
+@login_required
+def funnel_evaluate():
+    raw = {k: request.form.get(k, "") for k in
+           ("niche", "site", "visits", "organic", "commercial",
+            "budget", "google_ads", "meta_ads", "tracking")}
+    ev = funnel.evaluate(raw)
+    return render_template("funnel_result.html", ev=ev, channels=funnel.CHANNELS)
+
+
+@app.route("/funnel/analyze", methods=["POST"])
+@login_required
+def funnel_analyze():
+    domain = _norm_domain(request.form.get("domain", ""))
+    if not domain:
+        return jsonify({"error": "Введіть домен."}), 400
+    if not config.SEMRUSH_API_KEY:
+        return jsonify({"error": "SEMRUSH_API_KEY не заданий."}), 400
+    cached = _recent_result_for_domain(domain)
+    reused = cached is not None
+    res = cached or _safe_qualify(domain, do_onpage=True, do_ads=True, do_social=True)
+    if res.get("error"):
+        return jsonify({"error": res.get("error") or "Не вдалося проаналізувати домен."}), 400
+    raw, src = funnel.inputs_from_result(res)
+    return jsonify({"domain": domain, "reused": reused, "inputs": raw, "sources": src})
 
 
 @app.route("/demo")

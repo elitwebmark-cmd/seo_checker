@@ -541,6 +541,8 @@ details.creatives-acc{margin:12px 0 4px}
       <div class="tagline">SEO з оплатою за вихід у ТОП · Кваліфікація сайтів</div>
     </div>
     <div class="topnav">
+      {% if session.auth %}<a class="btn btn-ghost" href="/">Аналізатор</a>
+      <a class="btn btn-ghost" href="/funnel">Продуктова воронка</a>{% endif %}
       {% if cfg.TELEGRAM_BOT_URL %}<a class="btn btn-tg" href="{{ cfg.TELEGRAM_BOT_URL }}" target="_blank">{% if assets.ic_bot %}<img class="ic ic-btn" src="{{ url_for('static', filename=assets.ic_bot) }}" alt="">{% else %}✈️{% endif %} Telegram-бот</a>{% endif %}
       {% if session.auth %}<a class="btn btn-ghost" href="/logout">Вийти</a>{% endif %}
     </div>
