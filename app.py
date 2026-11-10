@@ -505,6 +505,21 @@ def report_competitors():
         return jsonify({"ok": False, "error": str(e)[:200]}), 200
     ta["primary"] = _norm(domain)
     r["competitors_channels"] = ta        # зберігаємо для перезавантаження/PDF
+    # Синхронізуємо відредагований список конкурентів у r["competitors"],
+    # щоб SDR і SDR-звіт бачили актуальних конкурентів (а не авто-підбір з аналізу).
+    prim = _norm(domain)
+    old_by_dom = {_norm(c.get("domain")): c for c in (r.get("competitors") or [])}
+    new_comps = []
+    for d in (ta.get("domains") or []):
+        dn = _norm(d.get("domain"))
+        if not dn or dn == prim:
+            continue
+        org = (d.get("channels") or {}).get("Organic") or 0
+        merged = dict(old_by_dom.get(dn) or {})
+        merged["domain"] = dn
+        merged["org_traffic"] = int(org or 0)
+        new_comps.append(merged)
+    r["competitors"] = new_comps          # SDR читає саме цей список
     return jsonify({"ok": True, **ta})
 
 
