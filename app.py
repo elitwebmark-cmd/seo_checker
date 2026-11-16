@@ -265,7 +265,10 @@ def niche_run():
         return jsonify({"ok": False, "error": "SEMRUSH_API_KEY не заданий."}), 400
     use_ai = bool(data.get("use_ai", True))
     use_onpage = bool(data.get("use_onpage", True))
-    rows = niche_detect.detect_many(domains, use_onpage=use_onpage, use_ai=use_ai)
+    use_kw = data.get("use_kw", "auto")
+    if isinstance(use_kw, bool) is False and use_kw not in ("auto",):
+        use_kw = "auto"
+    rows = niche_detect.detect_many(domains, use_onpage=use_onpage, use_ai=use_ai, use_kw=use_kw)
     out = [{
         "domain": r.get("domain"),
         "industry": r.get("industry_name") or "—",

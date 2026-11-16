@@ -16,14 +16,15 @@
 
 <div class="eyebrow">Швидкий режим</div>
 <h1>Визначити <span class="ac">нішу</span></h1>
-<p class="sub">Встав домени (по одному в рядок або через кому) — отримаєш лише нішу/індустрію по кожному, без повного аналізу. Сигнали: топ-запити SemRush + мета сайту. До {{ batch_max }} доменів за раз.</p>
+<p class="sub">Встав домени (по одному в рядок або через кому) — отримаєш лише нішу/індустрію по кожному, без повного аналізу. Головний сигнал — мета/контент сайту (title, description, H1); топ-запити SemRush добираються лише як фолбек, коли сайт не дав сигналу. До {{ batch_max }} доменів за раз.</p>
 {% if not has_key %}<div class="warn">⚠️ SEMRUSH_API_KEY не заданий — визначення по запитах не працюватиме.</div>{% endif %}
 
 <form class="card" id="ndForm" autocomplete="off">
   <textarea id="ndDomains" placeholder="mebel.ua&#10;hitomi.com.ua&#10;avtopart.com.ua" style="min-height:150px"></textarea>
   <div class="nd-opts">
     <label><input type="checkbox" id="ndAi" checked> AI-класифікатор (точніше, трохи повільніше)</label>
-    <label><input type="checkbox" id="ndOnpage" checked> Читати сайт (мета/заголовки)</label>
+    <label><input type="checkbox" id="ndOnpage" checked> Читати сайт (мета/заголовки) — головне</label>
+    <label><input type="checkbox" id="ndKw" checked> Добирати запити SemRush, якщо сайт мовчить</label>
   </div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
     <button type="submit" id="ndBtn">Визначити ніші</button>
@@ -63,7 +64,7 @@
     btn.disabled=true; status.textContent='Визначаю ніші… (SemRush + сайт, це може зайняти до хвилини)';
     result.innerHTML=''; csvBtn.style.display='none';
     fetch('/niche/run',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
-      body:JSON.stringify({domains:doms,use_ai:$('ndAi').checked,use_onpage:$('ndOnpage').checked})})
+      body:JSON.stringify({domains:doms,use_ai:$('ndAi').checked,use_onpage:$('ndOnpage').checked,use_kw:($('ndKw').checked?'auto':false)})})
       .then(function(r){ if(r.redirected||r.status===401){location.href='/login';throw 0;} return r.json(); })
       .then(function(d){
         btn.disabled=false;

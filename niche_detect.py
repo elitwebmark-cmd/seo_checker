@@ -17,20 +17,15 @@ def _norm(d: str) -> str:
     return d
 
 
-def detect(domain: str, db: str = None, use_onpage: bool = True, use_ai: bool = True) -> dict:
+def detect(domain: str, db: str = None, use_onpage: bool = True, use_ai: bool = True,
+           use_kw: str = "auto") -> dict:
+    """use_kw: 'auto' — топ-запити SemRush лише як фолбек, коли сайт не дав мети;
+    True — завжди добирати запити; False — ніколи (нуль SemRush-одиниць)."""
     dom = _norm(domain)
     if not dom or "." not in dom:
         return {"domain": domain, "subniche_code": None, "subniche": None,
                 "industry_name": "Не домен", "confidence": "низька", "error": "не схоже на домен"}
-    # 1) топ-запити SemRush (дешевий витяг)
-    kws = []
-    try:
-        kws = semrush.organic_all(dom, db=db, limit=getattr(config, "NICHE_KW_LIMIT", 30))
-    except Exception:
-        kws = []
-    kw_text = " ".join(k.get("keyword", "") for k in kws)
-    kw_list = [k.get("keyword") for k in sorted(kws, key=lambda x: -(x.get("volume") or 0)) if k.get("keyword")][:12]
-    # 2) мета сторінки (best-effort; на JS-захищених сайтах може не дати нічого)
+    # 1) ГОЛОВНИЙ сигнал — мета/контент сайту (title/description/keywords/H1/H2)
     meta_text = ""; cat_text = ""; onp = None
     if use_onpage and onpage is not None:
         try:
@@ -46,6 +41,17 @@ def detect(domain: str, db: str = None, use_onpage: bool = True, use_ai: bool = 
             cat_text = " ".join(c.get("url", "") for c in (onp.get("categories") or []) if isinstance(c, dict))
         except Exception:
             onp = None
+    # 2) топ-запити SemRush — ДОДАТКОВО: завжди (True) або лише коли сайт не дав сигналу ('auto')
+    kws = []
+    thin_meta = len((meta_text or "").strip()) < getattr(config, "NICHE_META_MIN", 40)
+    want_kw = (use_kw is True) or (use_kw == "auto" and thin_meta)
+    if want_kw:
+        try:
+            kws = semrush.organic_all(dom, db=db, limit=getattr(config, "NICHE_KW_LIMIT", 30))
+        except Exception:
+            kws = []
+    kw_text = " ".join(k.get("keyword", "") for k in kws)
+    kw_list = [k.get("keyword") for k in sorted(kws, key=lambda x: -(x.get("volume") or 0)) if k.get("keyword")][:12]
     blob = " ".join([dom, (meta_text + " ") * 5, kw_text, cat_text])
     # 3) AI-класифікатор, фолбек на евристику (той самий шлях, що у qualify)
     ni = None; src = "heuristic"
@@ -62,13 +68,13 @@ def detect(domain: str, db: str = None, use_onpage: bool = True, use_ai: bool = 
     ni = dict(ni)
     ni["domain"] = dom
     ni["source"] = src
-    ni["signals"] = (("запити" if kws else "") + ("+мета" if meta_text else "")) or "—"
+    ni["signals"] = (("мета" if meta_text else "") + ("+запити" if kws else "")).strip("+") or "—"
     ni["n_kw"] = len(kws)
     return ni
 
 
 def detect_many(domains, db: str = None, use_onpage: bool = True, use_ai: bool = True,
-                workers: int = None) -> list:
+                use_kw: str = "auto", workers: int = None) -> list:
     doms, seen = [], set()
     for d in domains:
         nd = _norm(d)
@@ -80,7 +86,7 @@ def detect_many(domains, db: str = None, use_onpage: bool = True, use_ai: bool =
     w = workers or getattr(config, "NICHE_WORKERS", 6)
     out = [None] * len(doms)
     with concurrent.futures.ThreadPoolExecutor(max_workers=w) as ex:
-        futs = {ex.submit(detect, d, db, use_onpage, use_ai): i for i, d in enumerate(doms)}
+        futs = {ex.submit(detect, d, db, use_onpage, use_ai, use_kw): i for i, d in enumerate(doms)}
         for f in concurrent.futures.as_completed(futs):
             i = futs[f]
             try:
