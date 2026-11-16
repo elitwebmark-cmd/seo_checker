@@ -1,0 +1,84 @@
+{% extends "_base.html" %}
+{% block body %}
+<style>
+.nd-opts{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.nd-opts label{display:inline-flex;align-items:center;gap:8px;color:var(--mute2);font-weight:700;font-size:14px}
+.nd-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+.nd-tbl th,.nd-tbl td{padding:8px 10px;border-bottom:1px solid var(--bord);text-align:left}
+.nd-tbl th{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.nd-tbl tr:hover td{background:var(--card2)}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-weight:800;font-size:11px}
+.p-ok{background:rgba(63,191,106,.15);color:var(--green)} .p-lo{background:rgba(245,166,35,.15);color:var(--amber)}
+.p-no{background:rgba(107,107,114,.2);color:var(--mute2)}
+.nd-status{color:var(--mute2);font-weight:700;font-size:13px;margin:8px 0}
+.nd-sum{width:100%;min-height:120px;background:var(--bg2);border:1px solid var(--bord);border-radius:12px;color:#fff;padding:12px;font:600 12px/1.5 'JetBrains Mono',monospace;resize:vertical;margin-top:10px}
+</style>
+
+<div class="eyebrow">Швидкий режим</div>
+<h1>Визначити <span class="ac">нішу</span></h1>
+<p class="sub">Встав домени (по одному в рядок або через кому) — отримаєш лише нішу/індустрію по кожному, без повного аналізу. Сигнали: топ-запити SemRush + мета сайту. До {{ batch_max }} доменів за раз.</p>
+{% if not has_key %}<div class="warn">⚠️ SEMRUSH_API_KEY не заданий — визначення по запитах не працюватиме.</div>{% endif %}
+
+<form class="card" id="ndForm" autocomplete="off">
+  <textarea id="ndDomains" placeholder="mebel.ua&#10;hitomi.com.ua&#10;avtopart.com.ua" style="min-height:150px"></textarea>
+  <div class="nd-opts">
+    <label><input type="checkbox" id="ndAi" checked> AI-класифікатор (точніше, трохи повільніше)</label>
+    <label><input type="checkbox" id="ndOnpage" checked> Читати сайт (мета/заголовки)</label>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <button type="submit" id="ndBtn">Визначити ніші</button>
+    <button type="button" class="btn btn-ghost" id="ndCsv" style="display:none">Копіювати CSV</button>
+  </div>
+  <div class="nd-status" id="ndStatus"></div>
+</form>
+
+<div id="ndResult"></div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var form=$('ndForm'), result=$('ndResult'), status=$('ndStatus'), btn=$('ndBtn'), csvBtn=$('ndCsv');
+  var lastRows=[];
+  function pill(c){ if(c==='висока')return '<span class="pill p-ok">висока</span>'; if(c==='низька')return '<span class="pill p-no">низька</span>'; return '<span class="pill p-lo">'+(c||'—')+'</span>'; }
+  function fit(f){ if(f===true)return '<span class="pill p-ok">так</span>'; if(f===false)return '<span class="pill p-no">ні</span>'; return '<span class="pill p-lo">?</span>'; }
+  function render(rows){
+    lastRows=rows;
+    var h='<div class="card"><table class="nd-tbl"><tr><th>Домен</th><th>Індустрія</th><th>Підніша</th><th>Впевненість</th><th>SEO-KPI</th><th>Сигнали</th><th>Метод</th></tr>';
+    rows.forEach(function(r){
+      h+='<tr><td><b>'+r.domain+'</b>'+(r.error?' <span class="pill p-no">'+r.error+'</span>':'')+'</td><td>'+r.industry+'</td><td>'+r.subniche+'</td><td>'+pill(r.confidence)+'</td><td>'+fit(r.offer_fit)+'</td><td>'+(r.signals||'—')+'</td><td>'+(r.source||'')+'</td></tr>';
+    });
+    h+='</table></div>';
+    h+='<textarea class="nd-sum" id="ndSum" readonly>'+csv(rows)+'</textarea>';
+    result.innerHTML=h; csvBtn.style.display='inline-block';
+  }
+  function csv(rows){
+    var out='domain;industry;subniche;code;confidence;offer_fit;source\n';
+    rows.forEach(function(r){ out+=[r.domain,r.industry,r.subniche,r.code,r.confidence,(r.offer_fit===true?'так':r.offer_fit===false?'ні':''),r.source].join(';')+'\n'; });
+    return out;
+  }
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    var doms=$('ndDomains').value.trim();
+    if(!doms){ status.textContent='Встав хоча б один домен.'; return; }
+    btn.disabled=true; status.textContent='Визначаю ніші… (SemRush + сайт, це може зайняти до хвилини)';
+    result.innerHTML=''; csvBtn.style.display='none';
+    fetch('/niche/run',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
+      body:JSON.stringify({domains:doms,use_ai:$('ndAi').checked,use_onpage:$('ndOnpage').checked})})
+      .then(function(r){ if(r.redirected||r.status===401){location.href='/login';throw 0;} return r.json(); })
+      .then(function(d){
+        btn.disabled=false;
+        if(!d.ok){ status.textContent='Помилка: '+(d.error||'невідома'); return; }
+        var known=d.rows.filter(function(x){return x.code;}).length;
+        status.textContent='Готово: '+d.count+' доменів, нішу визначено для '+known+'.';
+        render(d.rows);
+      })
+      .catch(function(e){ btn.disabled=false; if(e!==0) status.textContent='Запит не вдався. Спробуй ще раз.'; });
+  });
+  csvBtn.addEventListener('click',function(){
+    var t=$('ndSum'); if(!t)return; t.select();
+    try{ navigator.clipboard.writeText(t.value); }catch(_){ document.execCommand('copy'); }
+    csvBtn.textContent='Скопійовано ✓'; setTimeout(function(){csvBtn.textContent='Копіювати CSV'},1600);
+  });
+})();
+</script>
+{% endblock %}

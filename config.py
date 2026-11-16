@@ -146,6 +146,10 @@ FUNNEL_LOW_TRAFFIC = int(os.getenv("FUNNEL_LOW_TRAFFIC", "500"))
 FUNNEL_GEO_MIN_ORGANIC = int(os.getenv("FUNNEL_GEO_MIN_ORGANIC", "1000"))
 # CRO: бажаний трафік/міс для A/B-тестів
 FUNNEL_CRO_TRAFFIC = int(os.getenv("FUNNEL_CRO_TRAFFIC", "10000"))
+# --- Режим «тільки ніша» (niche_detect) ---
+NICHE_KW_LIMIT = int(os.getenv("NICHE_KW_LIMIT", "30"))
+NICHE_BATCH_MAX = int(os.getenv("NICHE_BATCH_MAX", "60"))
+NICHE_WORKERS = int(os.getenv("NICHE_WORKERS", "6"))
 GROWTH_TRAFFIC_MID = int(os.getenv("GROWTH_TRAFFIC_MID", "10000"))
 STRUCTURE_KW_MIN = int(os.getenv("STRUCTURE_KW_MIN", "1000"))
 STRUCTURE_PAGES_MIN = int(os.getenv("STRUCTURE_PAGES_MIN", "150"))

@@ -1,10 +1,10 @@
 """Веб-інтерфейс: авторизація -> список сайтів -> прогрес -> результати."""
 # deploy marker: Retention block + CRO (rebuild trigger)
-import os, uuid, threading, concurrent.futures, functools, time, logging, json
+import os, re, uuid, threading, concurrent.futures, functools, time, logging, json
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session, Response)
 
-import qualify, config, hubspot_sync, semrush, sdr as sdr_mod, funnel
+import qualify, config, hubspot_sync, semrush, sdr as sdr_mod, funnel, niche_detect
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -241,6 +241,43 @@ def funnel_analyze():
         return jsonify({"error": res.get("error") or "Не вдалося проаналізувати домен."}), 400
     raw, src = funnel.inputs_from_result(res)
     return jsonify({"domain": domain, "reused": reused, "inputs": raw, "sources": src})
+
+
+@app.route("/niche")
+@login_required
+def niche_page():
+    return render_template("niche.html", cfg=config,
+                           has_key=bool(config.SEMRUSH_API_KEY),
+                           batch_max=config.NICHE_BATCH_MAX)
+
+
+@app.route("/niche/run", methods=["POST"])
+@login_required
+def niche_run():
+    data = request.get_json(force=True, silent=True) or {}
+    raw = data.get("domains") or []
+    if isinstance(raw, str):
+        raw = re.split(r"[\s,;]+", raw)
+    domains = [d.strip() for d in raw if d and d.strip()]
+    if not domains:
+        return jsonify({"ok": False, "error": "Порожній список доменів."}), 400
+    if not config.SEMRUSH_API_KEY:
+        return jsonify({"ok": False, "error": "SEMRUSH_API_KEY не заданий."}), 400
+    use_ai = bool(data.get("use_ai", True))
+    use_onpage = bool(data.get("use_onpage", True))
+    rows = niche_detect.detect_many(domains, use_onpage=use_onpage, use_ai=use_ai)
+    out = [{
+        "domain": r.get("domain"),
+        "industry": r.get("industry_name") or "—",
+        "subniche": r.get("subniche") or "—",
+        "code": r.get("subniche_code") or "",
+        "confidence": r.get("confidence") or "",
+        "offer_fit": r.get("offer_fit"),
+        "source": r.get("source") or "",
+        "signals": r.get("signals") or "",
+        "error": r.get("error") or "",
+    } for r in rows]
+    return jsonify({"ok": True, "rows": out, "count": len(out)})
 
 
 @app.route("/demo")
