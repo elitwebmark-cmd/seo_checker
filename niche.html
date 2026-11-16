@@ -57,21 +57,40 @@
     rows.forEach(function(r){ out+=[r.domain,r.industry,r.subniche,r.code,r.confidence,(r.offer_fit===true?'так':r.offer_fit===false?'ні':''),r.source].join(';')+'\n'; });
     return out;
   }
+  var poll=null;
+  function finish(rows){
+    var known=rows.filter(function(x){return x.code;}).length;
+    status.textContent='Готово: '+rows.length+' доменів, нішу визначено для '+known+'.';
+    render(rows); btn.disabled=false;
+  }
+  function watch(job){
+    poll=setInterval(function(){
+      fetch('/niche/status/'+job,{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(s){
+        if(!s.ok){ clearInterval(poll); btn.disabled=false; status.textContent='Помилка: '+(s.error||''); return; }
+        var pct=s.total?Math.round(s.done/s.total*100):0;
+        status.textContent='Визначаю ніші… '+s.done+' / '+s.total+' ('+pct+'%)';
+        if(s.status==='done'){
+          clearInterval(poll);
+          fetch('/niche/results/'+job,{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){
+            if(d.ok) finish(d.rows); else { btn.disabled=false; status.textContent='Помилка отримання результату.'; }
+          });
+        } else if(s.status==='error'){ clearInterval(poll); btn.disabled=false; status.textContent='Помилка: '+(s.error||''); }
+      }).catch(function(){ /* тимчасовий збій полінгу — продовжуємо */ });
+    },1500);
+  }
   form.addEventListener('submit',function(e){
     e.preventDefault();
     var doms=$('ndDomains').value.trim();
     if(!doms){ status.textContent='Встав хоча б один домен.'; return; }
-    btn.disabled=true; status.textContent='Визначаю ніші… (SemRush + сайт, це може зайняти до хвилини)';
-    result.innerHTML=''; csvBtn.style.display='none';
+    if(poll) clearInterval(poll);
+    btn.disabled=true; status.textContent='Запускаю…'; result.innerHTML=''; csvBtn.style.display='none';
     fetch('/niche/run',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
       body:JSON.stringify({domains:doms,use_ai:$('ndAi').checked,use_onpage:$('ndOnpage').checked,use_kw:($('ndKw').checked?'auto':false)})})
       .then(function(r){ if(r.redirected||r.status===401){location.href='/login';throw 0;} return r.json(); })
       .then(function(d){
-        btn.disabled=false;
-        if(!d.ok){ status.textContent='Помилка: '+(d.error||'невідома'); return; }
-        var known=d.rows.filter(function(x){return x.code;}).length;
-        status.textContent='Готово: '+d.count+' доменів, нішу визначено для '+known+'.';
-        render(d.rows);
+        if(!d.ok){ btn.disabled=false; status.textContent='Помилка: '+(d.error||'невідома'); return; }
+        status.textContent='Визначаю ніші… 0 / '+d.total+' (0%)';
+        watch(d.job_id);
       })
       .catch(function(e){ btn.disabled=false; if(e!==0) status.textContent='Запит не вдався. Спробуй ще раз.'; });
   });

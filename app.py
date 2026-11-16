@@ -251,25 +251,12 @@ def niche_page():
                            batch_max=config.NICHE_BATCH_MAX)
 
 
-@app.route("/niche/run", methods=["POST"])
-@login_required
-def niche_run():
-    data = request.get_json(force=True, silent=True) or {}
-    raw = data.get("domains") or []
-    if isinstance(raw, str):
-        raw = re.split(r"[\s,;]+", raw)
-    domains = [d.strip() for d in raw if d and d.strip()]
-    if not domains:
-        return jsonify({"ok": False, "error": "Порожній список доменів."}), 400
-    if not config.SEMRUSH_API_KEY:
-        return jsonify({"ok": False, "error": "SEMRUSH_API_KEY не заданий."}), 400
-    use_ai = bool(data.get("use_ai", True))
-    use_onpage = bool(data.get("use_onpage", True))
-    use_kw = data.get("use_kw", "auto")
-    if isinstance(use_kw, bool) is False and use_kw not in ("auto",):
-        use_kw = "auto"
-    rows = niche_detect.detect_many(domains, use_onpage=use_onpage, use_ai=use_ai, use_kw=use_kw)
-    out = [{
+NJOBS = {}
+NJOBS_LOCK = threading.Lock()
+
+
+def _niche_row(r):
+    return {
         "domain": r.get("domain"),
         "industry": r.get("industry_name") or "—",
         "subniche": r.get("subniche") or "—",
@@ -279,8 +266,100 @@ def niche_run():
         "source": r.get("source") or "",
         "signals": r.get("signals") or "",
         "error": r.get("error") or "",
-    } for r in rows]
-    return jsonify({"ok": True, "rows": out, "count": len(out)})
+    }
+
+
+def _niche_worker(job_id, domains, use_ai, use_onpage, use_kw):
+    results = [None] * len(domains)
+
+    def one(i, d):
+        try:
+            r = niche_detect.detect(d, use_onpage=use_onpage, use_ai=use_ai, use_kw=use_kw)
+        except Exception as e:
+            r = {"domain": d, "industry_name": "Помилка", "error": str(e)[:120]}
+        with NJOBS_LOCK:
+            j = NJOBS.get(job_id)
+            if j:
+                j["done"] += 1
+        return i, r
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=config.NICHE_WORKERS) as ex:
+            futs = [ex.submit(one, i, d) for i, d in enumerate(domains)]
+            for f in concurrent.futures.as_completed(futs):
+                i, r = f.result()
+                results[i] = r
+        rows = [_niche_row(r) for r in results if r is not None]
+        with NJOBS_LOCK:
+            NJOBS[job_id]["rows"] = rows
+            NJOBS[job_id]["status"] = "done"
+    except Exception as e:
+        with NJOBS_LOCK:
+            NJOBS[job_id]["status"] = "error"
+            NJOBS[job_id]["error"] = str(e)[:200]
+
+
+def _prune_njobs():
+    now = time.time()
+    with NJOBS_LOCK:
+        for k in [k for k, v in NJOBS.items() if now - v.get("started", now) > 3600]:
+            NJOBS.pop(k, None)
+
+
+@app.route("/niche/run", methods=["POST"])
+@login_required
+def niche_run():
+    data = request.get_json(force=True, silent=True) or {}
+    raw = data.get("domains") or []
+    if isinstance(raw, str):
+        raw = re.split(r"[\s,;]+", raw)
+    seen, domains = set(), []
+    for d in raw:
+        d = (d or "").strip()
+        if d and d.lower() not in seen:
+            seen.add(d.lower()); domains.append(d)
+    if not domains:
+        return jsonify({"ok": False, "error": "Порожній список доменів."}), 400
+    if not config.SEMRUSH_API_KEY:
+        return jsonify({"ok": False, "error": "SEMRUSH_API_KEY не заданий."}), 400
+    domains = domains[:config.NICHE_BATCH_MAX]
+    use_ai = bool(data.get("use_ai", True))
+    use_onpage = bool(data.get("use_onpage", True))
+    use_kw = data.get("use_kw", "auto")
+    if not isinstance(use_kw, bool) and use_kw != "auto":
+        use_kw = "auto"
+    _prune_njobs()
+    job_id = uuid.uuid4().hex[:12]
+    with NJOBS_LOCK:
+        NJOBS[job_id] = {"total": len(domains), "done": 0, "status": "running",
+                         "rows": None, "started": time.time()}
+    threading.Thread(target=_niche_worker,
+                     args=(job_id, domains, use_ai, use_onpage, use_kw),
+                     daemon=True).start()
+    return jsonify({"ok": True, "job_id": job_id, "total": len(domains)})
+
+
+@app.route("/niche/status/<job_id>")
+@login_required
+def niche_status(job_id):
+    with NJOBS_LOCK:
+        j = NJOBS.get(job_id)
+        if not j:
+            return jsonify({"ok": False, "error": "джоб не знайдено"}), 404
+        return jsonify({"ok": True, "status": j["status"], "done": j["done"],
+                        "total": j["total"], "error": j.get("error", "")})
+
+
+@app.route("/niche/results/<job_id>")
+@login_required
+def niche_results(job_id):
+    with NJOBS_LOCK:
+        j = NJOBS.get(job_id)
+        if not j:
+            return jsonify({"ok": False, "error": "джоб не знайдено"}), 404
+        if j["status"] != "done":
+            return jsonify({"ok": False, "error": "ще не готово", "status": j["status"],
+                            "done": j["done"], "total": j["total"]}), 202
+        return jsonify({"ok": True, "rows": j["rows"], "count": len(j["rows"])})
 
 
 @app.route("/demo")
