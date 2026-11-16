@@ -362,6 +362,39 @@ def niche_results(job_id):
         return jsonify({"ok": True, "rows": j["rows"], "count": len(j["rows"])})
 
 
+@app.route("/niche/results/<job_id>.xlsx")
+@login_required
+def niche_results_xlsx(job_id):
+    with NJOBS_LOCK:
+        j = NJOBS.get(job_id)
+        rows = (j or {}).get("rows") if j and j.get("status") == "done" else None
+    if rows is None:
+        return redirect(url_for("niche_page"))
+    import io
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    wb = openpyxl.Workbook(); ws = wb.active; ws.title = "Ніші"
+    cols = ["Домен", "Індустрія", "Підніша", "Код", "Впевненість", "SEO-KPI", "Сигнали", "Метод"]
+    hf = PatternFill("solid", fgColor="1F2430"); hfont = Font(bold=True, color="FFFFFF")
+    for i, c in enumerate(cols, 1):
+        cell = ws.cell(1, i, c); cell.fill = hf; cell.font = hfont
+        cell.alignment = Alignment(horizontal="center")
+    fitmap = {True: "так", False: "ні", None: ""}
+    for r in rows:
+        ws.append([r.get("domain"), r.get("industry"), r.get("subniche"), r.get("code"),
+                   r.get("confidence"), fitmap.get(r.get("offer_fit"), ""),
+                   r.get("signals"), r.get("source")])
+    widths = [30, 26, 26, 10, 12, 9, 14, 11]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    buf = io.BytesIO(); wb.save(buf); buf.seek(0)
+    return Response(buf.read(),
+                    mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="nishi_{job_id}.xlsx"'})
+
+
 @app.route("/demo")
 @login_required
 def demo():
