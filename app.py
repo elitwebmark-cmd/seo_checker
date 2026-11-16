@@ -253,6 +253,48 @@ def niche_page():
 
 NJOBS = {}
 NJOBS_LOCK = threading.Lock()
+import tempfile
+NJOBS_DIR = os.path.join(tempfile.gettempdir(), "nichejobs")
+try:
+    os.makedirs(NJOBS_DIR, exist_ok=True)
+except Exception:
+    pass
+
+
+def _njob_path(jid):
+    return os.path.join(NJOBS_DIR, re.sub(r"[^0-9a-f]", "", jid)[:32] + ".json")
+
+
+def _njob_save(jid):
+    """Дублюємо стан джоба у файл — щоб статус/результат пережили рестарт воркера."""
+    with NJOBS_LOCK:
+        j = NJOBS.get(jid)
+        snap = dict(j) if j else None
+    if snap is None:
+        return
+    try:
+        p = _njob_path(jid)
+        with open(p + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(snap, f, ensure_ascii=False)
+        os.replace(p + ".tmp", p)
+    except Exception:
+        pass
+
+
+def _njob_load(jid):
+    try:
+        with open(_njob_path(jid), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _njob_get(jid):
+    with NJOBS_LOCK:
+        j = NJOBS.get(jid)
+        if j:
+            return dict(j)
+    return _njob_load(jid)
 
 
 def _niche_row(r):
@@ -281,6 +323,11 @@ def _niche_worker(job_id, domains, use_ai, use_onpage, use_kw):
             j = NJOBS.get(job_id)
             if j:
                 j["done"] += 1
+                done = j["done"]
+            else:
+                done = 0
+        if done % 10 == 0:          # періодично зберігаємо прогрес у файл
+            _njob_save(job_id)
         return i, r
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=config.NICHE_WORKERS) as ex:
@@ -296,6 +343,7 @@ def _niche_worker(job_id, domains, use_ai, use_onpage, use_kw):
         with NJOBS_LOCK:
             NJOBS[job_id]["status"] = "error"
             NJOBS[job_id]["error"] = str(e)[:200]
+    _njob_save(job_id)
 
 
 def _prune_njobs():
@@ -332,6 +380,7 @@ def niche_run():
     with NJOBS_LOCK:
         NJOBS[job_id] = {"total": len(domains), "done": 0, "status": "running",
                          "rows": None, "started": time.time()}
+    _njob_save(job_id)
     threading.Thread(target=_niche_worker,
                      args=(job_id, domains, use_ai, use_onpage, use_kw),
                      daemon=True).start()
@@ -341,33 +390,31 @@ def niche_run():
 @app.route("/niche/status/<job_id>")
 @login_required
 def niche_status(job_id):
-    with NJOBS_LOCK:
-        j = NJOBS.get(job_id)
-        if not j:
-            return jsonify({"ok": False, "error": "джоб не знайдено"}), 404
-        return jsonify({"ok": True, "status": j["status"], "done": j["done"],
-                        "total": j["total"], "error": j.get("error", "")})
+    j = _njob_get(job_id)
+    if not j:
+        return jsonify({"ok": False, "error": "джоб не знайдено"}), 404
+    return jsonify({"ok": True, "status": j.get("status"), "done": j.get("done", 0),
+                    "total": j.get("total", 0), "error": j.get("error", "")})
 
 
 @app.route("/niche/results/<job_id>")
 @login_required
 def niche_results(job_id):
-    with NJOBS_LOCK:
-        j = NJOBS.get(job_id)
-        if not j:
-            return jsonify({"ok": False, "error": "джоб не знайдено"}), 404
-        if j["status"] != "done":
-            return jsonify({"ok": False, "error": "ще не готово", "status": j["status"],
-                            "done": j["done"], "total": j["total"]}), 202
-        return jsonify({"ok": True, "rows": j["rows"], "count": len(j["rows"])})
+    j = _njob_get(job_id)
+    if not j:
+        return jsonify({"ok": False, "error": "джоб не знайдено"}), 404
+    if j.get("status") != "done":
+        return jsonify({"ok": False, "error": "ще не готово", "status": j.get("status"),
+                        "done": j.get("done", 0), "total": j.get("total", 0)}), 202
+    rows = j.get("rows") or []
+    return jsonify({"ok": True, "rows": rows, "count": len(rows)})
 
 
 @app.route("/niche/results/<job_id>.xlsx")
 @login_required
 def niche_results_xlsx(job_id):
-    with NJOBS_LOCK:
-        j = NJOBS.get(job_id)
-        rows = (j or {}).get("rows") if j and j.get("status") == "done" else None
+    j = _njob_get(job_id)
+    rows = (j or {}).get("rows") if j and j.get("status") == "done" else None
     if rows is None:
         return redirect(url_for("niche_page"))
     import io

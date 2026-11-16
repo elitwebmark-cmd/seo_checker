@@ -91,6 +91,7 @@
       .then(function(r){ if(r.redirected||r.status===401){location.href='/login';throw 0;} return r.json(); })
       .then(function(d){
         if(!d.ok){ btn.disabled=false; status.textContent='Помилка: '+(d.error||'невідома'); return; }
+        if(d.rows){ lastJob=null; finish(d.rows); return; }   // сумісність зі старою синхронною відповіддю
         lastJob=d.job_id; status.textContent='Визначаю ніші… 0 / '+d.total+' (0%)';
         watch(d.job_id);
       })
